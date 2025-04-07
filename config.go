@@ -16,11 +16,11 @@ func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error) {
 	var config I2PConfig
 	config.SamHost = "127.0.0.1"
 	config.SamPort = 7656
-	config.SamMin = "3.0"
-	config.SamMax = "3.2"
+	config.SamMin = common.DEFAULT_SAM_MIN
+	config.SamMax = common.DEFAULT_SAM_MAX
 	config.TunName = ""
 	config.TunType = "server"
-	config.Style = "STREAM"
+	config.Style = common.SESSION_STYLE_STREAM
 	config.InLength = 3
 	config.OutLength = 3
 	config.InQuantity = 2

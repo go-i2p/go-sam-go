@@ -76,7 +76,6 @@ var (
 )
 
 func getEnv(key, fallback string) string {
-	InitializeSAM3Logger()
 	value, ok := os.LookupEnv(key)
 	if !ok {
 		log.WithFields(logrus.Fields{

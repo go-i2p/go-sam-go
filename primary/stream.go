@@ -29,8 +29,6 @@ func (sam *PrimarySession) NewUniqueStreamSubSession(id string) (*stream.StreamS
 		log.WithError(err).Error("Failed to create new generic sub-session")
 		return nil, err
 	}
-	fromPort, toPort := common.RandPort(), common.RandPort()
-	log.WithFields(logrus.Fields{"fromPort": fromPort, "toPort": toPort}).Debug("Generated random ports")
 	return newFromPrimary(sam, conn), nil
 }
 

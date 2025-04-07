@@ -237,9 +237,9 @@ func (f *I2PConfig) SignatureType() string {
 // EncryptLease returns the lease set encryption configuration string
 // Returns "i2cp.encryptLeaseSet=true" if encryption is enabled, empty string otherwise
 func (f *I2PConfig) EncryptLease() string {
-	if f.EncryptLeaseSet == true {
+	if f.EncryptLeaseSet {
 		log.Debug("Lease set encryption enabled")
-		return fmt.Sprintf(" i2cp.encryptLeaseSet=true ")
+		return " i2cp.encryptLeaseSet=true "
 	}
 	log.Debug("Lease set encryption not enabled")
 	return ""
@@ -262,7 +262,7 @@ func (f *I2PConfig) Reliability() string {
 // Reduce returns I2CP reduce-on-idle configuration settings as a string if enabled
 func (f *I2PConfig) Reduce() string {
 	// If reduce idle is enabled, return formatted configuration string
-	if f.ReduceIdle == true {
+	if f.ReduceIdle {
 		// Log the reduce idle settings being applied
 		log.WithFields(logrus.Fields{
 			"reduceIdle":         f.ReduceIdle,
@@ -287,7 +287,7 @@ func (f *I2PConfig) Reduce() string {
 // Close returns I2CP close-on-idle configuration settings as a string if enabled
 func (f *I2PConfig) Close() string {
 	// If close idle is enabled, return formatted configuration string
-	if f.CloseIdle == true {
+	if f.CloseIdle {
 		// Log the close idle settings being applied
 		log.WithFields(logrus.Fields{
 			"closeIdle":     f.CloseIdle,
@@ -312,17 +312,17 @@ func (f *I2PConfig) DoZero() string {
 	var settings []string
 
 	// Add inbound zero hop setting if enabled
-	if f.InAllowZeroHop == true {
+	if f.InAllowZeroHop {
 		settings = append(settings, fmt.Sprintf("inbound.allowZeroHop=%t", f.InAllowZeroHop))
 	}
 
 	// Add outbound zero hop setting if enabled
-	if f.OutAllowZeroHop == true {
+	if f.OutAllowZeroHop {
 		settings = append(settings, fmt.Sprintf("outbound.allowZeroHop=%t", f.OutAllowZeroHop))
 	}
 
 	// Add fast receive setting if enabled
-	if f.FastRecieve == true {
+	if f.FastRecieve {
 		settings = append(settings, fmt.Sprintf("i2cp.fastRecieve=%t", f.FastRecieve))
 	}
 
@@ -406,10 +406,10 @@ func (f *I2PConfig) Accesslisttype() string {
 	switch f.AccessListType {
 	case ACCESS_TYPE_WHITELIST:
 		log.Debug("Access list type set to whitelist")
-		return fmt.Sprintf("i2cp.enableAccessList=true")
+		return "i2cp.enableAccessList=true"
 	case ACCESS_TYPE_BLACKLIST:
 		log.Debug("Access list type set to blacklist")
-		return fmt.Sprintf("i2cp.enableBlackList=true")
+		return "i2cp.enableBlackList=true"
 	case ACCESS_TYPE_NONE:
 		log.Debug("Access list type set to none")
 		return ""
@@ -469,7 +469,7 @@ func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error) {
 	config.SamMax = DEFAULT_SAM_MAX
 	config.TunName = ""
 	config.TunType = "server"
-	config.Style = "STREAM"
+	config.Style = SESSION_STYLE_STREAM
 	config.InLength = 3
 	config.OutLength = 3
 	config.InQuantity = 2

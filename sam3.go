@@ -17,11 +17,11 @@ type SAM struct {
 }
 
 // Creates a new stream session by wrapping stream.NewStreamSession
-func (s *SAM) NewStreamSession(param1 string, keys i2pkeys.I2PKeys, param3 []string) (*StreamSession, error) {
+func (s *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error) {
 	sam := &stream.SAM{
 		SAM: s.SAM,
 	}
-	ss, err := sam.NewStreamSession(param1, keys, param3)
+	ss, err := sam.NewStreamSession(id, keys, options)
 	if err != nil {
 		return nil, err
 	}
@@ -56,18 +56,8 @@ func (s *SAM) NewPrimarySession(id string, keys i2pkeys.I2PKeys, options []strin
 	return &primarySession, nil
 }
 
-const (
-	Sig_NONE                 = "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"
-	Sig_DSA_SHA1             = "SIGNATURE_TYPE=DSA_SHA1"
-	Sig_ECDSA_SHA256_P256    = "SIGNATURE_TYPE=ECDSA_SHA256_P256"
-	Sig_ECDSA_SHA384_P384    = "SIGNATURE_TYPE=ECDSA_SHA384_P384"
-	Sig_ECDSA_SHA512_P521    = "SIGNATURE_TYPE=ECDSA_SHA512_P521"
-	Sig_EdDSA_SHA512_Ed25519 = "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"
-)
-
-var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
 func RandString() string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	n := 4
 	b := make([]rune, n)
 	for i := range b {
