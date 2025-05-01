@@ -14,15 +14,9 @@ type Option func(*SAMEmit) error
 // SetType sets the type of the forwarder server
 func SetType(s string) func(*SAMEmit) error {
 	return func(c *SAMEmit) error {
-		if s == SESSION_STYLE_STREAM {
-			c.Style = s
-			log.WithField("style", s).Debug("Set session style")
-			return nil
-		} else if s == SESSION_STYLE_DATAGRAM {
-			c.Style = s
-			log.WithField("style", s).Debug("Set session style")
-			return nil
-		} else if s == SESSION_STYLE_RAW {
+		if s == SESSION_STYLE_STREAM ||
+			s == SESSION_STYLE_DATAGRAM ||
+			s == SESSION_STYLE_RAW {
 			c.Style = s
 			log.WithField("style", s).Debug("Set session style")
 			return nil
