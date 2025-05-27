@@ -1,10 +1,7 @@
 package stream
 
-import logger "github.com/go-i2p/go-sam-go/log"
+import (
+	"github.com/go-i2p/logger"
+)
 
-var log = logger.GetSAM3Logger()
-
-func init() {
-	logger.InitializeSAM3Logger()
-	log = logger.GetSAM3Logger()
-}
+var log = logger.GetGoI2PLogger()

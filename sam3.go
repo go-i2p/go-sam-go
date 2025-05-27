@@ -11,10 +11,6 @@ import (
 	"github.com/go-i2p/i2pkeys"
 )
 
-func init() {
-	InitializeSAM3Logger()
-}
-
 // Used for controlling I2Ps SAMv3.
 type SAM struct {
 	*common.SAM

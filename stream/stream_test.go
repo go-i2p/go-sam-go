@@ -4,14 +4,9 @@ import (
 	"testing"
 
 	"github.com/go-i2p/go-sam-go/common"
-	"github.com/go-i2p/i2pkeys"
 )
 
 func TestNewStreamSession_Integration(t *testing.T) {
-	commonSam, err := common.NewSAM("127.0.0.1:7656")
-	if err != nil {
-		t.Fatalf("NewSAM() error = %v", err)
-	}
 	tests := []struct {
 		name    string
 		id      string
@@ -40,10 +35,22 @@ func TestNewStreamSession_Integration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sam := &SAM{SAM: commonSam}
-			keys, _ := i2pkeys.NewDestination()
+			// Create a fresh SAM connection for each test
+			commonSam, err := common.NewSAM("127.0.0.1:7656")
+			if err != nil {
+				t.Fatalf("NewSAM() error = %v", err)
+			}
+			defer commonSam.Close()
 
-			session, err := sam.NewStreamSession(tt.id, *keys, tt.options)
+			sam := &SAM{SAM: commonSam}
+
+			// Generate keys through the SAM bridge
+			keys, err := sam.NewKeys()
+			if err != nil {
+				t.Fatalf("NewKeys() error = %v", err)
+			}
+
+			session, err := sam.NewStreamSession(tt.id, keys, tt.options)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewStreamSession() error = %v, wantErr %v", err, tt.wantErr)
 				return
