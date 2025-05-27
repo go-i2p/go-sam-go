@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"strconv"
@@ -76,8 +77,9 @@ var (
 	randGen    = rand.New(randSource)
 )
 
-func RandPort() string {
-	for {
+func RandPort() (portNumber string, err error) {
+	maxAttempts := 30
+	for range maxAttempts {
 		p := randGen.Intn(55534) + 10000
 		port := strconv.Itoa(p)
 		if l, e := net.Listen("tcp", net.JoinHostPort("localhost", port)); e != nil {
@@ -88,8 +90,10 @@ func RandPort() string {
 				continue
 			} else {
 				defer l.Close()
-				return strconv.Itoa(l.Addr().(*net.UDPAddr).Port)
+				return strconv.Itoa(l.Addr().(*net.UDPAddr).Port), nil
 			}
 		}
 	}
+
+	return "", fmt.Errorf("unable to find a pair of available tcp and udp ports in %v attempts", maxAttempts)
 }

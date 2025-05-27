@@ -1,6 +1,8 @@
 package primary
 
 import (
+	"net"
+
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/go-sam-go/stream"
 	"github.com/sirupsen/logrus"
@@ -15,11 +17,7 @@ func (sam *PrimarySession) NewStreamSubSession(id string) (*stream.StreamSession
 		log.WithError(err).Error("Failed to create new generic sub-session")
 		return nil, err
 	}
-	streamSession := &stream.StreamSession{
-		SAM: (*stream.SAM)(sam.SAM),
-	}
-	streamSession.Conn = conn
-	return streamSession, nil
+	return newFromPrimary(sam, conn), nil
 }
 
 // Creates a new stream.StreamSession with the I2CP- and streaminglib options as
@@ -31,13 +29,7 @@ func (sam *PrimarySession) NewUniqueStreamSubSession(id string) (*stream.StreamS
 		log.WithError(err).Error("Failed to create new generic sub-session")
 		return nil, err
 	}
-	fromPort, toPort := common.RandPort(), common.RandPort()
-	log.WithFields(logrus.Fields{"fromPort": fromPort, "toPort": toPort}).Debug("Generated random ports")
-	streamSession := &stream.StreamSession{
-		SAM: (*stream.SAM)(sam.SAM),
-	}
-	streamSession.Conn = conn
-	return streamSession, nil
+	return newFromPrimary(sam, conn), nil
 }
 
 // Creates a new stream.StreamSession with the I2CP- and streaminglib options as
@@ -49,9 +41,17 @@ func (sam *PrimarySession) NewStreamSubSessionWithPorts(id, from, to string) (*s
 		log.WithError(err).Error("Failed to create new generic sub-session with signature and ports")
 		return nil, err
 	}
+	return newFromPrimary(sam, conn), nil
+}
+
+func newFromPrimary(sam *PrimarySession, conn net.Conn) *stream.StreamSession {
 	streamSession := &stream.StreamSession{
-		SAM: (*stream.SAM)(sam.SAM),
+		SAM: &stream.SAM{
+			SAM: (*common.SAM)(sam.SAM),
+		},
 	}
 	streamSession.Conn = conn
-	return streamSession, nil
+
+	return streamSession
+
 }

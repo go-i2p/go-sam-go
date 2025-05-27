@@ -14,15 +14,9 @@ type Option func(*SAMEmit) error
 // SetType sets the type of the forwarder server
 func SetType(s string) func(*SAMEmit) error {
 	return func(c *SAMEmit) error {
-		if s == "STREAM" {
-			c.Style = s
-			log.WithField("style", s).Debug("Set session style")
-			return nil
-		} else if s == "DATAGRAM" {
-			c.Style = s
-			log.WithField("style", s).Debug("Set session style")
-			return nil
-		} else if s == "RAW" {
+		if s == SESSION_STYLE_STREAM ||
+			s == SESSION_STYLE_DATAGRAM ||
+			s == SESSION_STYLE_RAW {
 			c.Style = s
 			log.WithField("style", s).Debug("Set session style")
 			return nil
@@ -399,24 +393,20 @@ func SetCloseIdleTimeMs(u int) func(*SAMEmit) error {
 // SetAccessListType tells the system to treat the AccessList as a whitelist
 func SetAccessListType(s string) func(*SAMEmit) error {
 	return func(c *SAMEmit) error {
-		if s == "whitelist" {
-			c.I2PConfig.AccessListType = "whitelist"
+		if s == ACCESS_TYPE_WHITELIST {
+			c.I2PConfig.AccessListType = ACCESS_TYPE_WHITELIST
 			log.Debug("Set access list type to whitelist")
 			return nil
-		} else if s == "blacklist" {
-			c.I2PConfig.AccessListType = "blacklist"
+		} else if s == ACCESS_TYPE_BLACKLIST {
+			c.I2PConfig.AccessListType = ACCESS_TYPE_BLACKLIST
 			log.Debug("Set access list type to blacklist")
 			return nil
-		} else if s == "none" {
-			c.I2PConfig.AccessListType = ""
-			log.Debug("Set access list type to none")
-			return nil
-		} else if s == "" {
+		} else if s == ACCESS_TYPE_NONE || s == "" {
 			c.I2PConfig.AccessListType = ""
 			log.Debug("Set access list type to none")
 			return nil
 		}
-		return fmt.Errorf("Invalid Access list type(whitelist, blacklist, none)")
+		return fmt.Errorf("Invalid Access list type (whitelist, blacklist, none)")
 	}
 }
 

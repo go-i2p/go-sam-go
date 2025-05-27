@@ -2,25 +2,12 @@
 package sam3
 
 import (
-	"math/rand"
-	"strconv"
-	"time"
-
 	"github.com/go-i2p/go-sam-go/primary"
 )
 
 const (
 	session_ADDOK = "SESSION STATUS RESULT=OK"
 )
-
-func randport() string {
-	s := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(s)
-	p := r.Intn(55534) + 10000
-	port := strconv.Itoa(p)
-	log.WithField("port", port).Debug("Generated random port")
-	return strconv.Itoa(p)
-}
 
 // Represents a primary session.
 type PrimarySession struct {

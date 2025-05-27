@@ -226,6 +226,9 @@ func (sam *SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to strin
 
 // close this sam session
 func (sam *SAM) Close() error {
-	log.Debug("Closing SAM session")
-	return sam.Conn.Close()
+	if sam.Conn != nil {
+		log.Debug("Closing SAM session")
+		return sam.Conn.Close()
+	}
+	return nil
 }
