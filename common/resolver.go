@@ -19,8 +19,9 @@ func NewSAMResolver(parent *SAM) (*SAMResolver, error) {
 func NewFullSAMResolver(address string) (*SAMResolver, error) {
 	log.WithField("address", address).Debug("Creating new full SAMResolver")
 	var s SAMResolver
-	var err error
-	s.SAM, err = NewSAM(address)
+	//var err error
+	sam, err := NewSAM(address)
+	s.SAM = sam
 	if err != nil {
 		log.WithError(err).Error("Failed to create new SAM instance")
 		return nil, err

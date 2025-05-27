@@ -64,7 +64,7 @@ type SAMEmit struct {
 // Used for controlling I2Ps SAMv3.
 type SAM struct {
 	SAMEmit
-	*SAMResolver
+	SAMResolver
 	net.Conn
 
 	// Timeout for SAM connections

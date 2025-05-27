@@ -33,7 +33,8 @@ func OldNewSAM(address string) (*SAM, error) {
 		log.Debug("SAM hello successful")
 		s.SAMEmit.I2PConfig.SetSAMAddress(address)
 		s.Conn = conn
-		s.SAMResolver, err = NewSAMResolver(&s)
+		resolver, err := NewSAMResolver(&s)
+		s.SAMResolver = *resolver
 		if err != nil {
 			log.WithError(err).Error("Failed to create SAM resolver")
 			return nil, oops.Errorf("error creating resolver: %w", err)
@@ -72,10 +73,13 @@ func NewSAM(address string) (*SAM, error) {
 
 	s.SAMEmit.I2PConfig.SetSAMAddress(address)
 
-	if s.SAMResolver, err = NewSAMResolver(s); err != nil {
+	resolver, err := NewSAMResolver(s)
+	if err != nil {
 		logger.WithError(err).Error("Failed to create SAM resolver")
 		return nil, oops.Errorf("failed to create SAM resolver: %w", err)
 	}
+	s.SAMResolver = *resolver
+	logger.Debug("Successfully created new SAM instance")
 
 	return s, nil
 }
