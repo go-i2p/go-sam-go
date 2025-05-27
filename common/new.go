@@ -67,7 +67,6 @@ func NewSAM(address string) (*SAM, error) {
 
 	if err = sendHelloAndValidate(conn, s); err != nil {
 		logger.WithError(err).Error("Failed to send hello and validate SAM connection")
-		conn.Close()
 		return nil, err
 	}
 
