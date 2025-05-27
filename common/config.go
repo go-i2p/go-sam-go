@@ -318,40 +318,41 @@ func (f *I2PConfig) DoZero() string {
 	return result
 }
 
+// formatConfigPair creates a configuration string for inbound/outbound pairs
+func (f *I2PConfig) formatConfigPair(direction, property string, value int) string {
+	return fmt.Sprintf("%s.%s=%d", direction, property, value)
+}
+
 func (f *I2PConfig) InboundLength() string {
-	return fmt.Sprintf("inbound.length=%d", f.InLength)
+	return f.formatConfigPair("inbound", "length", f.InLength)
 }
 
 func (f *I2PConfig) OutboundLength() string {
-	return fmt.Sprintf("outbound.length=%d", f.OutLength)
+	return f.formatConfigPair("outbound", "length", f.OutLength)
 }
 
 func (f *I2PConfig) InboundLengthVariance() string {
-	return fmt.Sprintf("inbound.lengthVariance=%d", f.InVariance)
+	return f.formatConfigPair("inbound", "lengthVariance", f.InVariance)
 }
 
 func (f *I2PConfig) OutboundLengthVariance() string {
-	return fmt.Sprintf("outbound.lengthVariance=%d", f.OutVariance)
+	return f.formatConfigPair("outbound", "lengthVariance", f.OutVariance)
 }
 
 func (f *I2PConfig) InboundBackupQuantity() string {
-	return fmt.Sprintf("inbound.backupQuantity=%d", f.InBackupQuantity)
+	return f.formatConfigPair("inbound", "backupQuantity", f.InBackupQuantity)
 }
 
 func (f *I2PConfig) OutboundBackupQuantity() string {
-	return fmt.Sprintf("outbound.backupQuantity=%d", f.OutBackupQuantity)
+	return f.formatConfigPair("outbound", "backupQuantity", f.OutBackupQuantity)
 }
 
 func (f *I2PConfig) InboundQuantity() string {
-	return fmt.Sprintf("inbound.quantity=%d", f.InQuantity)
+	return f.formatConfigPair("inbound", "quantity", f.InQuantity)
 }
 
 func (f *I2PConfig) OutboundQuantity() string {
-	return fmt.Sprintf("outbound.quantity=%d", f.OutQuantity)
-}
-
-func (f *I2PConfig) UsingCompression() string {
-	return fmt.Sprintf("i2cp.gzip=%t", f.UseCompression)
+	return f.formatConfigPair("outbound", "quantity", f.OutQuantity)
 }
 
 // Print returns a slice of strings containing all the I2P configuration settings
