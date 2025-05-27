@@ -454,36 +454,31 @@ func (f *I2PConfig) LeaseSetEncryptionType() string {
 }
 
 func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error) {
-	var config I2PConfig
-	config.SamHost = "127.0.0.1"
-	config.SamPort = 7656
-	config.SamMin = DEFAULT_SAM_MIN
-	config.SamMax = DEFAULT_SAM_MAX
-	config.TunName = ""
-	config.TunType = "server"
-	config.Style = SESSION_STYLE_STREAM
-	config.InLength = 3
-	config.OutLength = 3
-	config.InQuantity = 2
-	config.OutQuantity = 2
-	config.InVariance = 1
-	config.OutVariance = 1
-	config.InBackupQuantity = 3
-	config.OutBackupQuantity = 3
-	config.InAllowZeroHop = false
-	config.OutAllowZeroHop = false
-	config.EncryptLeaseSet = false
-	config.LeaseSetKey = ""
-	config.LeaseSetPrivateKey = ""
-	config.LeaseSetPrivateSigningKey = ""
-	config.FastRecieve = false
-	config.UseCompression = true
-	config.ReduceIdle = false
-	config.ReduceIdleTime = 15
-	config.ReduceIdleQuantity = 4
-	config.CloseIdle = false
-	config.CloseIdleTime = 300000
-	config.MessageReliability = "none"
+	// Initialize with struct literal containing only non-zero defaults
+	// Go automatically zero-initializes all other fields
+	config := I2PConfig{
+		SamHost:            "127.0.0.1",
+		SamPort:            7656,
+		SamMin:             DEFAULT_SAM_MIN,
+		SamMax:             DEFAULT_SAM_MAX,
+		TunType:            "server",
+		Style:              SESSION_STYLE_STREAM,
+		InLength:           3,
+		OutLength:          3,
+		InQuantity:         2,
+		OutQuantity:        2,
+		InVariance:         1,
+		OutVariance:        1,
+		InBackupQuantity:   3,
+		OutBackupQuantity:  3,
+		UseCompression:     true,
+		ReduceIdleTime:     15,
+		ReduceIdleQuantity: 4,
+		CloseIdleTime:      300000,
+		MessageReliability: "none",
+	}
+
+	// Apply functional options
 	for _, opt := range opts {
 		if err := opt(&config); err != nil {
 			return nil, err
