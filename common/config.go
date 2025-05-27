@@ -402,14 +402,11 @@ func (f *I2PConfig) Print() []string {
 func (f *I2PConfig) Accesslisttype() string {
 	switch f.AccessListType {
 	case ACCESS_TYPE_WHITELIST:
-		log.Debug("Access list type set to whitelist")
+		log.Debug("Access list type set to allowlist")
 		return "i2cp.enableAccessList=true"
 	case ACCESS_TYPE_BLACKLIST:
-		log.Debug("Access list type set to blacklist")
+		log.Debug("Access list type set to blocklist")
 		return "i2cp.enableBlackList=true"
-	case ACCESS_TYPE_NONE:
-		log.Debug("Access list type set to none")
-		return ""
 	default:
 		log.Debug("Access list type not set")
 		return ""
@@ -422,10 +419,8 @@ func (f *I2PConfig) Accesslist() string {
 	if f.AccessListType != "" && len(f.AccessList) > 0 {
 		// Join access list entries with commas
 		accessList := strings.Join(f.AccessList, ",")
-
 		// Log the generated access list
 		log.WithField("accessList", accessList).Debug("Access list generated")
-
 		// Return formatted access list configuration
 		return fmt.Sprintf("i2cp.accessList=%s", accessList)
 	}
