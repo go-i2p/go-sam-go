@@ -21,9 +21,11 @@ func TestSetInQuantity(t *testing.T) {
 			emit := &SAMEmit{I2PConfig: I2PConfig{}}
 			err := SetInQuantity(tt.input)(emit)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SetInQuantity() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("SetInQuantity() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
 			}
 
 			if !tt.wantErr && emit.I2PConfig.InQuantity != tt.input {
@@ -52,9 +54,11 @@ func TestSetOutQuantity(t *testing.T) {
 			emit := &SAMEmit{I2PConfig: I2PConfig{}}
 			err := SetOutQuantity(tt.input)(emit)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SetOutQuantity() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("SetOutQuantity() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
 			}
 
 			if !tt.wantErr && emit.I2PConfig.OutQuantity != tt.input {

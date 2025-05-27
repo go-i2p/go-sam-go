@@ -24,5 +24,3 @@ test-logs:
 	make stream-test 2> stream-err.log 1> stream-out.log
 	make raw-test 2> raw-err.log 1> raw-out.log
 	make primary-test 2> primary-err.log 1> primary-out.log
-	
-	
