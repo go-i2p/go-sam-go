@@ -261,49 +261,32 @@ func (f *I2PConfig) Reliability() string {
 
 // Reduce returns I2CP reduce-on-idle configuration settings as a string if enabled
 func (f *I2PConfig) Reduce() string {
-	// If reduce idle is enabled, return formatted configuration string
-	if f.ReduceIdle {
-		// Log the reduce idle settings being applied
-		log.WithFields(logrus.Fields{
-			"reduceIdle":         f.ReduceIdle,
-			"reduceIdleTime":     f.ReduceIdleTime,
-			"reduceIdleQuantity": f.ReduceIdleQuantity,
-		}).Debug("Reduce idle settings applied")
-
-		// Return formatted configuration string using Sprintf
-		return fmt.Sprintf("i2cp.reduceOnIdle=%t"+
-			"i2cp.reduceIdleTime=%d"+
-			"i2cp.reduceQuantity=%d",
-			f.ReduceIdle,
-			f.ReduceIdleTime,
-			f.ReduceIdleQuantity)
+	// Return early if reduce idle is not enabled
+	if !f.ReduceIdle {
+		log.Debug("Reduce idle settings not applied")
+		return ""
 	}
 
-	// Log when reduce idle is not enabled
-	log.Debug("Reduce idle settings not applied")
-	return ""
+	// Log and return the reduce idle configuration
+	result := fmt.Sprintf("i2cp.reduceOnIdle=%t i2cp.reduceIdleTime=%d i2cp.reduceQuantity=%d",
+		f.ReduceIdle, f.ReduceIdleTime, f.ReduceIdleQuantity)
+	log.WithField("config", result).Debug("Reduce idle settings applied")
+	return result
 }
 
 // Close returns I2CP close-on-idle configuration settings as a string if enabled
 func (f *I2PConfig) Close() string {
-	// If close idle is enabled, return formatted configuration string
-	if f.CloseIdle {
-		// Log the close idle settings being applied
-		log.WithFields(logrus.Fields{
-			"closeIdle":     f.CloseIdle,
-			"closeIdleTime": f.CloseIdleTime,
-		}).Debug("Close idle settings applied")
-
-		// Return formatted configuration string using Sprintf
-		return fmt.Sprintf("i2cp.closeOnIdle=%t"+
-			"i2cp.closeIdleTime=%d",
-			f.CloseIdle,
-			f.CloseIdleTime)
+	// Return early if close idle is not enabled
+	if !f.CloseIdle {
+		log.Debug("Close idle settings not applied")
+		return ""
 	}
 
-	// Log when close idle is not enabled
-	log.Debug("Close idle settings not applied")
-	return ""
+	// Log and return the close idle configuration
+	result := fmt.Sprintf("i2cp.closeOnIdle=%t i2cp.closeIdleTime=%d",
+		f.CloseIdle, f.CloseIdleTime)
+	log.WithField("config", result).Debug("Close idle settings applied")
+	return result
 }
 
 // DoZero returns the zero hop and fast receive configuration string settings
