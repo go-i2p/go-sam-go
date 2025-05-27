@@ -11,49 +11,49 @@ import (
 
 // Read reads data from the stream.
 func (s *StreamSession) Read(buf []byte) (int, error) {
-	return s.Conn.Read(buf)
+	return s.SAM().Conn.Read(buf)
 }
 
 // Write sends data over the stream.
 func (s *StreamSession) Write(data []byte) (int, error) {
-	return s.Conn.Write(data)
+	return s.SAM().Conn.Write(data)
 }
 
 func (s *StreamSession) SetDeadline(t time.Time) error {
 	log.WithField("deadline", t).Debug("Setting deadline for StreamSession")
-	return s.Conn.SetDeadline(t)
+	return s.SAM().Conn.SetDeadline(t)
 }
 
 func (s *StreamSession) SetReadDeadline(t time.Time) error {
 	log.WithField("readDeadline", t).Debug("Setting read deadline for StreamSession")
-	return s.Conn.SetReadDeadline(t)
+	return s.SAM().Conn.SetReadDeadline(t)
 }
 
 func (s *StreamSession) SetWriteDeadline(t time.Time) error {
 	log.WithField("writeDeadline", t).Debug("Setting write deadline for StreamSession")
-	return s.Conn.SetWriteDeadline(t)
+	return s.SAM().Conn.SetWriteDeadline(t)
 }
 
 func (s *StreamSession) From() string {
-	return s.Fromport
+	return s.SAM().Fromport
 }
 
 func (s *StreamSession) To() string {
-	return s.Toport
+	return s.SAM().Toport
 }
 
 func (s *StreamSession) SignatureType() string {
-	return s.SignatureType()
+	return s.SAM().SignatureType()
 }
 
 func (s *StreamSession) Close() error {
-	log.WithField("id", s.ID()).Debug("Closing StreamSession")
-	return s.Conn.Close()
+	log.WithField("id", s.SAM().ID()).Debug("Closing StreamSession")
+	return s.SAM().Conn.Close()
 }
 
 // Returns the I2P destination (the address) of the stream session
 func (s *StreamSession) Addr() i2pkeys.I2PAddr {
-	return s.Addr()
+	return s.Keys().Address
 }
 
 func (s *StreamSession) LocalAddr() net.Addr {
@@ -62,13 +62,13 @@ func (s *StreamSession) LocalAddr() net.Addr {
 
 // Returns the keys associated with the stream session
 func (s *StreamSession) Keys() i2pkeys.I2PKeys {
-	return *s.DestinationKeys
+	return *s.SAM().DestinationKeys
 }
 
 // lookup name, convenience function
 func (s *StreamSession) Lookup(name string) (i2pkeys.I2PAddr, error) {
 	log.WithField("name", name).Debug("Looking up address")
-	sam, err := common.NewSAM(s.Sam())
+	sam, err := common.NewSAM(s.SAM().Sam())
 	if err == nil {
 		addr, err := sam.Lookup(name)
 		defer sam.Close()

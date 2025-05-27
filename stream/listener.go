@@ -14,17 +14,17 @@ import (
 )
 
 func (l *StreamListener) From() string {
-	return l.session.Fromport
+	return l.session.SAM().Fromport
 }
 
 func (l *StreamListener) To() string {
-	return l.session.Toport
+	return l.session.SAM().Toport
 }
 
 // get our address
 // implements net.Listener
 func (l *StreamListener) Addr() net.Addr {
-	return l.session.DestinationKeys.Addr()
+	return l.session.Addr()
 }
 
 // implements net.Listener
@@ -40,12 +40,12 @@ func (l *StreamListener) Accept() (net.Conn, error) {
 // accept a new inbound connection
 func (l *StreamListener) AcceptI2P() (*StreamConn, error) {
 	log.Debug("StreamListener.AcceptI2P() called")
-	s, err := common.NewSAM(l.session.Sam())
+	s, err := common.NewSAM(l.session.SAM().Sam())
 	if err == nil {
 		log.Debug("Connected to SAM bridge")
 		// we connected to sam
 		// send accept() command
-		_, err = io.WriteString(s.Conn, "STREAM ACCEPT ID="+l.session.ID()+" SILENT=false\n")
+		_, err = io.WriteString(s.Conn, "STREAM ACCEPT ID="+l.session.SAM().ID()+" SILENT=false\n")
 		if err != nil {
 			log.WithError(err).Error("Failed to send STREAM ACCEPT command")
 			s.Close()
@@ -67,8 +67,8 @@ func (l *StreamListener) AcceptI2P() (*StreamConn, error) {
 			destline, err := rd.ReadString(10)
 			if err == nil {
 				dest := common.ExtractDest(destline)
-				l.session.Fromport = common.ExtractPairString(destline, "FROM_PORT")
-				l.session.Toport = common.ExtractPairString(destline, "TO_PORT")
+				l.session.SAM().Fromport = common.ExtractPairString(destline, "FROM_PORT")
+				l.session.SAM().Toport = common.ExtractPairString(destline, "TO_PORT")
 				// return wrapped connection
 				dest = strings.Trim(dest, "\n")
 				log.WithFields(logrus.Fields{

@@ -67,6 +67,7 @@ func NewSAM(address string) (*SAM, error) {
 
 	if err = sendHelloAndValidate(conn, s); err != nil {
 		logger.WithError(err).Error("Failed to send hello and validate SAM connection")
+		conn.Close()
 		return nil, err
 	}
 
@@ -75,6 +76,7 @@ func NewSAM(address string) (*SAM, error) {
 	resolver, err := NewSAMResolver(s)
 	if err != nil {
 		logger.WithError(err).Error("Failed to create SAM resolver")
+		conn.Close()
 		return nil, oops.Errorf("failed to create SAM resolver: %w", err)
 	}
 	s.SAMResolver = *resolver

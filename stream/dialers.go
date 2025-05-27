@@ -77,13 +77,13 @@ func (s *StreamSession) Dial(n, addr string) (c net.Conn, err error) {
 // Dials to an I2P destination and returns a SAMConn, which implements a net.Conn.
 func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error) {
 	log.WithField("addr", addr).Debug("DialI2P called")
-	sam, err := common.NewSAM(s.Sam())
+	sam, err := common.NewSAM(s.SAM().Sam())
 	if err != nil {
 		log.WithError(err).Error("Failed to create new SAM instance")
 		return nil, err
 	}
 	conn := sam.Conn
-	_, err = conn.Write([]byte("STREAM CONNECT ID=" + s.ID() + s.FromPort() + s.ToPort() + " DESTINATION=" + addr.Base64() + " SILENT=false\n"))
+	_, err = conn.Write([]byte("STREAM CONNECT ID=" + s.SAM().ID() + s.SAM().FromPort() + s.SAM().ToPort() + " DESTINATION=" + addr.Base64() + " SILENT=false\n"))
 	if err != nil {
 		log.WithError(err).Error("Failed to write STREAM CONNECT command")
 		conn.Close()

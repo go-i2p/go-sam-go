@@ -2,8 +2,6 @@ package stream
 
 import (
 	"testing"
-
-	"github.com/go-i2p/go-sam-go/common"
 )
 
 func TestNewStreamSession_Integration(t *testing.T) {
@@ -36,13 +34,10 @@ func TestNewStreamSession_Integration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh SAM connection for each test
-			commonSam, err := common.NewSAM("127.0.0.1:7656")
+			sam, err := NewSAM("127.0.0.1:7656")
 			if err != nil {
 				t.Fatalf("NewSAM() error = %v", err)
 			}
-			defer commonSam.Close()
-
-			sam := &SAM{SAM: commonSam}
 
 			// Generate keys through the SAM bridge
 			keys, err := sam.NewKeys()
@@ -58,6 +53,7 @@ func TestNewStreamSession_Integration(t *testing.T) {
 			if err == nil {
 				session.Close()
 			}
+			sam.Close()
 		})
 	}
 }

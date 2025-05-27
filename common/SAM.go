@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"net"
 	"os"
 	"strings"
 
@@ -129,99 +128,6 @@ func (sam *SAM) NewKeys(sigType ...string) (i2pkeys.I2PKeys, error) {
 func (sam *SAM) Lookup(name string) (i2pkeys.I2PAddr, error) {
 	log.WithField("name", name).Debug("Looking up address")
 	return sam.SAMResolver.Resolve(name)
-}
-
-// Creates a new session with the style of either "STREAM", "DATAGRAM" or "RAW",
-// for a new I2P tunnel with name id, using the cypher keys specified, with the
-// I2CP/streaminglib-options as specified. Extra arguments can be specified by
-// setting extra to something else than []string{}.
-// This sam3 instance is now a session
-func (sam *SAM) NewGenericSession(style, id string, keys i2pkeys.I2PKeys, extras []string) (net.Conn, error) {
-	log.WithFields(logrus.Fields{"style": style, "id": id}).Debug("Creating new generic session")
-	return sam.NewGenericSessionWithSignature(style, id, keys, SIG_EdDSA_SHA512_Ed25519, extras)
-}
-
-func (sam *SAM) NewGenericSessionWithSignature(style, id string, keys i2pkeys.I2PKeys, sigType string, extras []string) (net.Conn, error) {
-	log.WithFields(logrus.Fields{"style": style, "id": id, "sigType": sigType}).Debug("Creating new generic session with signature")
-	return sam.NewGenericSessionWithSignatureAndPorts(style, id, "0", "0", keys, sigType, extras)
-}
-
-// Creates a new session with the style of either "STREAM", "DATAGRAM" or "RAW",
-// for a new I2P tunnel with name id, using the cypher keys specified, with the
-// I2CP/streaminglib-options as specified. Extra arguments can be specified by
-// setting extra to something else than []string{}.
-// This sam3 instance is now a session
-func (sam *SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string, keys i2pkeys.I2PKeys, sigType string, extras []string) (net.Conn, error) {
-	log.WithFields(logrus.Fields{"style": style, "id": id, "from": from, "to": to, "sigType": sigType}).Debug("Creating new generic session with signature and ports")
-
-	optStr := sam.SamOptionsString()
-	extraStr := strings.Join(extras, " ")
-
-	conn := sam.Conn
-	fp := ""
-	tp := ""
-	if from != "0" {
-		fp = " FROM_PORT=" + from
-	}
-	if to != "0" {
-		tp = " TO_PORT=" + to
-	}
-	scmsg := []byte("SESSION CREATE STYLE=" + style + fp + tp + " ID=" + id + " DESTINATION=" + keys.String() + " " + optStr + extraStr + "\n")
-
-	log.WithField("message", string(scmsg)).Debug("Sending SESSION CREATE message")
-
-	for m, i := 0, 0; m != len(scmsg); i++ {
-		if i == 15 {
-			log.Error("Failed to write SESSION CREATE message after 15 attempts")
-			conn.Close()
-			return nil, oops.Errorf("writing to SAM failed")
-		}
-		n, err := conn.Write(scmsg[m:])
-		if err != nil {
-			log.WithError(err).Error("Failed to write to SAM connection")
-			conn.Close()
-			return nil, oops.Errorf("writing to connection failed: %w", err)
-		}
-		m += n
-	}
-	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
-	if err != nil {
-		log.WithError(err).Error("Failed to read SAM response")
-		conn.Close()
-		return nil, oops.Errorf("reading from connection failed: %w", err)
-	}
-	text := string(buf[:n])
-	log.WithField("response", text).Debug("Received SAM response")
-	if strings.HasPrefix(text, SESSION_OK) {
-		if keys.String() != text[len(SESSION_OK):len(text)-1] {
-			log.Error("SAM created a tunnel with different keys than requested")
-			conn.Close()
-			return nil, oops.Errorf("SAMv3 created a tunnel with keys other than the ones we asked it for")
-		}
-		log.Debug("Successfully created new session")
-		return conn, nil //&StreamSession{id, conn, keys, nil, sync.RWMutex{}, nil}, nil
-	} else if text == SESSION_DUPLICATE_ID {
-		log.Error("Duplicate tunnel name")
-		conn.Close()
-		return nil, oops.Errorf("Duplicate tunnel name")
-	} else if text == SESSION_DUPLICATE_DEST {
-		log.Error("Duplicate destination")
-		conn.Close()
-		return nil, oops.Errorf("Duplicate destination")
-	} else if text == SESSION_INVALID_KEY {
-		log.Error("Invalid key for SAM session")
-		conn.Close()
-		return nil, oops.Errorf("Invalid key - SAM session")
-	} else if strings.HasPrefix(text, SESSION_I2P_ERROR) {
-		log.WithField("error", text[len(SESSION_I2P_ERROR):]).Error("I2P error")
-		conn.Close()
-		return nil, oops.Errorf("I2P error " + text[len(SESSION_I2P_ERROR):])
-	} else {
-		log.WithField("reply", text).Error("Unable to parse SAMv3 reply")
-		conn.Close()
-		return nil, oops.Errorf("Unable to parse SAMv3 reply: " + text)
-	}
 }
 
 // close this sam session

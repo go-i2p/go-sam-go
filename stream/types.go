@@ -9,14 +9,19 @@ import (
 )
 
 type SAM struct {
-	*common.SAM
+	common.SAM
 }
 
 // Represents a streaming session.
 type StreamSession struct {
-	*SAM
+	sam      SAM
 	Timeout  time.Duration
 	Deadline time.Time
+	net.Conn
+}
+
+func (s *StreamSession) SAM() *SAM {
+	return &s.sam
 }
 
 type StreamListener struct {

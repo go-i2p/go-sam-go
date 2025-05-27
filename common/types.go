@@ -87,3 +87,46 @@ func (opts Options) AsList() (ls []string) {
 	}
 	return
 }
+
+type Session interface {
+	net.Conn
+	ID() string
+	Keys() i2pkeys.I2PKeys
+	Close() error
+	// Add other session methods as needed
+}
+
+type BaseSession struct {
+	id   string
+	conn net.Conn
+	keys i2pkeys.I2PKeys
+	SAM  SAM
+}
+
+func (bs *BaseSession) ID() string                  { return bs.id }
+func (bs *BaseSession) Keys() i2pkeys.I2PKeys       { return bs.keys }
+func (bs *BaseSession) Read(b []byte) (int, error)  { return bs.conn.Read(b) }
+func (bs *BaseSession) Write(b []byte) (int, error) { return bs.conn.Write(b) }
+func (bs *BaseSession) Close() error                { return bs.conn.Close() }
+
+func (bs *BaseSession) LocalAddr() net.Addr {
+	return bs.conn.LocalAddr()
+}
+func (bs *BaseSession) RemoteAddr() net.Addr {
+	return bs.conn.RemoteAddr()
+}
+func (bs *BaseSession) SetDeadline(t time.Time) error {
+	return bs.conn.SetDeadline(t)
+}
+func (bs *BaseSession) SetReadDeadline(t time.Time) error {
+	return bs.conn.SetReadDeadline(t)
+}
+func (bs *BaseSession) SetWriteDeadline(t time.Time) error {
+	return bs.conn.SetWriteDeadline(t)
+}
+func (bs *BaseSession) From() string {
+	return bs.SAM.Fromport
+}
+func (bs *BaseSession) To() string {
+	return bs.SAM.Toport
+}
