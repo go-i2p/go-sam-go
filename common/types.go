@@ -112,21 +112,27 @@ func (bs *BaseSession) Close() error                { return bs.conn.Close() }
 func (bs *BaseSession) LocalAddr() net.Addr {
 	return bs.conn.LocalAddr()
 }
+
 func (bs *BaseSession) RemoteAddr() net.Addr {
 	return bs.conn.RemoteAddr()
 }
+
 func (bs *BaseSession) SetDeadline(t time.Time) error {
 	return bs.conn.SetDeadline(t)
 }
+
 func (bs *BaseSession) SetReadDeadline(t time.Time) error {
 	return bs.conn.SetReadDeadline(t)
 }
+
 func (bs *BaseSession) SetWriteDeadline(t time.Time) error {
 	return bs.conn.SetWriteDeadline(t)
 }
+
 func (bs *BaseSession) From() string {
 	return bs.SAM.Fromport
 }
+
 func (bs *BaseSession) To() string {
 	return bs.SAM.Toport
 }

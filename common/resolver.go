@@ -19,7 +19,7 @@ func NewSAMResolver(parent *SAM) (*SAMResolver, error) {
 func NewFullSAMResolver(address string) (*SAMResolver, error) {
 	log.WithField("address", address).Debug("Creating new full SAMResolver")
 	var s SAMResolver
-	//var err error
+	// var err error
 	sam, err := NewSAM(address)
 	s.SAM = sam
 	if err != nil {

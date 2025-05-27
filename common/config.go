@@ -322,12 +322,11 @@ func (f *I2PConfig) DoZero() string {
 func (f *I2PConfig) formatConfigPair(direction, property string, value interface{}) string {
 	switch v := value.(type) {
 	case int:
-		return fmt.Sprintf("%s.%s=%d", direction, property, value)
+		return fmt.Sprintf("%s.%s=%d", direction, property, v)
 	case string:
-		return fmt.Sprintf("%s.%s=%s", direction, property, value)
+		return fmt.Sprintf("%s.%s=%s", direction, property, v)
 	case bool:
-		return fmt.Sprintf("%s.%s=%t", direction, property, value)
-
+		return fmt.Sprintf("%s.%s=%t", direction, property, v)
 	default:
 		return ""
 	}

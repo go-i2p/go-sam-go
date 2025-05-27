@@ -6,6 +6,8 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 )
 
-var ss common.Session = &StreamSession{}
-var sl net.Listener = &StreamListener{}
-var sc net.Conn = &StreamConn{}
+var (
+	ss common.Session = &StreamSession{}
+	sl net.Listener   = &StreamListener{}
+	sc net.Conn       = &StreamConn{}
+)
