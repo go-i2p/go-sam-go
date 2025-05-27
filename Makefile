@@ -1,2 +1,28 @@
 fmt:
 	find . -name '*.go' -exec gofumpt -w -s -extra {} \;
+
+export DEBUG_I2P=warn
+export WARNFAIL_I2P=true
+common-test:
+	go test --tags nettest -v ./common/...
+
+datagram-test:
+	go test --tags nettest -v ./datagram/...
+
+primary-test:
+	go test --tags nettest -v ./primary/...
+
+stream-test:
+	go test --tags nettest -v ./stream/...
+
+raw-test:
+	go test --tags nettest -v ./raw/...
+
+test-logs:
+	make common-test 2> common-err.log 1> common-out.log
+	make datagram-test 2> datagram-err.log 1> datagram-out.log
+	make stream-test 2> stream-err.log 1> stream-out.log
+	make raw-test 2> raw-err.log 1> raw-out.log
+	make primary-test 2> primary-err.log 1> primary-out.log
+	
+	
