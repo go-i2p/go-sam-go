@@ -319,8 +319,18 @@ func (f *I2PConfig) DoZero() string {
 }
 
 // formatConfigPair creates a configuration string for inbound/outbound pairs
-func (f *I2PConfig) formatConfigPair(direction, property string, value int) string {
-	return fmt.Sprintf("%s.%s=%d", direction, property, value)
+func (f *I2PConfig) formatConfigPair(direction, property string, value interface{}) string {
+	switch v := value.(type) {
+	case int:
+		return fmt.Sprintf("%s.%s=%d", direction, property, value)
+	case string:
+		return fmt.Sprintf("%s.%s=%s", direction, property, value)
+	case bool:
+		return fmt.Sprintf("%s.%s=%t", direction, property, value)
+
+	default:
+		return ""
+	}
 }
 
 func (f *I2PConfig) InboundLength() string {
@@ -353,6 +363,10 @@ func (f *I2PConfig) InboundQuantity() string {
 
 func (f *I2PConfig) OutboundQuantity() string {
 	return f.formatConfigPair("outbound", "quantity", f.OutQuantity)
+}
+
+func (f *I2PConfig) UsingCompression() string {
+	return f.formatConfigPair("i2cp", "useCompression", f.UseCompression)
 }
 
 // Print returns a slice of strings containing all the I2P configuration settings

@@ -69,7 +69,7 @@ func ExtractDest(input string) string {
 	log.WithField("input", input).Debug("ExtractDest called")
 	dest := strings.Split(input, " ")[0]
 	log.WithField("dest", dest).Debug("Destination extracted")
-	return strings.Split(input, " ")[0]
+	return dest
 }
 
 var (
