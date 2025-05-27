@@ -59,7 +59,7 @@ func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string
 			"total":   len(scmsg),
 		}).Error("Incomplete write to SAM connection")
 		conn.Close()
-		return nil, oops.Errorf("incomplete write to connection")
+		return nil, oops.Errorf("incomplete write to connection: wrote %d bytes, expected %d bytes", n, len(scmsg))
 	}
 	buf := make([]byte, 4096)
 	n, err = conn.Read(buf)
