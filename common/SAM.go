@@ -3,13 +3,13 @@ package common
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"net"
 	"os"
 	"strings"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
 
@@ -93,13 +93,13 @@ func (sam *SAM) NewKeys(sigType ...string) (i2pkeys.I2PKeys, error) {
 	}
 	if _, err := sam.Conn.Write([]byte("DEST GENERATE " + sigtmp + "\n")); err != nil {
 		log.WithError(err).Error("Failed to write DEST GENERATE command")
-		return i2pkeys.I2PKeys{}, fmt.Errorf("error with writing in SAM: %w", err)
+		return i2pkeys.I2PKeys{}, oops.Errorf("error with writing in SAM: %w", err)
 	}
 	buf := make([]byte, 8192)
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read SAM response for key generation")
-		return i2pkeys.I2PKeys{}, fmt.Errorf("error with reading in SAM: %w", err)
+		return i2pkeys.I2PKeys{}, oops.Errorf("error with reading in SAM: %w", err)
 	}
 	s := bufio.NewScanner(bytes.NewReader(buf[:n]))
 	s.Split(bufio.ScanWords)
@@ -117,7 +117,7 @@ func (sam *SAM) NewKeys(sigType ...string) (i2pkeys.I2PKeys, error) {
 			priv = text[5:]
 		} else {
 			log.Error("Failed to parse keys from SAM response")
-			return i2pkeys.I2PKeys{}, fmt.Errorf("Failed to parse keys.")
+			return i2pkeys.I2PKeys{}, oops.Errorf("Failed to parse keys.")
 		}
 	}
 	log.Debug("Successfully generated new keys")
@@ -174,13 +174,13 @@ func (sam *SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to strin
 		if i == 15 {
 			log.Error("Failed to write SESSION CREATE message after 15 attempts")
 			conn.Close()
-			return nil, fmt.Errorf("writing to SAM failed")
+			return nil, oops.Errorf("writing to SAM failed")
 		}
 		n, err := conn.Write(scmsg[m:])
 		if err != nil {
 			log.WithError(err).Error("Failed to write to SAM connection")
 			conn.Close()
-			return nil, fmt.Errorf("writing to connection failed: %w", err)
+			return nil, oops.Errorf("writing to connection failed: %w", err)
 		}
 		m += n
 	}
@@ -189,7 +189,7 @@ func (sam *SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to strin
 	if err != nil {
 		log.WithError(err).Error("Failed to read SAM response")
 		conn.Close()
-		return nil, fmt.Errorf("reading from connection failed: %w", err)
+		return nil, oops.Errorf("reading from connection failed: %w", err)
 	}
 	text := string(buf[:n])
 	log.WithField("response", text).Debug("Received SAM response")
@@ -197,30 +197,30 @@ func (sam *SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to strin
 		if keys.String() != text[len(SESSION_OK):len(text)-1] {
 			log.Error("SAM created a tunnel with different keys than requested")
 			conn.Close()
-			return nil, fmt.Errorf("SAMv3 created a tunnel with keys other than the ones we asked it for")
+			return nil, oops.Errorf("SAMv3 created a tunnel with keys other than the ones we asked it for")
 		}
 		log.Debug("Successfully created new session")
 		return conn, nil //&StreamSession{id, conn, keys, nil, sync.RWMutex{}, nil}, nil
 	} else if text == SESSION_DUPLICATE_ID {
 		log.Error("Duplicate tunnel name")
 		conn.Close()
-		return nil, fmt.Errorf("Duplicate tunnel name")
+		return nil, oops.Errorf("Duplicate tunnel name")
 	} else if text == SESSION_DUPLICATE_DEST {
 		log.Error("Duplicate destination")
 		conn.Close()
-		return nil, fmt.Errorf("Duplicate destination")
+		return nil, oops.Errorf("Duplicate destination")
 	} else if text == SESSION_INVALID_KEY {
 		log.Error("Invalid key for SAM session")
 		conn.Close()
-		return nil, fmt.Errorf("Invalid key - SAM session")
+		return nil, oops.Errorf("Invalid key - SAM session")
 	} else if strings.HasPrefix(text, SESSION_I2P_ERROR) {
 		log.WithField("error", text[len(SESSION_I2P_ERROR):]).Error("I2P error")
 		conn.Close()
-		return nil, fmt.Errorf("I2P error " + text[len(SESSION_I2P_ERROR):])
+		return nil, oops.Errorf("I2P error " + text[len(SESSION_I2P_ERROR):])
 	} else {
 		log.WithField("reply", text).Error("Unable to parse SAMv3 reply")
 		conn.Close()
-		return nil, fmt.Errorf("Unable to parse SAMv3 reply: " + text)
+		return nil, oops.Errorf("Unable to parse SAMv3 reply: " + text)
 	}
 }
 

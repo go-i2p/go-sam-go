@@ -1,8 +1,8 @@
 fmt:
 	find . -name '*.go' -exec gofumpt -w -s -extra {} \;
 
-export DEBUG_I2P=warn
-export WARNFAIL_I2P=true
+export DEBUG_I2P=debug
+#export WARNFAIL_I2P=true
 common-test:
 	go test --tags nettest -v ./common/...
 
@@ -20,7 +20,7 @@ raw-test:
 
 test-logs:
 	make common-test 2> common-err.log 1> common-out.log
-	make datagram-test 2> datagram-err.log 1> datagram-out.log
 	make stream-test 2> stream-err.log 1> stream-out.log
+	make datagram-test 2> datagram-err.log 1> datagram-out.log
 	make raw-test 2> raw-err.log 1> raw-out.log
 	make primary-test 2> primary-err.log 1> primary-out.log

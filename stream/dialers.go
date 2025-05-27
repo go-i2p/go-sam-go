@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
+	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
 
@@ -110,27 +110,27 @@ func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error) {
 		case ResultCantReachPeer:
 			log.Error("Can't reach peer")
 			conn.Close()
-			return nil, fmt.Errorf("Can not reach peer")
+			return nil, oops.Errorf("Can not reach peer")
 		case ResultI2PError:
 			log.Error("I2P internal error")
 			conn.Close()
-			return nil, fmt.Errorf("I2P internal error")
+			return nil, oops.Errorf("I2P internal error")
 		case ResultInvalidKey:
 			log.Error("Invalid key - Stream Session")
 			conn.Close()
-			return nil, fmt.Errorf("Invalid key - Stream Session")
+			return nil, oops.Errorf("Invalid key - Stream Session")
 		case ResultInvalidID:
 			log.Error("Invalid tunnel ID")
 			conn.Close()
-			return nil, fmt.Errorf("Invalid tunnel ID")
+			return nil, oops.Errorf("Invalid tunnel ID")
 		case ResultTimeout:
 			log.Error("Connection timeout")
 			conn.Close()
-			return nil, fmt.Errorf("Timeout")
+			return nil, oops.Errorf("Timeout")
 		default:
 			log.WithField("error", scanner.Text()).Error("Unknown error")
 			conn.Close()
-			return nil, fmt.Errorf("Unknown error: %s : %s", scanner.Text(), string(buf[:n]))
+			return nil, oops.Errorf("Unknown error: %s : %s", scanner.Text(), string(buf[:n]))
 		}
 	}
 	log.Panic("Unexpected end of StreamSession.DialI2P()")

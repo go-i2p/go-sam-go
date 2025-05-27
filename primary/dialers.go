@@ -1,12 +1,12 @@
 package primary
 
 import (
-	"fmt"
 	"net"
 	"strings"
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/go-sam-go/datagram"
+	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,7 +21,7 @@ func (sam *PrimarySession) Dial(network, addr string) (net.Conn, error) {
 		return sam.DialTCPI2P(network, network+addr[0:4], addr)
 	}
 	log.WithField("network", network).Error("Invalid network type")
-	return nil, fmt.Errorf("Error: Must specify a valid network type")
+	return nil, oops.Errorf("Error: Must specify a valid network type")
 }
 
 // DialTCP implements x/dialer

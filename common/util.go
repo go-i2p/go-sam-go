@@ -1,13 +1,13 @@
 package common
 
 import (
-	"fmt"
 	"math/rand"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
 
@@ -95,5 +95,5 @@ func RandPort() (portNumber string, err error) {
 		}
 	}
 
-	return "", fmt.Errorf("unable to find a pair of available tcp and udp ports in %v attempts", maxAttempts)
+	return "", oops.Errorf("unable to find a pair of available tcp and udp ports in %v attempts", maxAttempts)
 }

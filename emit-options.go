@@ -2,10 +2,10 @@
 package sam3
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,7 +29,7 @@ func SetType(s string) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("style", s).Error("Invalid session style")
-		return fmt.Errorf("Invalid session STYLE=%s, must be STREAM, DATAGRAM, or RAW", s)
+		return oops.Errorf("Invalid session STYLE=%s, must be STREAM, DATAGRAM, or RAW", s)
 	}
 }
 
@@ -39,13 +39,13 @@ func SetSAMAddress(s string) func(*SAMEmit) error {
 		sp := strings.Split(s, ":")
 		if len(sp) > 2 {
 			log.WithField("address", s).Error("Invalid SAM address")
-			return fmt.Errorf("Invalid address string: %s", s)
+			return oops.Errorf("Invalid address string: %s", s)
 		}
 		if len(sp) == 2 {
 			port, err := strconv.Atoi(sp[1])
 			if err != nil {
 				log.WithField("port", sp[1]).Error("Invalid SAM port: non-number")
-				return fmt.Errorf("Invalid SAM port %s; non-number", sp[1])
+				return oops.Errorf("Invalid SAM port %s; non-number", sp[1])
 			}
 			c.I2PConfig.SamPort = port
 		}
@@ -73,7 +73,7 @@ func SetSAMPort(s string) func(*SAMEmit) error {
 		port, err := strconv.Atoi(s)
 		if err != nil {
 			log.WithField("port", s).Error("Invalid SAM port: non-number")
-			return fmt.Errorf("Invalid SAM port %s; non-number", s)
+			return oops.Errorf("Invalid SAM port %s; non-number", s)
 		}
 		if port < 65536 && port > -1 {
 			c.I2PConfig.SamPort = port
@@ -81,7 +81,7 @@ func SetSAMPort(s string) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("port", port).Error("Invalid SAM port")
-		return fmt.Errorf("Invalid SAM port: out of range")
+		return oops.Errorf("Invalid SAM port: out of range")
 	}
 }
 
@@ -103,7 +103,7 @@ func SetInLength(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("inLength", u).Error("Invalid inbound tunnel length")
-		return fmt.Errorf("Invalid inbound tunnel length: out of range")
+		return oops.Errorf("Invalid inbound tunnel length: out of range")
 	}
 }
 
@@ -116,7 +116,7 @@ func SetOutLength(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("outLength", u).Error("Invalid outbound tunnel length")
-		return fmt.Errorf("Invalid outbound tunnel length: out of range")
+		return oops.Errorf("Invalid outbound tunnel length: out of range")
 	}
 }
 
@@ -129,7 +129,7 @@ func SetInVariance(i int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("inVariance", i).Error("Invalid inbound tunnel variance")
-		return fmt.Errorf("Invalid inbound tunnel variance: out of range")
+		return oops.Errorf("Invalid inbound tunnel variance: out of range")
 	}
 }
 
@@ -142,7 +142,7 @@ func SetOutVariance(i int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("outVariance", i).Error("Invalid outbound tunnel variance")
-		return fmt.Errorf("Invalid outbound tunnel variance: out of range")
+		return oops.Errorf("Invalid outbound tunnel variance: out of range")
 	}
 }
 
@@ -155,7 +155,7 @@ func SetInQuantity(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("inQuantity", u).Error("Invalid inbound tunnel quantity")
-		return fmt.Errorf("Invalid inbound tunnel quantity: out of range")
+		return oops.Errorf("Invalid inbound tunnel quantity: out of range")
 	}
 }
 
@@ -168,7 +168,7 @@ func SetOutQuantity(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("outQuantity", u).Error("Invalid outbound tunnel quantity")
-		return fmt.Errorf("Invalid outbound tunnel quantity: out of range")
+		return oops.Errorf("Invalid outbound tunnel quantity: out of range")
 	}
 }
 
@@ -181,7 +181,7 @@ func SetInBackups(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("inBackups", u).Error("Invalid inbound tunnel backup quantity")
-		return fmt.Errorf("Invalid inbound tunnel backup quantity: out of range")
+		return oops.Errorf("Invalid inbound tunnel backup quantity: out of range")
 	}
 }
 
@@ -194,7 +194,7 @@ func SetOutBackups(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("outBackups", u).Error("Invalid outbound tunnel backup quantity")
-		return fmt.Errorf("Invalid outbound tunnel backup quantity: out of range")
+		return oops.Errorf("Invalid outbound tunnel backup quantity: out of range")
 	}
 }
 
@@ -323,7 +323,7 @@ func SetReduceIdleTime(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("minutes", u).Error("Invalid reduce idle timeout")
-		return fmt.Errorf("Invalid reduce idle timeout (Measured in minutes) %v", u)
+		return oops.Errorf("Invalid reduce idle timeout (Measured in minutes) %v", u)
 	}
 }
 
@@ -337,7 +337,7 @@ func SetReduceIdleTimeMs(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("milliseconds", u).Error("Invalid reduce idle timeout")
-		return fmt.Errorf("Invalid reduce idle timeout (Measured in milliseconds) %v", u)
+		return oops.Errorf("Invalid reduce idle timeout (Measured in milliseconds) %v", u)
 	}
 }
 
@@ -350,7 +350,7 @@ func SetReduceIdleQuantity(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("quantity", u).Error("Invalid reduce tunnel quantity")
-		return fmt.Errorf("Invalid reduce idle tunnel quantity: out of range")
+		return oops.Errorf("Invalid reduce idle tunnel quantity: out of range")
 	}
 }
 
@@ -380,7 +380,7 @@ func SetCloseIdleTime(u int) func(*SAMEmit) error {
 			return nil
 		}
 		log.WithField("minutes", u).Error("Invalid close idle timeout")
-		return fmt.Errorf("Invalid close idle timeout (Measured in minutes) %v", u)
+		return oops.Errorf("Invalid close idle timeout (Measured in minutes) %v", u)
 	}
 }
 
@@ -393,7 +393,7 @@ func SetCloseIdleTimeMs(u int) func(*SAMEmit) error {
 			log.WithField("closeIdleTimeMs", u).Debug("Set close idle time in milliseconds")
 			return nil
 		}
-		return fmt.Errorf("Invalid close idle timeout (Measured in milliseconds) %v", u)
+		return oops.Errorf("Invalid close idle timeout (Measured in milliseconds) %v", u)
 	}
 }
 
@@ -417,7 +417,7 @@ func SetAccessListType(s string) func(*SAMEmit) error {
 			log.Debug("Set access list type to none")
 			return nil
 		}
-		return fmt.Errorf("Invalid Access list type (whitelist, blacklist, none)")
+		return oops.Errorf("Invalid Access list type (whitelist, blacklist, none)")
 	}
 }
 
