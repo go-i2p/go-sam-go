@@ -4,55 +4,119 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-i2p/i2pkeys"
+	"github.com/samber/oops"
+	"github.com/sirupsen/logrus"
 )
 
-// Implements net.Conn
-func (sc *StreamConn) Read(buf []byte) (int, error) {
-	n, err := sc.conn.Read(buf)
+// Read reads data from the connection
+func (c *StreamConn) Read(b []byte) (int, error) {
+	c.mu.RLock()
+	if c.closed {
+		c.mu.RUnlock()
+		return 0, oops.Errorf("connection is closed")
+	}
+	conn := c.conn
+	c.mu.RUnlock()
+
+	n, err := conn.Read(b)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"local":  c.laddr.Base32(),
+			"remote": c.raddr.Base32(),
+		}).WithError(err).Debug("Read error")
+	}
 	return n, err
 }
 
-// Implements net.Conn
-func (sc *StreamConn) Write(buf []byte) (int, error) {
-	n, err := sc.conn.Write(buf)
+// Write writes data to the connection
+func (c *StreamConn) Write(b []byte) (int, error) {
+	c.mu.RLock()
+	if c.closed {
+		c.mu.RUnlock()
+		return 0, oops.Errorf("connection is closed")
+	}
+	conn := c.conn
+	c.mu.RUnlock()
+
+	n, err := conn.Write(b)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"local":  c.laddr.Base32(),
+			"remote": c.raddr.Base32(),
+		}).WithError(err).Debug("Write error")
+	}
 	return n, err
 }
 
-// Implements net.Conn
-func (sc *StreamConn) Close() error {
-	return sc.conn.Close()
+// Close closes the connection
+func (c *StreamConn) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.closed {
+		return nil
+	}
+
+	logger := log.WithFields(logrus.Fields{
+		"local":  c.laddr.Base32(),
+		"remote": c.raddr.Base32(),
+	})
+	logger.Debug("Closing StreamConn")
+
+	c.closed = true
+
+	if c.conn != nil {
+		err := c.conn.Close()
+		if err != nil {
+			logger.WithError(err).Error("Failed to close underlying connection")
+			return oops.Errorf("failed to close connection: %w", err)
+		}
+	}
+
+	logger.Debug("Successfully closed StreamConn")
+	return nil
 }
 
-func (sc *StreamConn) LocalAddr() net.Addr {
-	return sc.localAddr()
+// LocalAddr returns the local network address
+func (c *StreamConn) LocalAddr() net.Addr {
+	return &i2pAddr{addr: c.laddr}
 }
 
-// Implements net.Conn
-func (sc *StreamConn) localAddr() i2pkeys.I2PAddr {
-	return sc.laddr
+// RemoteAddr returns the remote network address
+func (c *StreamConn) RemoteAddr() net.Addr {
+	return &i2pAddr{addr: c.raddr}
 }
 
-func (sc *StreamConn) RemoteAddr() net.Addr {
-	return sc.remoteAddr()
+// SetDeadline sets the read and write deadlines
+func (c *StreamConn) SetDeadline(t time.Time) error {
+	if err := c.SetReadDeadline(t); err != nil {
+		return err
+	}
+	return c.SetWriteDeadline(t)
 }
 
-// Implements net.Conn
-func (sc *StreamConn) remoteAddr() i2pkeys.I2PAddr {
-	return sc.raddr
+// SetReadDeadline sets the deadline for future Read calls
+func (c *StreamConn) SetReadDeadline(t time.Time) error {
+	c.mu.RLock()
+	conn := c.conn
+	c.mu.RUnlock()
+
+	if conn == nil {
+		return oops.Errorf("connection is nil")
+	}
+
+	return conn.SetReadDeadline(t)
 }
 
-// Implements net.Conn
-func (sc *StreamConn) SetDeadline(t time.Time) error {
-	return sc.conn.SetDeadline(t)
-}
+// SetWriteDeadline sets the deadline for future Write calls
+func (c *StreamConn) SetWriteDeadline(t time.Time) error {
+	c.mu.RLock()
+	conn := c.conn
+	c.mu.RUnlock()
 
-// Implements net.Conn
-func (sc *StreamConn) SetReadDeadline(t time.Time) error {
-	return sc.conn.SetReadDeadline(t)
-}
+	if conn == nil {
+		return oops.Errorf("connection is nil")
+	}
 
-// Implements net.Conn
-func (sc *StreamConn) SetWriteDeadline(t time.Time) error {
-	return sc.conn.SetWriteDeadline(t)
+	return conn.SetWriteDeadline(t)
 }

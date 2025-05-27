@@ -2,106 +2,126 @@ package stream
 
 import (
 	"context"
-	"net"
 	"time"
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
+	"github.com/samber/oops"
+	"github.com/sirupsen/logrus"
 )
 
-// Read reads data from the stream.
-func (s *StreamSession) Read(buf []byte) (int, error) {
-	return s.SAM().Conn.Read(buf)
+// NewStreamSession creates a new streaming session
+func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error) {
+	logger := log.WithFields(logrus.Fields{
+		"id":      id,
+		"options": options,
+	})
+	logger.Debug("Creating new StreamSession")
+
+	// Create the base session using the common package
+	session, err := sam.NewGenericSession("STREAM", id, keys, options)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create generic session")
+		return nil, oops.Errorf("failed to create stream session: %w", err)
+	}
+
+	baseSession, ok := session.(*common.BaseSession)
+	if !ok {
+		logger.Error("Session is not a BaseSession")
+		session.Close()
+		return nil, oops.Errorf("invalid session type")
+	}
+
+	ss := &StreamSession{
+		BaseSession: baseSession,
+		sam:         sam,
+		options:     options,
+	}
+
+	logger.Debug("Successfully created StreamSession")
+	return ss, nil
 }
 
-// Write sends data over the stream.
-func (s *StreamSession) Write(data []byte) (int, error) {
-	return s.SAM().Conn.Write(data)
+// Listen creates a StreamListener that accepts incoming connections
+func (s *StreamSession) Listen() (*StreamListener, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, oops.Errorf("session is closed")
+	}
+
+	logger := log.WithField("id", s.ID())
+	logger.Debug("Creating StreamListener")
+
+	listener := &StreamListener{
+		session:    s,
+		acceptChan: make(chan *StreamConn, 10), // Buffer for incoming connections
+		errorChan:  make(chan error, 1),
+		closeChan:  make(chan struct{}),
+	}
+
+	// Start accepting connections in a goroutine
+	go listener.acceptLoop()
+
+	logger.Debug("Successfully created StreamListener")
+	return listener, nil
 }
 
-func (s *StreamSession) SetDeadline(t time.Time) error {
-	log.WithField("deadline", t).Debug("Setting deadline for StreamSession")
-	return s.SAM().Conn.SetDeadline(t)
+// NewDialer creates a StreamDialer for establishing outbound connections
+func (s *StreamSession) NewDialer() *StreamDialer {
+	return &StreamDialer{
+		session: s,
+		timeout: 30 * time.Second, // Default timeout
+	}
 }
 
-func (s *StreamSession) SetReadDeadline(t time.Time) error {
-	log.WithField("readDeadline", t).Debug("Setting read deadline for StreamSession")
-	return s.SAM().Conn.SetReadDeadline(t)
+// SetTimeout sets the default timeout for new dialers
+func (d *StreamDialer) SetTimeout(timeout time.Duration) *StreamDialer {
+	d.timeout = timeout
+	return d
 }
 
-func (s *StreamSession) SetWriteDeadline(t time.Time) error {
-	log.WithField("writeDeadline", t).Debug("Setting write deadline for StreamSession")
-	return s.SAM().Conn.SetWriteDeadline(t)
+// Dial establishes a connection to the specified I2P destination
+func (s *StreamSession) Dial(destination string) (*StreamConn, error) {
+	return s.NewDialer().Dial(destination)
 }
 
-func (s *StreamSession) From() string {
-	return s.SAM().Fromport
+// DialI2P establishes a connection to the specified I2P address
+func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error) {
+	return s.NewDialer().DialI2P(addr)
 }
 
-func (s *StreamSession) To() string {
-	return s.SAM().Toport
+// DialContext establishes a connection with context support
+func (s *StreamSession) DialContext(ctx context.Context, destination string) (*StreamConn, error) {
+	return s.NewDialer().DialContext(ctx, destination)
 }
 
-func (s *StreamSession) SignatureType() string {
-	return s.SAM().SignatureType()
-}
-
+// Close closes the streaming session and all associated resources
 func (s *StreamSession) Close() error {
-	log.WithField("id", s.SAM().ID()).Debug("Closing StreamSession")
-	return s.SAM().Conn.Close()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return nil
+	}
+
+	logger := log.WithField("id", s.ID())
+	logger.Debug("Closing StreamSession")
+
+	s.closed = true
+
+	// Close the base session
+	if err := s.BaseSession.Close(); err != nil {
+		logger.WithError(err).Error("Failed to close base session")
+		return oops.Errorf("failed to close stream session: %w", err)
+	}
+
+	logger.Debug("Successfully closed StreamSession")
+	return nil
 }
 
-// Returns the I2P destination (the address) of the stream session
+// Addr returns the I2P address of this session
 func (s *StreamSession) Addr() i2pkeys.I2PAddr {
-	return s.Keys().Address
-}
-
-func (s *StreamSession) LocalAddr() net.Addr {
-	return s.Addr()
-}
-
-// Returns the keys associated with the stream session
-func (s *StreamSession) Keys() i2pkeys.I2PKeys {
-	return *s.SAM().DestinationKeys
-}
-
-// lookup name, convenience function
-func (s *StreamSession) Lookup(name string) (i2pkeys.I2PAddr, error) {
-	log.WithField("name", name).Debug("Looking up address")
-	sam, err := common.NewSAM(s.SAM().Sam())
-	if err == nil {
-		addr, err := sam.Lookup(name)
-		defer sam.Close()
-		if err != nil {
-			log.WithError(err).Error("Lookup failed")
-		} else {
-			log.WithField("addr", addr).Debug("Lookup successful")
-		}
-		return addr, err
-	}
-	log.WithError(err).Error("Failed to create SAM instance for lookup")
-	return i2pkeys.I2PAddr(""), err
-}
-
-/*
-func (s *StreamSession) Cancel() chan *StreamSession {
-	ch := make(chan *StreamSession)
-	ch <- s
-	return ch
-}*/
-
-// deadline returns the earliest of:
-//   - now+Timeout
-//   - d.Deadline
-//   - the context's deadline
-//
-// Or zero, if none of Timeout, Deadline, or context's deadline is set.
-func (s *StreamSession) deadline(ctx context.Context, now time.Time) (earliest time.Time) {
-	if s.Timeout != 0 { // including negative, for historical reasons
-		earliest = now.Add(s.Timeout)
-	}
-	if d, ok := ctx.Deadline(); ok {
-		earliest = minNonzeroTime(earliest, d)
-	}
-	return minNonzeroTime(earliest, s.Deadline)
+	return s.Keys().Addr()
 }
