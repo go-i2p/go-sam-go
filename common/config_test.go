@@ -27,13 +27,13 @@ func TestSetSAMAddress_Cases(t *testing.T) {
 			name:     "invalid port uses default",
 			addr:     "localhost:99999",
 			wantHost: "localhost",
-			wantPort: 0,
+			wantPort: 7656, // Default port
 		},
 		{
 			name:     "just IP address",
 			addr:     "192.168.1.1",
 			wantHost: "192.168.1.1",
-			wantPort: 0,
+			wantPort: 7656,
 		},
 	}
 

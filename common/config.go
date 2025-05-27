@@ -3,7 +3,6 @@ package common
 import (
 	"fmt"
 	"math/rand"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -11,51 +10,59 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	defaultSAMHost = "127.0.0.1"
+	defaultSAMPort = 7656
+)
+
 // Sam returns the SAM bridge address as a string in the format "host:port"
 func (f *I2PConfig) Sam() string {
-	// Set default values
-	host := "127.0.0.1"
-	port := 7656
-
-	// Override defaults if config values are set
-	if f.SamHost != "" {
-		host = f.SamHost
-	}
-	if f.SamPort != 0 {
-		port = f.SamPort
+	host := f.SamHost
+	if host == "" {
+		host = defaultSAMHost
 	}
 
-	// Log the SAM address being constructed
-	log.WithFields(logrus.Fields{
-		"host": host,
-		"port": port,
-	}).Debug("SAM address constructed")
+	port := f.SamPort
+	if port == 0 {
+		port = defaultSAMPort
+	}
 
-	// Return formatted SAM address
-	return net.JoinHostPort(host, strconv.Itoa(port))
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
+// SAMAddress returns the SAM bridge address in the format "host:port"
+// This is a convenience method that uses the Sam() function to get the address.
+// It is used to provide a consistent interface for retrieving the SAM address.
+func (f *I2PConfig) SAMAddress() string {
+	// Return the SAM address in the format "host:port"
+	return f.Sam()
 }
 
 // SetSAMAddress sets the SAM bridge host and port from a combined address string.
 // If no address is provided, it sets default values for the host and port.
 func (f *I2PConfig) SetSAMAddress(addr string) {
 	if addr == "" {
-		f.SamHost = "127.0.0.1"
-		f.SamPort = 7656
+		f.SamHost = defaultSAMHost
+		f.SamPort = defaultSAMPort
 		return
 	}
 
-	host, port, err := net.SplitHostPort(addr)
+	host, portStr, err := SplitHostPort(addr)
 	if err != nil {
-		// Only set host if it looks valid
-		if net.ParseIP(addr) != nil || !strings.Contains(addr, ":") {
-			f.SamHost = addr
-		}
+		log.WithError(err).Warn("Failed to parse SAM address, using defaults")
+		f.SamHost = defaultSAMHost
+		f.SamPort = defaultSAMPort
 		return
 	}
 
 	f.SamHost = host
-	if p, err := strconv.Atoi(port); err == nil && p > 0 && p < 65536 {
-		f.SamPort = p
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port < 1 || port > 65535 {
+		log.WithField("port", portStr).Warn("Invalid port, setting to 7656")
+		f.SamPort = defaultSAMPort
+	} else {
+		f.SamPort = port
 	}
 }
 
