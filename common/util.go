@@ -97,3 +97,21 @@ func RandPort() (portNumber string, err error) {
 
 	return "", oops.Errorf("unable to find a pair of available tcp and udp ports in %v attempts", maxAttempts)
 }
+
+// generateRandomTunnelName creates a random 12-character tunnel name using lowercase letters.
+// This function is deterministic for testing when a fixed seed is used.
+func (f *I2PConfig) generateRandomTunnelName() string {
+	const (
+		nameLength = 12
+		letters    = "abcdefghijklmnopqrstuvwxyz"
+	)
+
+	generator := rand.New(rand.NewSource(time.Now().UnixNano()))
+	name := make([]byte, nameLength)
+
+	for i := range name {
+		name[i] = letters[generator.Intn(len(letters))]
+	}
+
+	return string(name)
+}

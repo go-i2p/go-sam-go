@@ -2,10 +2,8 @@ package common
 
 import (
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -69,17 +67,9 @@ func (f *I2PConfig) SetSAMAddress(addr string) {
 // ID returns the tunnel name as a formatted string. If no tunnel name is set,
 // generates a random 12-character name using lowercase letters.
 func (f *I2PConfig) ID() string {
-	generator := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// If no tunnel name set, generate random one
+	// Ensure tunnel name is set, generating if needed
 	if f.TunName == "" {
-		// Generate 12 random lowercase letters
-		b := make([]byte, 12)
-		for i := range b {
-			b[i] = "abcdefghijklmnopqrstuvwxyz"[generator.Intn(26)]
-		}
-		f.TunName = string(b)
-
-		// Log the generated name
+		f.TunName = f.generateRandomTunnelName()
 		log.WithField("TunName", f.TunName).Debug("Generated random tunnel name")
 	}
 
