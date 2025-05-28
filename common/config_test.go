@@ -1,6 +1,7 @@
 package common
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -156,5 +157,40 @@ func TestLeaseSetSettings_Formatting(t *testing.T) {
 				t.Errorf("LeaseSetSettings() signing key = %v, want %v", sign, tt.wantSignKey)
 			}
 		})
+	}
+}
+
+func TestTunnelConfigNoDuplicates(t *testing.T) {
+	cfg := &I2PConfig{
+		InLength:    3,
+		OutLength:   3,
+		InQuantity:  2,
+		OutQuantity: 2,
+	}
+
+	config := cfg.TunnelConfig()
+	params := strings.Split(config, " ")
+
+	// Verify no duplicate parameters
+	seen := make(map[string]bool)
+	for _, param := range params {
+		if seen[param] {
+			t.Errorf("Duplicate parameter found: %s", param)
+		}
+		seen[param] = true
+	}
+
+	// Verify expected parameters present
+	expectedParams := []string{
+		"inbound.length=3",
+		"outbound.length=3",
+		"inbound.quantity=2",
+		"outbound.quantity=2",
+	}
+
+	for _, expected := range expectedParams {
+		if !strings.Contains(config, expected) {
+			t.Errorf("Missing expected parameter: %s", expected)
+		}
 	}
 }

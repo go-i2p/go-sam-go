@@ -311,16 +311,24 @@ func (f *I2PConfig) DoZero() string {
 
 // formatConfigPair creates a configuration string for inbound/outbound pairs
 func (f *I2PConfig) formatConfigPair(direction, property string, value interface{}) string {
+	var valueStr string
 	switch v := value.(type) {
 	case int:
-		return fmt.Sprintf("%s.%s=%d", direction, property, v)
+		if v == 0 {
+			return "" // Skip zero values to avoid duplicates
+		}
+		valueStr = strconv.Itoa(v)
 	case string:
-		return fmt.Sprintf("%s.%s=%s", direction, property, v)
+		if v == "" {
+			return ""
+		}
+		valueStr = v
 	case bool:
-		return fmt.Sprintf("%s.%s=%t", direction, property, v)
+		valueStr = strconv.FormatBool(v)
 	default:
 		return ""
 	}
+	return fmt.Sprintf("%s.%s=%s", direction, property, valueStr)
 }
 
 func (f *I2PConfig) InboundLength() string {
