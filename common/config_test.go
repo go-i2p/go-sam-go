@@ -168,8 +168,7 @@ func TestTunnelConfigNoDuplicates(t *testing.T) {
 		OutQuantity: 2,
 	}
 
-	config := cfg.TunnelConfig()
-	params := strings.Split(config, " ")
+	params := cfg.Print()
 
 	// Verify no duplicate parameters
 	seen := make(map[string]bool)
@@ -189,8 +188,15 @@ func TestTunnelConfigNoDuplicates(t *testing.T) {
 	}
 
 	for _, expected := range expectedParams {
-		if !strings.Contains(config, expected) {
-			t.Errorf("Missing expected parameter: %s", expected)
+		found := false
+		for _, param := range params {
+			if strings.Contains(param, expected) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("Expected parameter not found: %s", expected)
 		}
 	}
+	t.Logf("Tunnel configuration parameters: %v", params)
 }

@@ -378,7 +378,14 @@ func (f *I2PConfig) Print() []string {
 	settings = append(settings, f.collectLeaseSetSettings()...)
 	// Collect access control settings
 	settings = append(settings, f.collectAccessSettings()...)
-	return settings
+	// Filter out empty strings to prevent duplicates
+	var filtered []string
+	for _, config := range settings {
+		if strings.TrimSpace(config) != "" {
+			filtered = append(filtered, config)
+		}
+	}
+	return filtered
 }
 
 // Accesslisttype returns the I2CP access list configuration string based on the AccessListType setting
