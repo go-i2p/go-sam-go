@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"strconv"
@@ -114,4 +115,67 @@ func (f *I2PConfig) generateRandomTunnelName() string {
 	}
 
 	return string(name)
+}
+
+// validateEncryptionTypes checks that all comma-separated values are valid integers
+func (f *I2PConfig) validateEncryptionTypes(encTypes string) error {
+	for _, s := range strings.Split(encTypes, ",") {
+		trimmed := strings.TrimSpace(s)
+		if trimmed == "" {
+			return fmt.Errorf("empty encryption type")
+		}
+		if _, err := strconv.Atoi(trimmed); err != nil {
+			return fmt.Errorf("invalid encryption type '%s': %w", trimmed, err)
+		}
+	}
+	return nil
+}
+
+// formatLeaseSetEncryptionType creates the formatted configuration string
+func (f *I2PConfig) formatLeaseSetEncryptionType(encType string) string {
+	log.WithField("leaseSetEncType", encType).Debug("Lease set encryption type set")
+	return fmt.Sprintf("i2cp.leaseSetEncType=%s", encType)
+}
+
+// collectTunnelSettings returns all tunnel-related configuration strings
+func (f *I2PConfig) collectTunnelSettings() []string {
+	return []string{
+		f.InboundLength(),
+		f.OutboundLength(),
+		f.InboundLengthVariance(),
+		f.OutboundLengthVariance(),
+		f.InboundBackupQuantity(),
+		f.OutboundBackupQuantity(),
+		f.InboundQuantity(),
+		f.OutboundQuantity(),
+	}
+}
+
+// collectConnectionSettings returns all connection behavior configuration strings
+func (f *I2PConfig) collectConnectionSettings() []string {
+	return []string{
+		f.UsingCompression(),
+		f.DoZero(),      // Zero hop settings
+		f.Reduce(),      // Reduce idle settings
+		f.Close(),       // Close idle settings
+		f.Reliability(), // Message reliability
+	}
+}
+
+// collectLeaseSetSettings returns all lease set configuration strings
+func (f *I2PConfig) collectLeaseSetSettings() []string {
+	lsk, lspk, lspsk := f.LeaseSetSettings()
+	return []string{
+		f.EncryptLease(), // Lease encryption
+		lsk, lspk, lspsk, // Lease set keys
+		f.LeaseSetEncryptionType(), // Lease set encryption type
+	}
+}
+
+// collectAccessSettings returns all access control configuration strings
+func (f *I2PConfig) collectAccessSettings() []string {
+	return []string{
+		f.Accesslisttype(), // Access list type
+		f.Accesslist(),     // Access list
+	}
 }

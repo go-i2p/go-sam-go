@@ -409,66 +409,18 @@ func (f *I2PConfig) Accesslist() string {
 // If no encryption type is set, returns default value "4,0".
 // Validates that all encryption types are valid integers.
 func (f *I2PConfig) LeaseSetEncryptionType() string {
-	// Use default encryption type if none specified
+	// Use default if not specified
 	if f.LeaseSetEncryption == "" {
-		log.Debug("Using default lease set encryption type: 4,0")
-		return "i2cp.leaseSetEncType=4,0"
+		return f.formatLeaseSetEncryptionType("4,0")
 	}
 
-	// Validate each encryption type is a valid integer
-	for _, s := range strings.Split(f.LeaseSetEncryption, ",") {
-		if _, err := strconv.Atoi(s); err != nil {
-			log.WithField("invalidType", s).Panic("Invalid encrypted leaseSet type")
-			// panic("Invalid encrypted leaseSet type: " + s)
-		}
+	// Validate all encryption types are integers
+	if err := f.validateEncryptionTypes(f.LeaseSetEncryption); err != nil {
+		log.WithError(err).Warn("Invalid encryption types, using default")
+		return f.formatLeaseSetEncryptionType("4,0")
 	}
 
-	// Log and return the configured encryption type
-	log.WithField("leaseSetEncType", f.LeaseSetEncryption).Debug("Lease set encryption type set")
-	return fmt.Sprintf("i2cp.leaseSetEncType=%s", f.LeaseSetEncryption)
-}
-
-// collectTunnelSettings returns all tunnel-related configuration strings
-func (f *I2PConfig) collectTunnelSettings() []string {
-	return []string{
-		f.InboundLength(),
-		f.OutboundLength(),
-		f.InboundLengthVariance(),
-		f.OutboundLengthVariance(),
-		f.InboundBackupQuantity(),
-		f.OutboundBackupQuantity(),
-		f.InboundQuantity(),
-		f.OutboundQuantity(),
-	}
-}
-
-// collectConnectionSettings returns all connection behavior configuration strings
-func (f *I2PConfig) collectConnectionSettings() []string {
-	return []string{
-		f.UsingCompression(),
-		f.DoZero(),      // Zero hop settings
-		f.Reduce(),      // Reduce idle settings
-		f.Close(),       // Close idle settings
-		f.Reliability(), // Message reliability
-	}
-}
-
-// collectLeaseSetSettings returns all lease set configuration strings
-func (f *I2PConfig) collectLeaseSetSettings() []string {
-	lsk, lspk, lspsk := f.LeaseSetSettings()
-	return []string{
-		f.EncryptLease(), // Lease encryption
-		lsk, lspk, lspsk, // Lease set keys
-		f.LeaseSetEncryptionType(), // Lease set encryption type
-	}
-}
-
-// collectAccessSettings returns all access control configuration strings
-func (f *I2PConfig) collectAccessSettings() []string {
-	return []string{
-		f.Accesslisttype(), // Access list type
-		f.Accesslist(),     // Access list
-	}
+	return f.formatLeaseSetEncryptionType(f.LeaseSetEncryption)
 }
 
 func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error) {
