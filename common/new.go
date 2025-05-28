@@ -1,9 +1,6 @@
 package common
 
 import (
-	"net"
-	"strings"
-
 	"github.com/samber/oops"
 )
 
@@ -18,48 +15,28 @@ func NewSAM(address string) (*SAM, error) {
 	logger := log.WithField("address", address)
 	logger.Debug("Creating new SAM instance")
 
-	// Inline connection establishment - eliminates connectToSAM helper
-	conn, err := net.Dial("tcp", address)
+	// Use existing helper function for connection establishment
+	conn, err := connectToSAM(address)
 	if err != nil {
 		logger.WithError(err).Error("Failed to connect to SAM bridge")
-		return nil, oops.Errorf("failed to connect to SAM bridge at %s: %w", address, err)
+		return nil, err // connectToSAM already wraps the error appropriately
 	}
 
 	s := &SAM{
 		Conn: conn,
 	}
 
-	// Inline hello handshake - eliminates sendHelloAndValidate helper
-	if _, err := conn.Write(s.SAMEmit.HelloBytes()); err != nil {
-		logger.WithError(err).Error("Failed to send hello message")
+	// Use existing helper function for hello handshake with proper cleanup
+	if err := sendHelloAndValidate(conn, s); err != nil {
+		logger.WithError(err).Error("Failed to complete SAM handshake")
 		conn.Close()
-		return nil, oops.Errorf("failed to send hello message: %w", err)
+		return nil, err // sendHelloAndValidate already wraps the error appropriately
 	}
 
-	buf := make([]byte, 256)
-	n, err := conn.Read(buf)
-	if err != nil {
-		logger.WithError(err).Error("Failed to read SAM response")
-		conn.Close()
-		return nil, oops.Errorf("failed to read SAM response: %w", err)
-	}
-
-	response := string(buf[:n])
-	switch {
-	case strings.Contains(response, HELLO_REPLY_OK):
-		logger.Debug("SAM hello successful")
-	case response == HELLO_REPLY_NOVERSION:
-		logger.Error("SAM bridge does not support SAMv3")
-		conn.Close()
-		return nil, oops.Errorf("SAM bridge does not support SAMv3")
-	default:
-		logger.WithField("response", response).Error("Unexpected SAM response")
-		conn.Close()
-		return nil, oops.Errorf("unexpected SAM response: %s", response)
-	}
-
+	// Configure SAM instance with address
 	s.SAMEmit.I2PConfig.SetSAMAddress(address)
 
+	// Initialize resolver
 	resolver, err := NewSAMResolver(s)
 	if err != nil {
 		logger.WithError(err).Error("Failed to create SAM resolver")
