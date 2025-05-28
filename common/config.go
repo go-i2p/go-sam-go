@@ -288,7 +288,6 @@ func (f *I2PConfig) Close() string {
 		log.Debug("Close idle settings not applied")
 		return ""
 	}
-
 	// Log and return the close idle configuration
 	result := fmt.Sprintf("i2cp.closeOnIdle=%t i2cp.closeIdleTime=%d",
 		f.CloseIdle, f.CloseIdleTime)
@@ -300,25 +299,20 @@ func (f *I2PConfig) Close() string {
 func (f *I2PConfig) DoZero() string {
 	// Build settings using slices for cleaner concatenation
 	var settings []string
-
 	// Add inbound zero hop setting if enabled
 	if f.InAllowZeroHop {
 		settings = append(settings, fmt.Sprintf("inbound.allowZeroHop=%t", f.InAllowZeroHop))
 	}
-
 	// Add outbound zero hop setting if enabled
 	if f.OutAllowZeroHop {
 		settings = append(settings, fmt.Sprintf("outbound.allowZeroHop=%t", f.OutAllowZeroHop))
 	}
-
 	// Add fast receive setting if enabled
 	if f.FastRecieve {
 		settings = append(settings, fmt.Sprintf("i2cp.fastRecieve=%t", f.FastRecieve))
 	}
-
 	// Join all settings with spaces
 	result := strings.Join(settings, " ")
-
 	// Log the final settings
 	log.WithField("zeroHopSettings", result).Debug("Zero hop settings applied")
 
@@ -377,31 +371,15 @@ func (f *I2PConfig) UsingCompression() string {
 
 // Print returns a slice of strings containing all the I2P configuration settings
 func (f *I2PConfig) Print() []string {
-	// Get lease set settings
-	lsk, lspk, lspsk := f.LeaseSetSettings()
-
-	// Build the configuration settings slice
-	settings := []string{
-		f.InboundLength(),
-		f.OutboundLength(),
-		f.InboundLengthVariance(),
-		f.OutboundLengthVariance(),
-		f.InboundBackupQuantity(),
-		f.OutboundBackupQuantity(),
-		f.InboundQuantity(),
-		f.OutboundQuantity(),
-		f.UsingCompression(),
-		f.DoZero(),       // Zero hop settings
-		f.Reduce(),       // Reduce idle settings
-		f.Close(),        // Close idle settings
-		f.Reliability(),  // Message reliability
-		f.EncryptLease(), // Lease encryption
-		lsk, lspk, lspsk, // Lease set keys
-		f.Accesslisttype(),         // Access list type
-		f.Accesslist(),             // Access list
-		f.LeaseSetEncryptionType(), // Lease set encryption type
-	}
-
+	var settings []string
+	// Collect tunnel configuration settings
+	settings = append(settings, f.collectTunnelSettings()...)
+	// Collect connection behavior settings
+	settings = append(settings, f.collectConnectionSettings()...)
+	// Collect lease set settings
+	settings = append(settings, f.collectLeaseSetSettings()...)
+	// Collect access control settings
+	settings = append(settings, f.collectAccessSettings()...)
 	return settings
 }
 
@@ -458,6 +436,49 @@ func (f *I2PConfig) LeaseSetEncryptionType() string {
 	// Log and return the configured encryption type
 	log.WithField("leaseSetEncType", f.LeaseSetEncryption).Debug("Lease set encryption type set")
 	return fmt.Sprintf("i2cp.leaseSetEncType=%s", f.LeaseSetEncryption)
+}
+
+// collectTunnelSettings returns all tunnel-related configuration strings
+func (f *I2PConfig) collectTunnelSettings() []string {
+	return []string{
+		f.InboundLength(),
+		f.OutboundLength(),
+		f.InboundLengthVariance(),
+		f.OutboundLengthVariance(),
+		f.InboundBackupQuantity(),
+		f.OutboundBackupQuantity(),
+		f.InboundQuantity(),
+		f.OutboundQuantity(),
+	}
+}
+
+// collectConnectionSettings returns all connection behavior configuration strings
+func (f *I2PConfig) collectConnectionSettings() []string {
+	return []string{
+		f.UsingCompression(),
+		f.DoZero(),      // Zero hop settings
+		f.Reduce(),      // Reduce idle settings
+		f.Close(),       // Close idle settings
+		f.Reliability(), // Message reliability
+	}
+}
+
+// collectLeaseSetSettings returns all lease set configuration strings
+func (f *I2PConfig) collectLeaseSetSettings() []string {
+	lsk, lspk, lspsk := f.LeaseSetSettings()
+	return []string{
+		f.EncryptLease(), // Lease encryption
+		lsk, lspk, lspsk, // Lease set keys
+		f.LeaseSetEncryptionType(), // Lease set encryption type
+	}
+}
+
+// collectAccessSettings returns all access control configuration strings
+func (f *I2PConfig) collectAccessSettings() []string {
+	return []string{
+		f.Accesslisttype(), // Access list type
+		f.Accesslist(),     // Access list
+	}
 }
 
 func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error) {
