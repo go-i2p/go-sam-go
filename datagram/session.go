@@ -2,6 +2,7 @@ package datagram
 
 import (
 	"net"
+	"sync"
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
@@ -48,6 +49,9 @@ func (s *DatagramSession) NewReader() *DatagramReader {
 		recvChan:  make(chan *Datagram, 10), // Buffer for incoming datagrams
 		errorChan: make(chan error, 1),
 		closeChan: make(chan struct{}),
+		doneChan:  make(chan struct{}),
+		closed:    false,
+		mu:        sync.RWMutex{},
 	}
 }
 

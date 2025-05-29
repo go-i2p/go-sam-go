@@ -73,8 +73,13 @@ func (r *DatagramReader) receiveLoop() {
 	logger := log.WithField("session_id", r.session.ID())
 	logger.Debug("Starting receive loop")
 
-	// Ensure we signal completion when this loop exits
-	r.doneChan = make(chan struct{})
+	// Signal completion when this loop exits - doneChan must be initialized
+	// before this goroutine starts to avoid race conditions with Close()
+	defer func() {
+		if r.doneChan != nil {
+			close(r.doneChan)
+		}
+	}()
 
 	for {
 		// Check for closure in a non-blocking way first
