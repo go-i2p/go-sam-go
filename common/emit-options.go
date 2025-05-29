@@ -414,9 +414,7 @@ func SetAccessListType(s string) func(*SAMEmit) error {
 func SetAccessList(s []string) func(*SAMEmit) error {
 	return func(c *SAMEmit) error {
 		if len(s) > 0 {
-			for _, a := range s {
-				c.I2PConfig.AccessList = append(c.I2PConfig.AccessList, a)
-			}
+			c.I2PConfig.AccessList = append(c.I2PConfig.AccessList, s...)
 			log.WithField("accessList", s).Debug("Set access list")
 			return nil
 		}

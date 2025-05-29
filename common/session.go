@@ -31,26 +31,29 @@ func (sam SAM) NewGenericSessionWithSignature(style, id string, keys i2pkeys.I2P
 func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string, keys i2pkeys.I2PKeys, sigType string, extras []string) (Session, error) {
 	log.WithFields(logrus.Fields{"style": style, "id": id, "from": from, "to": to, "sigType": sigType}).Debug("Creating new generic session with signature and ports")
 
-	// Update SAM configuration with session-specific ports
-	sam.I2PConfig.Fromport = from
-	sam.I2PConfig.Toport = to
+	// Configure SAMEmit with all session parameters for message generation
+	sam.SAMEmit.I2PConfig.Style = style
+	sam.SAMEmit.I2PConfig.TunName = id
+	sam.SAMEmit.I2PConfig.DestinationKeys = &keys
+	sam.SAMEmit.I2PConfig.SigType = sigType
+	sam.SAMEmit.I2PConfig.Fromport = from
+	sam.SAMEmit.I2PConfig.Toport = to
 
-	optStr := sam.SamOptionsString()
+	// Generate the base SESSION CREATE message using emitter
+	baseMsg := strings.TrimSuffix(sam.SAMEmit.Create(), " \n")
+
+	// Append any extra parameters if provided
 	extraStr := strings.Join(extras, " ")
+	if extraStr != "" {
+		baseMsg += " " + extraStr
+	}
 
-	conn := sam.Conn
-	fp := ""
-	tp := ""
-	if from != "0" {
-		fp = " FROM_PORT=" + from
-	}
-	if to != "0" {
-		tp = " TO_PORT=" + to
-	}
-	scmsg := []byte("SESSION CREATE STYLE=" + style + fp + tp + " ID=" + id + " DESTINATION=" + keys.String() + " " + optStr + " " + extraStr + "\n")
+	// Create final message with proper line termination
+	scmsg := []byte(baseMsg + "\n")
 
 	log.WithField("message", string(scmsg)).Debug("Sending SESSION CREATE message")
 
+	conn := sam.Conn
 	n, err := conn.Write(scmsg)
 	if err != nil {
 		log.WithError(err).Error("Failed to write to SAM connection")
