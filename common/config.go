@@ -111,8 +111,9 @@ func (f *I2PConfig) LeaseSetSettings() (string, string, string) {
 // FromPort returns the FROM_PORT configuration string for SAM bridges >= 3.1
 // Returns an empty string if SAM version < 3.1 or if fromport is "0"
 func (f *I2PConfig) FromPort() string {
+	minv, _ := strconv.Atoi(DEFAULT_SAM_MIN)
 	// Check SAM version compatibility
-	if f.SamMax == "" || f.samMax() < 3.1 {
+	if f.samMax() < minv {
 		log.Debug("SAM version < 3.1, FromPort not applicable")
 		return ""
 	}
@@ -130,8 +131,9 @@ func (f *I2PConfig) FromPort() string {
 // ToPort returns the TO_PORT configuration string for SAM bridges >= 3.1
 // Returns an empty string if SAM version < 3.1 or if toport is "0"
 func (f *I2PConfig) ToPort() string {
+	minv, _ := strconv.Atoi(DEFAULT_SAM_MIN)
 	// Check SAM version compatibility
-	if f.samMax() < 3.1 {
+	if f.samMax() < minv {
 		log.Debug("SAM version < 3.1, ToPort not applicable")
 		return ""
 	}
@@ -162,12 +164,13 @@ func (f *I2PConfig) SessionStyle() string {
 
 // samMax returns the maximum SAM version supported as a float64
 // If parsing fails, returns default value 3.1
-func (f *I2PConfig) samMax() float64 {
+func (f *I2PConfig) samMax() int {
 	// Parse SAM max version to integer
-	i, err := strconv.ParseFloat(f.SamMax, 64)
+	i, err := strconv.Atoi(f.MaxSAM())
 	if err != nil {
 		log.WithError(err).Warn("Failed to parse SamMax, using default 3.1")
-		return 3.1
+		i, _ = strconv.Atoi(DEFAULT_SAM_MIN)
+		return i
 	}
 
 	// Log the parsed version and return
@@ -215,8 +218,9 @@ func (f *I2PConfig) DestinationKey() string {
 // SignatureType returns the SIGNATURE_TYPE configuration string for SAM bridges >= 3.1
 // Returns empty string if SAM version < 3.1 or if no signature type is set
 func (f *I2PConfig) SignatureType() string {
+	minv, _ := strconv.Atoi(DEFAULT_SAM_MIN)
 	// Check SAM version compatibility
-	if f.samMax() < 3.1 {
+	if f.samMax() < minv {
 		log.Debug("SAM version < 3.1, SignatureType not applicable")
 		return ""
 	}

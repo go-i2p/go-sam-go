@@ -51,7 +51,7 @@ func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string
 	// Create final message with proper line termination
 	scmsg := []byte(baseMsg + "\n")
 
-	log.WithField("message", string(scmsg)).Debug("Sending SESSION CREATE message")
+	log.WithField("message", string(scmsg)).Debug("Sending SESSION CREATE message " + string(scmsg))
 
 	conn := sam.Conn
 	n, err := conn.Write(scmsg)
