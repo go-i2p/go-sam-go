@@ -69,16 +69,14 @@ func (c *DatagramConn) Close() error {
 
 	c.closed = true
 
-	// Close reader and writer
+	// Close reader and writer - these are owned by this connection
 	if c.reader != nil {
 		c.reader.Close()
 	}
 
-	// Close the session
-	if err := c.session.Close(); err != nil {
-		logger.WithError(err).Error("Failed to close session")
-		return oops.Errorf("failed to close datagram connection: %w", err)
-	}
+	// DO NOT close the session - it's a shared resource that may be used by other connections
+	// The session should be closed by the code that created it, not by individual connections
+	// that use it. This follows the principle that the creator owns the resource.
 
 	logger.Debug("Successfully closed DatagramConn")
 	return nil

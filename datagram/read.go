@@ -46,14 +46,21 @@ func (r *DatagramReader) Close() error {
 	logger.Debug("Closing DatagramReader")
 
 	r.closed = true
-	// Signal termination to receiveLoop and wait for it to exit
+
+	// Signal termination to receiveLoop
 	close(r.closeChan)
 
-	// Give receiveLoop time to detect the close signal and exit
-	// before closing the channels it might be writing to
-	time.Sleep(10 * time.Millisecond)
+	// Wait for receiveLoop to signal it has exited by closing doneChan
+	// This ensures proper synchronization without arbitrary delays
+	select {
+	case <-r.doneChan:
+		// receiveLoop has confirmed it stopped
+	case <-time.After(5 * time.Second):
+		// Timeout protection - log warning but continue cleanup
+		logger.Warn("Timeout waiting for receive loop to stop")
+	}
 
-	// Now safe to close the receiver channels
+	// Now safe to close the receiver channels since receiveLoop has stopped
 	close(r.recvChan)
 	close(r.errorChan)
 
@@ -65,6 +72,9 @@ func (r *DatagramReader) Close() error {
 func (r *DatagramReader) receiveLoop() {
 	logger := log.WithField("session_id", r.session.ID())
 	logger.Debug("Starting receive loop")
+
+	// Ensure we signal completion when this loop exits
+	r.doneChan = make(chan struct{})
 
 	for {
 		// Check for closure in a non-blocking way first

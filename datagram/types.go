@@ -23,6 +23,7 @@ type DatagramReader struct {
 	recvChan  chan *Datagram
 	errorChan chan error
 	closeChan chan struct{}
+	doneChan  chan struct{}
 	closed    bool
 	mu        sync.RWMutex
 }
