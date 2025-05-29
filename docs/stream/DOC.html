@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>stream - go-i2p/go-sam-go</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <nav class="nav-sidebar">
+    <div class="repo-info">
+      <h2>
+        <a href="../index.html">go-i2p/go-sam-go</a>
+      </h2>
+      <div class="repo-meta">
+        📝 51 commits
+        
+      </div>
+    </div>
+    
+    <ul class="nav-links">
+      <li><a href="../index.html">Repository Overview</a></li>
+      
+      
+        <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="../docs/common/DOC.html" >common</a></li>
+        
+          <li><a href="../docs/datagram/DOC.html" >datagram</a></li>
+        
+          <li><a href="../docs/primary/DOC.html" >primary</a></li>
+        
+          <li><a href="../docs/raw/DOC.html" >raw</a></li>
+        
+          <li><a href="../docs/DOC.html" >sam3</a></li>
+        
+          <li><a href="../docs/stream/DOC.html" class="active">stream</a></li>
+        
+      
+    </ul>
+    
+    <div class="nav-footer">
+      <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a>
+    </div>
+  </nav>
+  
+  <div class="main-content">
+    <header class="page-header">
+      <h1>stream - go-i2p/go-sam-go</h1>
+    </header>
+    
+    <main>
+      <div class="doc-content">
+        <h1 id="stream">stream</h1>
+
+<p>&ndash;</p>
+
+<pre><code>import &quot;github.com/go-i2p/go-sam-go/stream&quot;
+</code></pre>
+
+<h2 id="usage">Usage</h2>
+
+<h4 id="type-sam">type SAM</h4>
+
+<pre><code class="language-go">type SAM struct {
+	*common.SAM
+}
+</code></pre>
+
+<p>SAM wraps common.SAM to provide stream-specific functionality</p>
+
+<h4 id="func-sam-newstreamsession">func (*SAM) NewStreamSession</h4>
+
+<pre><code class="language-go">func (s *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSession creates a new streaming session with the SAM bridge</p>
+
+<h4 id="func-sam-newstreamsessionwithports">func (*SAM) NewStreamSessionWithPorts</h4>
+
+<pre><code class="language-go">func (s *SAM) NewStreamSessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSessionWithPorts creates a new streaming session with port
+specifications</p>
+
+<h4 id="func-sam-newstreamsessionwithsignature">func (*SAM) NewStreamSessionWithSignature</h4>
+
+<pre><code class="language-go">func (s *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSessionWithSignature creates a new streaming session with custom
+signature type</p>
+
+<h4 id="type-streamconn">type StreamConn</h4>
+
+<pre><code class="language-go">type StreamConn struct {
+}
+</code></pre>
+
+<p>StreamConn implements net.Conn for I2P streaming connections</p>
+
+<h4 id="func-streamconn-close">func (*StreamConn) Close</h4>
+
+<pre><code class="language-go">func (c *StreamConn) Close() error
+</code></pre>
+
+<p>Close closes the connection</p>
+
+<h4 id="func-streamconn-localaddr">func (*StreamConn) LocalAddr</h4>
+
+<pre><code class="language-go">func (c *StreamConn) LocalAddr() net.Addr
+</code></pre>
+
+<p>LocalAddr returns the local network address</p>
+
+<h4 id="func-streamconn-read">func (*StreamConn) Read</h4>
+
+<pre><code class="language-go">func (c *StreamConn) Read(b []byte) (int, error)
+</code></pre>
+
+<p>Read reads data from the connection</p>
+
+<h4 id="func-streamconn-remoteaddr">func (*StreamConn) RemoteAddr</h4>
+
+<pre><code class="language-go">func (c *StreamConn) RemoteAddr() net.Addr
+</code></pre>
+
+<p>RemoteAddr returns the remote network address</p>
+
+<h4 id="func-streamconn-setdeadline">func (*StreamConn) SetDeadline</h4>
+
+<pre><code class="language-go">func (c *StreamConn) SetDeadline(t time.Time) error
+</code></pre>
+
+<p>SetDeadline sets the read and write deadlines</p>
+
+<h4 id="func-streamconn-setreaddeadline">func (*StreamConn) SetReadDeadline</h4>
+
+<pre><code class="language-go">func (c *StreamConn) SetReadDeadline(t time.Time) error
+</code></pre>
+
+<p>SetReadDeadline sets the deadline for future Read calls</p>
+
+<h4 id="func-streamconn-setwritedeadline">func (*StreamConn) SetWriteDeadline</h4>
+
+<pre><code class="language-go">func (c *StreamConn) SetWriteDeadline(t time.Time) error
+</code></pre>
+
+<p>SetWriteDeadline sets the deadline for future Write calls</p>
+
+<h4 id="func-streamconn-write">func (*StreamConn) Write</h4>
+
+<pre><code class="language-go">func (c *StreamConn) Write(b []byte) (int, error)
+</code></pre>
+
+<p>Write writes data to the connection</p>
+
+<h4 id="type-streamdialer">type StreamDialer</h4>
+
+<pre><code class="language-go">type StreamDialer struct {
+}
+</code></pre>
+
+<p>StreamDialer handles client-side connection establishment</p>
+
+<h4 id="func-streamdialer-dial">func (*StreamDialer) Dial</h4>
+
+<pre><code class="language-go">func (d *StreamDialer) Dial(destination string) (*StreamConn, error)
+</code></pre>
+
+<p>Dial establishes a connection to the specified destination</p>
+
+<h4 id="func-streamdialer-dialcontext">func (*StreamDialer) DialContext</h4>
+
+<pre><code class="language-go">func (d *StreamDialer) DialContext(ctx context.Context, destination string) (*StreamConn, error)
+</code></pre>
+
+<p>DialContext establishes a connection with context support</p>
+
+<h4 id="func-streamdialer-diali2p">func (*StreamDialer) DialI2P</h4>
+
+<pre><code class="language-go">func (d *StreamDialer) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error)
+</code></pre>
+
+<p>DialI2P establishes a connection to the specified I2P address</p>
+
+<h4 id="func-streamdialer-diali2pcontext">func (*StreamDialer) DialI2PContext</h4>
+
+<pre><code class="language-go">func (d *StreamDialer) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (*StreamConn, error)
+</code></pre>
+
+<p>DialI2PContext establishes a connection to an I2P address with context support</p>
+
+<h4 id="func-streamdialer-settimeout">func (*StreamDialer) SetTimeout</h4>
+
+<pre><code class="language-go">func (d *StreamDialer) SetTimeout(timeout time.Duration) *StreamDialer
+</code></pre>
+
+<p>SetTimeout sets the default timeout for new dialers</p>
+
+<h4 id="type-streamlistener">type StreamListener</h4>
+
+<pre><code class="language-go">type StreamListener struct {
+}
+</code></pre>
+
+<p>StreamListener implements net.Listener for I2P streaming connections</p>
+
+<h4 id="func-streamlistener-accept">func (*StreamListener) Accept</h4>
+
+<pre><code class="language-go">func (l *StreamListener) Accept() (net.Conn, error)
+</code></pre>
+
+<p>Accept waits for and returns the next connection to the listener</p>
+
+<h4 id="func-streamlistener-acceptstream">func (*StreamListener) AcceptStream</h4>
+
+<pre><code class="language-go">func (l *StreamListener) AcceptStream() (*StreamConn, error)
+</code></pre>
+
+<p>AcceptStream waits for and returns the next I2P streaming connection</p>
+
+<h4 id="func-streamlistener-addr">func (*StreamListener) Addr</h4>
+
+<pre><code class="language-go">func (l *StreamListener) Addr() net.Addr
+</code></pre>
+
+<p>Addr returns the listener&rsquo;s network address</p>
+
+<h4 id="func-streamlistener-close">func (*StreamListener) Close</h4>
+
+<pre><code class="language-go">func (l *StreamListener) Close() error
+</code></pre>
+
+<p>Close closes the listener</p>
+
+<h4 id="type-streamsession">type StreamSession</h4>
+
+<pre><code class="language-go">type StreamSession struct {
+	*common.BaseSession
+}
+</code></pre>
+
+<p>StreamSession represents a streaming session that can create listeners and
+dialers</p>
+
+<h4 id="func-newstreamsession">func  NewStreamSession</h4>
+
+<pre><code class="language-go">func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSession creates a new streaming session</p>
+
+<h4 id="func-streamsession-addr">func (*StreamSession) Addr</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Addr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>Addr returns the I2P address of this session</p>
+
+<h4 id="func-streamsession-close">func (*StreamSession) Close</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Close() error
+</code></pre>
+
+<p>Close closes the streaming session and all associated resources</p>
+
+<h4 id="func-streamsession-dial">func (*StreamSession) Dial</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Dial(destination string) (*StreamConn, error)
+</code></pre>
+
+<p>Dial establishes a connection to the specified I2P destination</p>
+
+<h4 id="func-streamsession-dialcontext">func (*StreamSession) DialContext</h4>
+
+<pre><code class="language-go">func (s *StreamSession) DialContext(ctx context.Context, destination string) (*StreamConn, error)
+</code></pre>
+
+<p>DialContext establishes a connection with context support</p>
+
+<h4 id="func-streamsession-diali2p">func (*StreamSession) DialI2P</h4>
+
+<pre><code class="language-go">func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error)
+</code></pre>
+
+<p>DialI2P establishes a connection to the specified I2P address</p>
+
+<h4 id="func-streamsession-listen">func (*StreamSession) Listen</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Listen() (*StreamListener, error)
+</code></pre>
+
+<p>Listen creates a StreamListener that accepts incoming connections</p>
+
+<h4 id="func-streamsession-newdialer">func (*StreamSession) NewDialer</h4>
+
+<pre><code class="language-go">func (s *StreamSession) NewDialer() *StreamDialer
+</code></pre>
+
+<p>NewDialer creates a StreamDialer for establishing outbound connections</p>
+
+      </div>
+    </main>
+    
+    <footer class="page-footer">
+      <p>Generated on 2025-05-29 23:48:36 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>

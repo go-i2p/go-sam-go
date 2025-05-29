@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>sam3 - go-i2p/go-sam-go</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <nav class="nav-sidebar">
+    <div class="repo-info">
+      <h2>
+        <a href="../index.html">go-i2p/go-sam-go</a>
+      </h2>
+      <div class="repo-meta">
+        📝 51 commits
+        
+      </div>
+    </div>
+    
+    <ul class="nav-links">
+      <li><a href="../index.html">Repository Overview</a></li>
+      
+      
+        <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="../docs/common/DOC.html" >common</a></li>
+        
+          <li><a href="../docs/datagram/DOC.html" >datagram</a></li>
+        
+          <li><a href="../docs/primary/DOC.html" >primary</a></li>
+        
+          <li><a href="../docs/raw/DOC.html" >raw</a></li>
+        
+          <li><a href="../docs/DOC.html" class="active">sam3</a></li>
+        
+          <li><a href="../docs/stream/DOC.html" >stream</a></li>
+        
+      
+    </ul>
+    
+    <div class="nav-footer">
+      <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a>
+    </div>
+  </nav>
+  
+  <div class="main-content">
+    <header class="page-header">
+      <h1>sam3 - go-i2p/go-sam-go</h1>
+    </header>
+    
+    <main>
+      <div class="doc-content">
+        <h1 id="sam3">sam3</h1>
+
+<p>&ndash;</p>
+
+<pre><code>import &quot;github.com/go-i2p/go-sam-go&quot;
+</code></pre>
+
+<p>Package sam3 provides a compatibility layer for the go-i2p/sam3 library using
+go-sam-go as the backend</p>
+
+<h2 id="usage">Usage</h2>
+
+<pre><code class="language-go">const (
+	Sig_NONE                 = &quot;SIGNATURE_TYPE=EdDSA_SHA512_Ed25519&quot;
+	Sig_DSA_SHA1             = &quot;SIGNATURE_TYPE=DSA_SHA1&quot;
+	Sig_ECDSA_SHA256_P256    = &quot;SIGNATURE_TYPE=ECDSA_SHA256_P256&quot;
+	Sig_ECDSA_SHA384_P384    = &quot;SIGNATURE_TYPE=ECDSA_SHA384_P384&quot;
+	Sig_ECDSA_SHA512_P521    = &quot;SIGNATURE_TYPE=ECDSA_SHA512_P521&quot;
+	Sig_EdDSA_SHA512_Ed25519 = &quot;SIGNATURE_TYPE=EdDSA_SHA512_Ed25519&quot;
+)
+</code></pre>
+
+<p>Constants from original sam3</p>
+
+<pre><code class="language-go">var (
+	Options_Humongous = []string{
+		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
+		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
+		&quot;inbound.backupQuantity=3&quot;, &quot;outbound.backupQuantity=3&quot;,
+		&quot;inbound.quantity=6&quot;, &quot;outbound.quantity=6&quot;,
+	}
+
+	Options_Large = []string{
+		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
+		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
+		&quot;inbound.backupQuantity=1&quot;, &quot;outbound.backupQuantity=1&quot;,
+		&quot;inbound.quantity=4&quot;, &quot;outbound.quantity=4&quot;,
+	}
+
+	Options_Wide = []string{
+		&quot;inbound.length=1&quot;, &quot;outbound.length=1&quot;,
+		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
+		&quot;inbound.backupQuantity=2&quot;, &quot;outbound.backupQuantity=2&quot;,
+		&quot;inbound.quantity=3&quot;, &quot;outbound.quantity=3&quot;,
+	}
+
+	Options_Medium = []string{
+		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
+		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
+		&quot;inbound.backupQuantity=0&quot;, &quot;outbound.backupQuantity=0&quot;,
+		&quot;inbound.quantity=2&quot;, &quot;outbound.quantity=2&quot;,
+	}
+
+	Options_Default = []string{
+		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
+		&quot;inbound.lengthVariance=0&quot;, &quot;outbound.lengthVariance=0&quot;,
+		&quot;inbound.backupQuantity=1&quot;, &quot;outbound.backupQuantity=1&quot;,
+		&quot;inbound.quantity=1&quot;, &quot;outbound.quantity=1&quot;,
+	}
+
+	Options_Small = []string{
+		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
+		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
+		&quot;inbound.backupQuantity=0&quot;, &quot;outbound.backupQuantity=0&quot;,
+		&quot;inbound.quantity=1&quot;, &quot;outbound.quantity=1&quot;,
+	}
+
+	Options_Warning_ZeroHop = []string{
+		&quot;inbound.length=0&quot;, &quot;outbound.length=0&quot;,
+		&quot;inbound.lengthVariance=0&quot;, &quot;outbound.lengthVariance=0&quot;,
+		&quot;inbound.backupQuantity=0&quot;, &quot;outbound.backupQuantity=0&quot;,
+		&quot;inbound.quantity=2&quot;, &quot;outbound.quantity=2&quot;,
+	}
+)
+</code></pre>
+
+<p>Predefined option sets (keeping your existing definitions)</p>
+
+<pre><code class="language-go">var (
+	PrimarySessionSwitch string = PrimarySessionString()
+	SAM_HOST                    = getEnv(&quot;sam_host&quot;, &quot;127.0.0.1&quot;)
+	SAM_PORT                    = getEnv(&quot;sam_port&quot;, &quot;7656&quot;)
+)
+</code></pre>
+
+<p>Global variables from original sam3</p>
+
+<h4 id="func-convertoptionstoslice">func  ConvertOptionsToSlice</h4>
+
+<pre><code class="language-go">func ConvertOptionsToSlice(opts Options) []string
+</code></pre>
+
+<p>Additional utility functions that may be needed for compatibility</p>
+
+<h4 id="func-extractdest">func  ExtractDest</h4>
+
+<pre><code class="language-go">func ExtractDest(input string) string
+</code></pre>
+
+<p>ExtractDest extracts destination from input</p>
+
+<h4 id="func-extractpairint">func  ExtractPairInt</h4>
+
+<pre><code class="language-go">func ExtractPairInt(input, value string) int
+</code></pre>
+
+<p>ExtractPairInt extracts integer value from key=value pair</p>
+
+<h4 id="func-extractpairstring">func  ExtractPairString</h4>
+
+<pre><code class="language-go">func ExtractPairString(input, value string) string
+</code></pre>
+
+<p>ExtractPairString extracts string value from key=value pair</p>
+
+<h4 id="func-generateoptionstring">func  GenerateOptionString</h4>
+
+<pre><code class="language-go">func GenerateOptionString(opts []string) string
+</code></pre>
+
+<p>GenerateOptionString generates option string from slice</p>
+
+<h4 id="func-getsam3logger">func  GetSAM3Logger</h4>
+
+<pre><code class="language-go">func GetSAM3Logger() *logrus.Logger
+</code></pre>
+
+<p>GetSAM3Logger returns the initialized logger</p>
+
+<h4 id="func-ignoreporterror">func  IgnorePortError</h4>
+
+<pre><code class="language-go">func IgnorePortError(err error) error
+</code></pre>
+
+<p>IgnorePortError ignores port-related errors</p>
+
+<h4 id="func-initializesam3logger">func  InitializeSAM3Logger</h4>
+
+<pre><code class="language-go">func InitializeSAM3Logger()
+</code></pre>
+
+<p>InitializeSAM3Logger initializes the logger</p>
+
+<h4 id="func-primarysessionstring">func  PrimarySessionString</h4>
+
+<pre><code class="language-go">func PrimarySessionString() string
+</code></pre>
+
+<p>PrimarySessionString returns primary session string</p>
+
+<h4 id="func-randstring">func  RandString</h4>
+
+<pre><code class="language-go">func RandString() string
+</code></pre>
+
+<p>RandString generates a random string</p>
+
+<h4 id="func-samdefaultaddr">func  SAMDefaultAddr</h4>
+
+<pre><code class="language-go">func SAMDefaultAddr(fallforward string) string
+</code></pre>
+
+<p>SAMDefaultAddr returns default SAM address</p>
+
+<h4 id="func-setaccesslisttype">func  SetAccessListType</h4>
+
+<pre><code class="language-go">func SetAccessListType(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setcloseidletime">func  SetCloseIdleTime</h4>
+
+<pre><code class="language-go">func SetCloseIdleTime(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setinallowzerohop">func  SetInAllowZeroHop</h4>
+
+<pre><code class="language-go">func SetInAllowZeroHop(s string) func(*I2PConfig) error
+</code></pre>
+
+<p>Configuration option setters for all the missing Set* functions</p>
+
+<h4 id="func-setinbackupquantity">func  SetInBackupQuantity</h4>
+
+<pre><code class="language-go">func SetInBackupQuantity(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setinlength">func  SetInLength</h4>
+
+<pre><code class="language-go">func SetInLength(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setinquantity">func  SetInQuantity</h4>
+
+<pre><code class="language-go">func SetInQuantity(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setinvariance">func  SetInVariance</h4>
+
+<pre><code class="language-go">func SetInVariance(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setoutallowzerohop">func  SetOutAllowZeroHop</h4>
+
+<pre><code class="language-go">func SetOutAllowZeroHop(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setoutbackupquantity">func  SetOutBackupQuantity</h4>
+
+<pre><code class="language-go">func SetOutBackupQuantity(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setoutlength">func  SetOutLength</h4>
+
+<pre><code class="language-go">func SetOutLength(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setoutquantity">func  SetOutQuantity</h4>
+
+<pre><code class="language-go">func SetOutQuantity(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setoutvariance">func  SetOutVariance</h4>
+
+<pre><code class="language-go">func SetOutVariance(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setreduceidletime">func  SetReduceIdleTime</h4>
+
+<pre><code class="language-go">func SetReduceIdleTime(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="func-setusecompression">func  SetUseCompression</h4>
+
+<pre><code class="language-go">func SetUseCompression(s string) func(*I2PConfig) error
+</code></pre>
+
+<h4 id="type-datagramsession">type DatagramSession</h4>
+
+<pre><code class="language-go">type DatagramSession struct {
+}
+</code></pre>
+
+<p>DatagramSession implements net.PacketConn for I2P datagrams</p>
+
+<h4 id="func-datagramsession-accept">func (*DatagramSession) Accept</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Accept() (net.Conn, error)
+</code></pre>
+
+<p>Accept accepts connections (not applicable for datagrams)</p>
+
+<h4 id="func-datagramsession-addr">func (*DatagramSession) Addr</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Addr() net.Addr
+</code></pre>
+
+<p>Addr returns the session address</p>
+
+<h4 id="func-datagramsession-b32">func (*DatagramSession) B32</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) B32() string
+</code></pre>
+
+<p>B32 returns the base32 address</p>
+
+<h4 id="func-datagramsession-close">func (*DatagramSession) Close</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Close() error
+</code></pre>
+
+<p>Close closes the datagram session</p>
+
+<h4 id="func-datagramsession-dial">func (*DatagramSession) Dial</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Dial(net string, addr string) (*DatagramSession, error)
+</code></pre>
+
+<p>Dial dials a connection (returns self for datagrams)</p>
+
+<h4 id="func-datagramsession-diali2premote">func (*DatagramSession) DialI2PRemote</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) DialI2PRemote(net string, addr net.Addr) (*DatagramSession, error)
+</code></pre>
+
+<p>DialI2PRemote dials to I2P remote</p>
+
+<h4 id="func-datagramsession-dialremote">func (*DatagramSession) DialRemote</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) DialRemote(net, addr string) (net.PacketConn, error)
+</code></pre>
+
+<p>DialRemote dials to remote address</p>
+
+<h4 id="func-datagramsession-localaddr">func (*DatagramSession) LocalAddr</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) LocalAddr() net.Addr
+</code></pre>
+
+<p>LocalAddr returns the local address</p>
+
+<h4 id="func-datagramsession-locali2paddr">func (*DatagramSession) LocalI2PAddr</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) LocalI2PAddr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>LocalI2PAddr returns the I2P destination</p>
+
+<h4 id="func-datagramsession-lookup">func (*DatagramSession) Lookup</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Lookup(name string) (a net.Addr, err error)
+</code></pre>
+
+<p>Lookup performs name lookup</p>
+
+<h4 id="func-datagramsession-read">func (*DatagramSession) Read</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Read(b []byte) (n int, err error)
+</code></pre>
+
+<p>Read reads from the session</p>
+
+<h4 id="func-datagramsession-readfrom">func (*DatagramSession) ReadFrom</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) ReadFrom(b []byte) (n int, addr net.Addr, err error)
+</code></pre>
+
+<p>ReadFrom reads a datagram from the session</p>
+
+<h4 id="func-datagramsession-remoteaddr">func (*DatagramSession) RemoteAddr</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) RemoteAddr() net.Addr
+</code></pre>
+
+<p>RemoteAddr returns the remote address</p>
+
+<h4 id="func-datagramsession-setdeadline">func (*DatagramSession) SetDeadline</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) SetDeadline(t time.Time) error
+</code></pre>
+
+<p>SetDeadline sets read and write deadlines</p>
+
+<h4 id="func-datagramsession-setreaddeadline">func (*DatagramSession) SetReadDeadline</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) SetReadDeadline(t time.Time) error
+</code></pre>
+
+<p>SetReadDeadline sets read deadline</p>
+
+<h4 id="func-datagramsession-setwritebuffer">func (*DatagramSession) SetWriteBuffer</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) SetWriteBuffer(bytes int) error
+</code></pre>
+
+<p>SetWriteBuffer sets write buffer size</p>
+
+<h4 id="func-datagramsession-setwritedeadline">func (*DatagramSession) SetWriteDeadline</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) SetWriteDeadline(t time.Time) error
+</code></pre>
+
+<p>SetWriteDeadline sets write deadline</p>
+
+<h4 id="func-datagramsession-write">func (*DatagramSession) Write</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Write(b []byte) (int, error)
+</code></pre>
+
+<p>Write writes to the session</p>
+
+<h4 id="func-datagramsession-writeto">func (*DatagramSession) WriteTo</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) WriteTo(b []byte, addr net.Addr) (n int, err error)
+</code></pre>
+
+<p>WriteTo writes a datagram to the specified address</p>
+
+<h4 id="type-i2pconfig">type I2PConfig</h4>
+
+<pre><code class="language-go">type I2PConfig struct {
+	*common.I2PConfig
+}
+</code></pre>
+
+<p>I2PConfig manages I2P configuration options</p>
+
+<h4 id="func-newconfig">func  NewConfig</h4>
+
+<pre><code class="language-go">func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error)
+</code></pre>
+
+<p>NewConfig creates a new I2PConfig</p>
+
+<h4 id="func-i2pconfig-destinationkey">func (*I2PConfig) DestinationKey</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) DestinationKey() string
+</code></pre>
+
+<h4 id="func-i2pconfig-id">func (*I2PConfig) ID</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) ID() string
+</code></pre>
+
+<h4 id="func-i2pconfig-maxsam">func (*I2PConfig) MaxSAM</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) MaxSAM() string
+</code></pre>
+
+<h4 id="func-i2pconfig-minsam">func (*I2PConfig) MinSAM</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) MinSAM() string
+</code></pre>
+
+<h4 id="func-i2pconfig-print">func (*I2PConfig) Print</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) Print() []string
+</code></pre>
+
+<h4 id="func-i2pconfig-reduce">func (*I2PConfig) Reduce</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) Reduce() string
+</code></pre>
+
+<h4 id="func-i2pconfig-reliability">func (*I2PConfig) Reliability</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) Reliability() string
+</code></pre>
+
+<h4 id="func-i2pconfig-samaddress">func (*I2PConfig) SAMAddress</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) SAMAddress() string
+</code></pre>
+
+<h4 id="func-i2pconfig-sam">func (*I2PConfig) Sam</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) Sam() string
+</code></pre>
+
+<h4 id="func-i2pconfig-sessionstyle">func (*I2PConfig) SessionStyle</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) SessionStyle() string
+</code></pre>
+
+<h4 id="func-i2pconfig-setsamaddress">func (*I2PConfig) SetSAMAddress</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) SetSAMAddress(addr string)
+</code></pre>
+
+<p>All the configuration method forwards</p>
+
+<h4 id="func-i2pconfig-signaturetype">func (*I2PConfig) SignatureType</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) SignatureType() string
+</code></pre>
+
+<h4 id="func-i2pconfig-toport">func (*I2PConfig) ToPort</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) ToPort() string
+</code></pre>
+
+<h4 id="type-option">type Option</h4>
+
+<pre><code class="language-go">type Option func(*SAMEmit) error
+</code></pre>
+
+<p>Option is a functional option for SAMEmit</p>
+
+<h4 id="type-options">type Options</h4>
+
+<pre><code class="language-go">type Options map[string]string
+</code></pre>
+
+<p>Options represents a map of configuration options</p>
+
+<h4 id="func-convertslicetooptions">func  ConvertSliceToOptions</h4>
+
+<pre><code class="language-go">func ConvertSliceToOptions(slice []string) Options
+</code></pre>
+
+<h4 id="func-options-aslist">func (Options) AsList</h4>
+
+<pre><code class="language-go">func (opts Options) AsList() (ls []string)
+</code></pre>
+
+<p>AsList returns options as a list of strings</p>
+
+<h4 id="type-primarysession">type PrimarySession</h4>
+
+<pre><code class="language-go">type PrimarySession struct {
+	Timeout  time.Duration
+	Deadline time.Time
+	Config   SAMEmit
+}
+</code></pre>
+
+<p>PrimarySession represents a primary session</p>
+
+<h4 id="func-primarysession-addr">func (*PrimarySession) Addr</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) Addr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>Addr returns the I2P address</p>
+
+<h4 id="func-primarysession-close">func (*PrimarySession) Close</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) Close() error
+</code></pre>
+
+<p>Close closes the session</p>
+
+<h4 id="func-primarysession-dial">func (*PrimarySession) Dial</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) Dial(network, addr string) (net.Conn, error)
+</code></pre>
+
+<p>Dial implements net.Dialer</p>
+
+<h4 id="func-primarysession-dialtcp">func (*PrimarySession) DialTCP</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) DialTCP(network string, laddr, raddr net.Addr) (net.Conn, error)
+</code></pre>
+
+<p>DialTCP implements x/dialer</p>
+
+<h4 id="func-primarysession-dialtcpi2p">func (*PrimarySession) DialTCPI2P</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) DialTCPI2P(network string, laddr, raddr string) (net.Conn, error)
+</code></pre>
+
+<p>DialTCPI2P dials TCP over I2P</p>
+
+<h4 id="func-primarysession-dialudp">func (*PrimarySession) DialUDP</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) DialUDP(network string, laddr, raddr net.Addr) (net.PacketConn, error)
+</code></pre>
+
+<p>DialUDP implements x/dialer</p>
+
+<h4 id="func-primarysession-dialudpi2p">func (*PrimarySession) DialUDPI2P</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) DialUDPI2P(network, laddr, raddr string) (*DatagramSession, error)
+</code></pre>
+
+<p>DialUDPI2P dials UDP over I2P</p>
+
+<h4 id="func-primarysession-from">func (*PrimarySession) From</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) From() string
+</code></pre>
+
+<p>From returns from port</p>
+
+<h4 id="func-primarysession-id">func (*PrimarySession) ID</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) ID() string
+</code></pre>
+
+<p>ID returns the session ID</p>
+
+<h4 id="func-primarysession-keys">func (*PrimarySession) Keys</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) Keys() i2pkeys.I2PKeys
+</code></pre>
+
+<p>Keys returns the session keys</p>
+
+<h4 id="func-primarysession-localaddr">func (*PrimarySession) LocalAddr</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) LocalAddr() net.Addr
+</code></pre>
+
+<p>LocalAddr returns local address</p>
+
+<h4 id="func-primarysession-lookup">func (*PrimarySession) Lookup</h4>
+
+<pre><code class="language-go">func (s *PrimarySession) Lookup(name string) (a net.Addr, err error)
+</code></pre>
+
+<p>Lookup performs name lookup</p>
+
+<h4 id="func-primarysession-newdatagramsubsession">func (*PrimarySession) NewDatagramSubSession</h4>
+
+<pre><code class="language-go">func (s *PrimarySession) NewDatagramSubSession(id string, udpPort int) (*DatagramSession, error)
+</code></pre>
+
+<p>NewDatagramSubSession creates a new datagram sub-session</p>
+
+<h4 id="func-primarysession-newrawsubsession">func (*PrimarySession) NewRawSubSession</h4>
+
+<pre><code class="language-go">func (s *PrimarySession) NewRawSubSession(id string, udpPort int) (*RawSession, error)
+</code></pre>
+
+<p>NewRawSubSession creates a new raw sub-session</p>
+
+<h4 id="func-primarysession-newstreamsubsession">func (*PrimarySession) NewStreamSubSession</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) NewStreamSubSession(id string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSubSession creates a new stream sub-session</p>
+
+<h4 id="func-primarysession-newstreamsubsessionwithports">func (*PrimarySession) NewStreamSubSessionWithPorts</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) NewStreamSubSessionWithPorts(id, from, to string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSubSessionWithPorts creates a new stream sub-session with ports</p>
+
+<h4 id="func-primarysession-newuniquestreamsubsession">func (*PrimarySession) NewUniqueStreamSubSession</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) NewUniqueStreamSubSession(id string) (*StreamSession, error)
+</code></pre>
+
+<p>NewUniqueStreamSubSession creates a unique stream sub-session</p>
+
+<h4 id="func-primarysession-resolve">func (*PrimarySession) Resolve</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) Resolve(network, addr string) (net.Addr, error)
+</code></pre>
+
+<p>Resolve resolves network address</p>
+
+<h4 id="func-primarysession-resolvetcpaddr">func (*PrimarySession) ResolveTCPAddr</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) ResolveTCPAddr(network, dest string) (net.Addr, error)
+</code></pre>
+
+<p>ResolveTCPAddr resolves TCP address</p>
+
+<h4 id="func-primarysession-resolveudpaddr">func (*PrimarySession) ResolveUDPAddr</h4>
+
+<pre><code class="language-go">func (sam *PrimarySession) ResolveUDPAddr(network, dest string) (net.Addr, error)
+</code></pre>
+
+<p>ResolveUDPAddr resolves UDP address</p>
+
+<h4 id="func-primarysession-signaturetype">func (*PrimarySession) SignatureType</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) SignatureType() string
+</code></pre>
+
+<p>SignatureType returns signature type</p>
+
+<h4 id="func-primarysession-to">func (*PrimarySession) To</h4>
+
+<pre><code class="language-go">func (ss *PrimarySession) To() string
+</code></pre>
+
+<p>To returns to port</p>
+
+<h4 id="type-rawsession">type RawSession</h4>
+
+<pre><code class="language-go">type RawSession struct {
+}
+</code></pre>
+
+<p>RawSession provides raw datagram messaging</p>
+
+<h4 id="func-rawsession-close">func (*RawSession) Close</h4>
+
+<pre><code class="language-go">func (s *RawSession) Close() error
+</code></pre>
+
+<p>Close closes the raw session</p>
+
+<h4 id="func-rawsession-localaddr">func (*RawSession) LocalAddr</h4>
+
+<pre><code class="language-go">func (s *RawSession) LocalAddr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>LocalAddr returns the local I2P destination</p>
+
+<h4 id="func-rawsession-read">func (*RawSession) Read</h4>
+
+<pre><code class="language-go">func (s *RawSession) Read(b []byte) (n int, err error)
+</code></pre>
+
+<p>Read reads one raw datagram</p>
+
+<h4 id="func-rawsession-setdeadline">func (*RawSession) SetDeadline</h4>
+
+<pre><code class="language-go">func (s *RawSession) SetDeadline(t time.Time) error
+</code></pre>
+
+<p>SetDeadline sets read and write deadlines</p>
+
+<h4 id="func-rawsession-setreaddeadline">func (*RawSession) SetReadDeadline</h4>
+
+<pre><code class="language-go">func (s *RawSession) SetReadDeadline(t time.Time) error
+</code></pre>
+
+<p>SetReadDeadline sets read deadline</p>
+
+<h4 id="func-rawsession-setwritedeadline">func (*RawSession) SetWriteDeadline</h4>
+
+<pre><code class="language-go">func (s *RawSession) SetWriteDeadline(t time.Time) error
+</code></pre>
+
+<p>SetWriteDeadline sets write deadline</p>
+
+<h4 id="func-rawsession-writeto">func (*RawSession) WriteTo</h4>
+
+<pre><code class="language-go">func (s *RawSession) WriteTo(b []byte, addr i2pkeys.I2PAddr) (n int, err error)
+</code></pre>
+
+<p>WriteTo sends one raw datagram to the destination</p>
+
+<h4 id="type-sam">type SAM</h4>
+
+<pre><code class="language-go">type SAM struct {
+	Config SAMEmit
+}
+</code></pre>
+
+<p>SAM represents the main controller for I2P router&rsquo;s SAM bridge</p>
+
+<h4 id="func-newsam">func  NewSAM</h4>
+
+<pre><code class="language-go">func NewSAM(address string) (*SAM, error)
+</code></pre>
+
+<p>NewSAM creates a new controller for the I2P routers SAM bridge</p>
+
+<h4 id="func-sam-close">func (*SAM) Close</h4>
+
+<pre><code class="language-go">func (sam *SAM) Close() error
+</code></pre>
+
+<p>Close closes this sam session</p>
+
+<h4 id="func-sam-ensurekeyfile">func (*SAM) EnsureKeyfile</h4>
+
+<pre><code class="language-go">func (sam *SAM) EnsureKeyfile(fname string) (keys i2pkeys.I2PKeys, err error)
+</code></pre>
+
+<p>EnsureKeyfile ensures keyfile exists</p>
+
+<h4 id="func-sam-keys">func (*SAM) Keys</h4>
+
+<pre><code class="language-go">func (sam *SAM) Keys() (k *i2pkeys.I2PKeys)
+</code></pre>
+
+<p>Keys returns the keys associated with this SAM instance</p>
+
+<h4 id="func-sam-lookup">func (*SAM) Lookup</h4>
+
+<pre><code class="language-go">func (sam *SAM) Lookup(name string) (i2pkeys.I2PAddr, error)
+</code></pre>
+
+<p>Lookup performs a name lookup</p>
+
+<h4 id="func-sam-newdatagramsession">func (*SAM) NewDatagramSession</h4>
+
+<pre><code class="language-go">func (s *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*DatagramSession, error)
+</code></pre>
+
+<p>NewDatagramSession creates a new datagram session</p>
+
+<h4 id="func-sam-newkeys">func (*SAM) NewKeys</h4>
+
+<pre><code class="language-go">func (sam *SAM) NewKeys(sigType ...string) (i2pkeys.I2PKeys, error)
+</code></pre>
+
+<p>NewKeys creates the I2P-equivalent of an IP address</p>
+
+<h4 id="func-sam-newprimarysession">func (*SAM) NewPrimarySession</h4>
+
+<pre><code class="language-go">func (sam *SAM) NewPrimarySession(id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error)
+</code></pre>
+
+<p>NewPrimarySession creates a new PrimarySession</p>
+
+<h4 id="func-sam-newprimarysessionwithsignature">func (*SAM) NewPrimarySessionWithSignature</h4>
+
+<pre><code class="language-go">func (sam *SAM) NewPrimarySessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error)
+</code></pre>
+
+<p>NewPrimarySessionWithSignature creates a new PrimarySession with signature</p>
+
+<h4 id="func-sam-newrawsession">func (*SAM) NewRawSession</h4>
+
+<pre><code class="language-go">func (s *SAM) NewRawSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*RawSession, error)
+</code></pre>
+
+<p>NewRawSession creates a new raw session</p>
+
+<h4 id="func-sam-newstreamsession">func (*SAM) NewStreamSession</h4>
+
+<pre><code class="language-go">func (sam *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSession creates a new StreamSession</p>
+
+<h4 id="func-sam-newstreamsessionwithsignature">func (*SAM) NewStreamSessionWithSignature</h4>
+
+<pre><code class="language-go">func (sam *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSessionWithSignature creates a new StreamSession with custom signature</p>
+
+<h4 id="func-sam-newstreamsessionwithsignatureandports">func (*SAM) NewStreamSessionWithSignatureAndPorts</h4>
+
+<pre><code class="language-go">func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSessionWithSignatureAndPorts creates a new StreamSession with signature
+and ports</p>
+
+<h4 id="func-sam-readkeys">func (*SAM) ReadKeys</h4>
+
+<pre><code class="language-go">func (sam *SAM) ReadKeys(r io.Reader) (err error)
+</code></pre>
+
+<p>ReadKeys reads public/private keys from an io.Reader</p>
+
+<h4 id="type-samconn">type SAMConn</h4>
+
+<pre><code class="language-go">type SAMConn struct {
+}
+</code></pre>
+
+<p>SAMConn implements net.Conn for I2P connections</p>
+
+<h4 id="func-samconn-close">func (*SAMConn) Close</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) Close() error
+</code></pre>
+
+<p>Close closes the connection</p>
+
+<h4 id="func-samconn-localaddr">func (*SAMConn) LocalAddr</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) LocalAddr() net.Addr
+</code></pre>
+
+<p>LocalAddr returns the local address</p>
+
+<h4 id="func-samconn-read">func (*SAMConn) Read</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) Read(buf []byte) (int, error)
+</code></pre>
+
+<p>Read reads data from the connection</p>
+
+<h4 id="func-samconn-remoteaddr">func (*SAMConn) RemoteAddr</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) RemoteAddr() net.Addr
+</code></pre>
+
+<p>RemoteAddr returns the remote address</p>
+
+<h4 id="func-samconn-setdeadline">func (*SAMConn) SetDeadline</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) SetDeadline(t time.Time) error
+</code></pre>
+
+<p>SetDeadline sets read and write deadlines</p>
+
+<h4 id="func-samconn-setreaddeadline">func (*SAMConn) SetReadDeadline</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) SetReadDeadline(t time.Time) error
+</code></pre>
+
+<p>SetReadDeadline sets read deadline</p>
+
+<h4 id="func-samconn-setwritedeadline">func (*SAMConn) SetWriteDeadline</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) SetWriteDeadline(t time.Time) error
+</code></pre>
+
+<p>SetWriteDeadline sets write deadline</p>
+
+<h4 id="func-samconn-write">func (*SAMConn) Write</h4>
+
+<pre><code class="language-go">func (sc *SAMConn) Write(buf []byte) (int, error)
+</code></pre>
+
+<p>Write writes data to the connection</p>
+
+<h4 id="type-samemit">type SAMEmit</h4>
+
+<pre><code class="language-go">type SAMEmit struct {
+	I2PConfig
+}
+</code></pre>
+
+<p>SAMEmit handles SAM protocol message generation</p>
+
+<h4 id="func-newemit">func  NewEmit</h4>
+
+<pre><code class="language-go">func NewEmit(opts ...func(*SAMEmit) error) (*SAMEmit, error)
+</code></pre>
+
+<p>NewEmit creates a new SAMEmit</p>
+
+<h4 id="func-samemit-accept">func (*SAMEmit) Accept</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) Accept() string
+</code></pre>
+
+<p>Accept generates accept message</p>
+
+<h4 id="func-samemit-acceptbytes">func (*SAMEmit) AcceptBytes</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) AcceptBytes() []byte
+</code></pre>
+
+<p>AcceptBytes generates accept message as bytes</p>
+
+<h4 id="func-samemit-connect">func (*SAMEmit) Connect</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) Connect(dest string) string
+</code></pre>
+
+<p>Connect generates connect message</p>
+
+<h4 id="func-samemit-connectbytes">func (*SAMEmit) ConnectBytes</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) ConnectBytes(dest string) []byte
+</code></pre>
+
+<p>ConnectBytes generates connect message as bytes</p>
+
+<h4 id="func-samemit-create">func (*SAMEmit) Create</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) Create() string
+</code></pre>
+
+<p>Create generates session create message</p>
+
+<h4 id="func-samemit-createbytes">func (*SAMEmit) CreateBytes</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) CreateBytes() []byte
+</code></pre>
+
+<p>CreateBytes generates session create message as bytes</p>
+
+<h4 id="func-samemit-generatedestination">func (*SAMEmit) GenerateDestination</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) GenerateDestination() string
+</code></pre>
+
+<p>GenerateDestination generates destination message</p>
+
+<h4 id="func-samemit-generatedestinationbytes">func (*SAMEmit) GenerateDestinationBytes</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) GenerateDestinationBytes() []byte
+</code></pre>
+
+<p>GenerateDestinationBytes generates destination message as bytes</p>
+
+<h4 id="func-samemit-hello">func (*SAMEmit) Hello</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) Hello() string
+</code></pre>
+
+<p>Hello generates hello message</p>
+
+<h4 id="func-samemit-hellobytes">func (*SAMEmit) HelloBytes</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) HelloBytes() []byte
+</code></pre>
+
+<p>HelloBytes generates hello message as bytes</p>
+
+<h4 id="func-samemit-lookup">func (*SAMEmit) Lookup</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) Lookup(name string) string
+</code></pre>
+
+<p>Lookup generates lookup message</p>
+
+<h4 id="func-samemit-lookupbytes">func (*SAMEmit) LookupBytes</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) LookupBytes(name string) []byte
+</code></pre>
+
+<p>LookupBytes generates lookup message as bytes</p>
+
+<h4 id="func-samemit-samoptionsstring">func (*SAMEmit) SamOptionsString</h4>
+
+<pre><code class="language-go">func (e *SAMEmit) SamOptionsString() string
+</code></pre>
+
+<p>SamOptionsString returns SAM options as string</p>
+
+<h4 id="type-samresolver">type SAMResolver</h4>
+
+<pre><code class="language-go">type SAMResolver struct {
+	*SAM
+}
+</code></pre>
+
+<p>SAMResolver provides name resolution functionality</p>
+
+<h4 id="func-newfullsamresolver">func  NewFullSAMResolver</h4>
+
+<pre><code class="language-go">func NewFullSAMResolver(address string) (*SAMResolver, error)
+</code></pre>
+
+<p>NewFullSAMResolver creates a new full SAMResolver</p>
+
+<h4 id="func-newsamresolver">func  NewSAMResolver</h4>
+
+<pre><code class="language-go">func NewSAMResolver(parent *SAM) (*SAMResolver, error)
+</code></pre>
+
+<p>NewSAMResolver creates a new SAMResolver from existing SAM</p>
+
+<h4 id="func-samresolver-resolve">func (*SAMResolver) Resolve</h4>
+
+<pre><code class="language-go">func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error)
+</code></pre>
+
+<p>Resolve performs a lookup</p>
+
+<h4 id="type-streamlistener">type StreamListener</h4>
+
+<pre><code class="language-go">type StreamListener struct {
+}
+</code></pre>
+
+<p>StreamListener implements net.Listener for I2P streams</p>
+
+<h4 id="func-streamlistener-accept">func (*StreamListener) Accept</h4>
+
+<pre><code class="language-go">func (l *StreamListener) Accept() (net.Conn, error)
+</code></pre>
+
+<p>Accept accepts new inbound connections</p>
+
+<h4 id="func-streamlistener-accepti2p">func (*StreamListener) AcceptI2P</h4>
+
+<pre><code class="language-go">func (l *StreamListener) AcceptI2P() (*SAMConn, error)
+</code></pre>
+
+<p>AcceptI2P accepts a new inbound I2P connection</p>
+
+<h4 id="func-streamlistener-addr">func (*StreamListener) Addr</h4>
+
+<pre><code class="language-go">func (l *StreamListener) Addr() net.Addr
+</code></pre>
+
+<p>Addr returns the listener&rsquo;s address</p>
+
+<h4 id="func-streamlistener-close">func (*StreamListener) Close</h4>
+
+<pre><code class="language-go">func (l *StreamListener) Close() error
+</code></pre>
+
+<p>Close closes the listener</p>
+
+<h4 id="func-streamlistener-from">func (*StreamListener) From</h4>
+
+<pre><code class="language-go">func (l *StreamListener) From() string
+</code></pre>
+
+<p>From returns the from port</p>
+
+<h4 id="func-streamlistener-to">func (*StreamListener) To</h4>
+
+<pre><code class="language-go">func (l *StreamListener) To() string
+</code></pre>
+
+<p>To returns the to port</p>
+
+<h4 id="type-streamsession">type StreamSession</h4>
+
+<pre><code class="language-go">type StreamSession struct {
+	Timeout  time.Duration
+	Deadline time.Time
+}
+</code></pre>
+
+<p>StreamSession represents a streaming session</p>
+
+<h4 id="func-streamsession-addr">func (*StreamSession) Addr</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Addr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>Addr returns the I2P destination address</p>
+
+<h4 id="func-streamsession-close">func (*StreamSession) Close</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Close() error
+</code></pre>
+
+<p>Close closes the session</p>
+
+<h4 id="func-streamsession-dial">func (*StreamSession) Dial</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Dial(n, addr string) (c net.Conn, err error)
+</code></pre>
+
+<p>Dial establishes a connection to an address</p>
+
+<h4 id="func-streamsession-dialcontext">func (*StreamSession) DialContext</h4>
+
+<pre><code class="language-go">func (s *StreamSession) DialContext(ctx context.Context, n, addr string) (net.Conn, error)
+</code></pre>
+
+<p>DialContext establishes a connection with context</p>
+
+<h4 id="func-streamsession-dialcontexti2p">func (*StreamSession) DialContextI2P</h4>
+
+<pre><code class="language-go">func (s *StreamSession) DialContextI2P(ctx context.Context, n, addr string) (*SAMConn, error)
+</code></pre>
+
+<p>DialContextI2P establishes an I2P connection with context</p>
+
+<h4 id="func-streamsession-diali2p">func (*StreamSession) DialI2P</h4>
+
+<pre><code class="language-go">func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*SAMConn, error)
+</code></pre>
+
+<p>DialI2P dials to an I2P destination</p>
+
+<h4 id="func-streamsession-from">func (*StreamSession) From</h4>
+
+<pre><code class="language-go">func (s *StreamSession) From() string
+</code></pre>
+
+<p>From returns the from port</p>
+
+<h4 id="func-streamsession-id">func (*StreamSession) ID</h4>
+
+<pre><code class="language-go">func (s *StreamSession) ID() string
+</code></pre>
+
+<p>ID returns the local tunnel name</p>
+
+<h4 id="func-streamsession-keys">func (*StreamSession) Keys</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Keys() i2pkeys.I2PKeys
+</code></pre>
+
+<p>Keys returns the keys associated with the session</p>
+
+<h4 id="func-streamsession-listen">func (*StreamSession) Listen</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Listen() (*StreamListener, error)
+</code></pre>
+
+<p>Listen creates a new stream listener</p>
+
+<h4 id="func-streamsession-localaddr">func (*StreamSession) LocalAddr</h4>
+
+<pre><code class="language-go">func (s *StreamSession) LocalAddr() net.Addr
+</code></pre>
+
+<p>LocalAddr returns the local address</p>
+
+<h4 id="func-streamsession-lookup">func (*StreamSession) Lookup</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Lookup(name string) (i2pkeys.I2PAddr, error)
+</code></pre>
+
+<p>Lookup performs name lookup</p>
+
+<h4 id="func-streamsession-read">func (*StreamSession) Read</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Read(buf []byte) (int, error)
+</code></pre>
+
+<p>Read reads data from the stream</p>
+
+<h4 id="func-streamsession-remoteaddr">func (*StreamSession) RemoteAddr</h4>
+
+<pre><code class="language-go">func (s *StreamSession) RemoteAddr() net.Addr
+</code></pre>
+
+<p>RemoteAddr returns the remote address</p>
+
+<h4 id="func-streamsession-setdeadline">func (*StreamSession) SetDeadline</h4>
+
+<pre><code class="language-go">func (s *StreamSession) SetDeadline(t time.Time) error
+</code></pre>
+
+<p>SetDeadline sets read and write deadlines</p>
+
+<h4 id="func-streamsession-setreaddeadline">func (*StreamSession) SetReadDeadline</h4>
+
+<pre><code class="language-go">func (s *StreamSession) SetReadDeadline(t time.Time) error
+</code></pre>
+
+<p>SetReadDeadline sets read deadline</p>
+
+<h4 id="func-streamsession-setwritedeadline">func (*StreamSession) SetWriteDeadline</h4>
+
+<pre><code class="language-go">func (s *StreamSession) SetWriteDeadline(t time.Time) error
+</code></pre>
+
+<p>SetWriteDeadline sets write deadline</p>
+
+<h4 id="func-streamsession-signaturetype">func (*StreamSession) SignatureType</h4>
+
+<pre><code class="language-go">func (s *StreamSession) SignatureType() string
+</code></pre>
+
+<p>SignatureType returns the signature type</p>
+
+<h4 id="func-streamsession-to">func (*StreamSession) To</h4>
+
+<pre><code class="language-go">func (s *StreamSession) To() string
+</code></pre>
+
+<p>To returns the to port</p>
+
+<h4 id="func-streamsession-write">func (*StreamSession) Write</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Write(data []byte) (int, error)
+</code></pre>
+
+<p>Write sends data over the stream</p>
+
+      </div>
+    </main>
+    
+    <footer class="page-footer">
+      <p>Generated on 2025-05-29 23:48:36 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>go-i2p/go-sam-go</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav-sidebar">
+    <div class="repo-info">
+      <h2>
+        <a href="index.html">go-i2p/go-sam-go</a>
+      </h2>
+      <div class="repo-meta">
+        📝 51 commits
+        
+      </div>
+    </div>
+    
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Repository Overview</a></li>
+      
+      
+        <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="docs/common/DOC.html">common</a></li>
+        
+          <li><a href="docs/datagram/DOC.html">datagram</a></li>
+        
+          <li><a href="docs/primary/DOC.html">primary</a></li>
+        
+          <li><a href="docs/raw/DOC.html">raw</a></li>
+        
+          <li><a href="docs/DOC.html">sam3</a></li>
+        
+          <li><a href="docs/stream/DOC.html">stream</a></li>
+        
+      
+    </ul>
+    
+    <div class="nav-footer">
+      <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a>
+    </div>
+  </nav>
+  
+  <div class="main-content">
+    <header class="repo-header">
+      <h1>go-i2p/go-sam-go</h1>
+      <div class="repo-description">[![Go Reference](https://pkg.go.dev/badge/github.com/go-i2p/go-sam-go.svg)](https://pkg.go.dev/github.com/go-i2p/go-sam-go)</div>
+      
+      <div class="repo-stats">
+        
+        <div class="repo-stat">
+          <span>📝</span> <span>51 commits</span>
+        </div>
+        
+        
+        <div class="repo-stat">
+          <span>📅</span> <span>Last updated: May 29, 2025</span>
+        </div>
+        
+        
+      </div>
+    </header>
+    
+    <main>
+      
+      <section id="readme" class="repo-section">
+        <h2>README</h2>
+        <div class="readme-content">
+          <h1 id="go-sam-go">go-sam-go</h1>
+
+<p><a href="https://pkg.go.dev/github.com/go-i2p/go-sam-go" target="_blank"><img src="https://pkg.go.dev/badge/github.com/go-i2p/go-sam-go.svg" alt="Go Reference" /></a>
+<a href="https://goreportcard.com/report/github.com/go-i2p/go-sam-go" target="_blank"><img src="https://goreportcard.com/badge/github.com/go-i2p/go-sam-go" alt="Go Report Card" /></a></p>
+
+<p>A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focused on maintainability and clean architecture. This project is forked from <code>github.com/go-i2p/sam3</code> with reorganized code structure.</p>
+
+<p><strong>WARNING: This is a new package. Streaming works and so does some of datagrams.</strong>
+<strong>The API should not change much.</strong>
+<strong>It needs more people looking at it.</strong></p>
+
+<h2 id="installation">📦 Installation</h2>
+
+<pre><code class="language-bash">go get github.com/go-i2p/go-sam-go
+</code></pre>
+
+<h2 id="quick-start">🚀 Quick Start</h2>
+
+<pre><code class="language-go">package main
+
+import (
+    &quot;github.com/go-i2p/go-sam-go&quot;
+)
+
+func main() {
+    // Create SAM client
+    client, err := sam3.NewSAM(&quot;127.0.0.1:7656&quot;)
+    if err != nil {
+        panic(err)
+    }
+    defer client.Close()
+    
+    // Generate keys
+    keys, err := client.NewKeys()
+    if err != nil {
+        panic(err)
+    }
+    
+    // Create streaming session
+    session, err := client.NewStreamSession(&quot;myTunnel&quot;, keys, sam3.Options_Default)
+    if err != nil {
+        panic(err)
+    }
+}
+</code></pre>
+
+<h2 id="api-documentation">📚 API Documentation</h2>
+
+<h3 id="root-package-sam3">Root Package (<code>sam3</code>)</h3>
+
+<p>The root package provides a high-level wrapper API:</p>
+
+<pre><code class="language-go">client, err := sam3.NewSAM(&quot;127.0.0.1:7656&quot;)
+</code></pre>
+
+<p>Available session types:</p>
+
+<ul>
+<li><code>NewStreamSession()</code> - For reliable TCP-like connections</li>
+<li><code>NewDatagramSession()</code> - For UDP-like messaging</li>
+<li><code>NewRawSession()</code> - For unencrypted raw datagrams</li>
+<li><code>NewPrimarySession()</code> - For creating multiple sub-sessions</li>
+</ul>
+
+<h3 id="sub-packages">Sub-packages</h3>
+
+<h4 id="primary-package"><code>primary</code> Package</h4>
+
+<p>Core session management functionality:</p>
+
+<pre><code class="language-go">primary, err := sam.NewPrimarySession(&quot;mainSession&quot;, keys, options)
+sub1, err := primary.NewStreamSubSession(&quot;web&quot;)
+sub2, err := primary.NewDatagramSubSession(&quot;chat&quot;) 
+</code></pre>
+
+<h4 id="stream-package"><code>stream</code> Package</h4>
+
+<p>TCP-like reliable connections:</p>
+
+<pre><code class="language-go">listener, err := session.Listen()
+conn, err := session.Accept()
+// or
+conn, err := session.DialI2P(remote)
+</code></pre>
+
+<h4 id="datagram-package"><code>datagram</code> Package</h4>
+
+<p>UDP-like message delivery:</p>
+
+<pre><code class="language-go">dgram, err := session.NewDatagramSession(&quot;udp&quot;, keys, options, 0)
+n, err := dgram.WriteTo(data, dest)
+</code></pre>
+
+<h4 id="raw-package"><code>raw</code> Package</h4>
+
+<p>Low-level datagram access:</p>
+
+<pre><code class="language-go">raw, err := session.NewRawSession(&quot;raw&quot;, keys, options, 0) 
+n, err := raw.WriteTo(data, dest)
+</code></pre>
+
+<h3 id="configuration">Configuration</h3>
+
+<p>Built-in configuration profiles:</p>
+
+<pre><code class="language-go">sam3.Options_Default     // Balanced defaults
+sam3.Options_Small      // Minimal resources
+sam3.Options_Medium     // Enhanced reliability 
+sam3.Options_Large      // High throughput
+sam3.Options_Humongous  // Maximum performance
+</code></pre>
+
+<p>Debug logging:</p>
+
+<pre><code class="language-bash">export DEBUG_I2P=debug   # Debug level
+export DEBUG_I2P=warn    # Warning level
+export DEBUG_I2P=error   # Error level
+</code></pre>
+
+<h2 id="requirements">🔧 Requirements</h2>
+
+<ul>
+<li>Go 1.23.5 or later</li>
+<li>Running I2P router with SAM enabled (default port: 7656)</li>
+</ul>
+
+<h2 id="development">📝 Development</h2>
+
+<pre><code class="language-bash"># Format code
+make fmt
+
+# Run tests
+go test ./...
+</code></pre>
+
+<h2 id="license">📄 License</h2>
+
+<p>MIT License</p>
+
+<h2 id="acknowledgments">🙏 Acknowledgments</h2>
+
+<p>Based on the original <a href="https://github.com/go-i2p/sam3" target="_blank">github.com/go-i2p/sam3</a> library.</p>
+
+        </div>
+      </section>
+      
+      
+      
+      <section id="contributors" class="repo-section">
+        <h2>Top Contributors</h2>
+        <div class="contributors-list">
+          
+          <div class="contributor-item">
+            <!-- Use first letter as avatar if no image available -->
+            <div class="contributor-avatar">
+              e
+            </div>
+            <div class="contributor-info">
+              <div class="contributor-name">
+                eyedeekay
+              </div>
+              <div class="contributor-commits">
+                49 commits
+              </div>
+            </div>
+          </div>
+          
+          <div class="contributor-item">
+            <!-- Use first letter as avatar if no image available -->
+            <div class="contributor-avatar">
+              C
+            </div>
+            <div class="contributor-info">
+              <div class="contributor-name">
+                Call me Phil
+              </div>
+              <div class="contributor-commits">
+                2 commits
+              </div>
+            </div>
+          </div>
+          
+        </div>
+        <a href="https://github.com/go-i2p/go-sam-go/graphs/contributors" target="_blank">View all contributors on GitHub →</a>
+      </section>
+      
+    </main>
+    
+    <footer class="page-footer">
+      <p>Generated on 2025-05-29 23:48:36 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>

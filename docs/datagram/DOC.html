@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>datagram - go-i2p/go-sam-go</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <nav class="nav-sidebar">
+    <div class="repo-info">
+      <h2>
+        <a href="../index.html">go-i2p/go-sam-go</a>
+      </h2>
+      <div class="repo-meta">
+        📝 51 commits
+        
+      </div>
+    </div>
+    
+    <ul class="nav-links">
+      <li><a href="../index.html">Repository Overview</a></li>
+      
+      
+        <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="../docs/common/DOC.html" >common</a></li>
+        
+          <li><a href="../docs/datagram/DOC.html" class="active">datagram</a></li>
+        
+          <li><a href="../docs/primary/DOC.html" >primary</a></li>
+        
+          <li><a href="../docs/raw/DOC.html" >raw</a></li>
+        
+          <li><a href="../docs/DOC.html" >sam3</a></li>
+        
+          <li><a href="../docs/stream/DOC.html" >stream</a></li>
+        
+      
+    </ul>
+    
+    <div class="nav-footer">
+      <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a>
+    </div>
+  </nav>
+  
+  <div class="main-content">
+    <header class="page-header">
+      <h1>datagram - go-i2p/go-sam-go</h1>
+    </header>
+    
+    <main>
+      <div class="doc-content">
+        <h1 id="datagram">datagram</h1>
+
+<p>&ndash;</p>
+
+<pre><code>import &quot;github.com/go-i2p/go-sam-go/datagram&quot;
+</code></pre>
+
+<h2 id="usage">Usage</h2>
+
+<h4 id="type-datagram">type Datagram</h4>
+
+<pre><code class="language-go">type Datagram struct {
+	Data   []byte
+	Source i2pkeys.I2PAddr
+	Local  i2pkeys.I2PAddr
+}
+</code></pre>
+
+<p>Datagram represents an I2P datagram message</p>
+
+<h4 id="type-datagramaddr">type DatagramAddr</h4>
+
+<pre><code class="language-go">type DatagramAddr struct {
+}
+</code></pre>
+
+<p>DatagramAddr implements net.Addr for I2P datagram addresses</p>
+
+<h4 id="func-datagramaddr-network">func (*DatagramAddr) Network</h4>
+
+<pre><code class="language-go">func (a *DatagramAddr) Network() string
+</code></pre>
+
+<p>Network returns the network type</p>
+
+<h4 id="func-datagramaddr-string">func (*DatagramAddr) String</h4>
+
+<pre><code class="language-go">func (a *DatagramAddr) String() string
+</code></pre>
+
+<p>String returns the string representation of the address</p>
+
+<h4 id="type-datagramconn">type DatagramConn</h4>
+
+<pre><code class="language-go">type DatagramConn struct {
+}
+</code></pre>
+
+<p>DatagramConn implements net.PacketConn for I2P datagrams</p>
+
+<h4 id="func-datagramconn-close">func (*DatagramConn) Close</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) Close() error
+</code></pre>
+
+<p>Close closes the datagram connection</p>
+
+<h4 id="func-datagramconn-localaddr">func (*DatagramConn) LocalAddr</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) LocalAddr() net.Addr
+</code></pre>
+
+<p>LocalAddr returns the local address</p>
+
+<h4 id="func-datagramconn-read">func (*DatagramConn) Read</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) Read(b []byte) (n int, err error)
+</code></pre>
+
+<p>Read implements net.Conn by wrapping ReadFrom. It reads data into the provided
+byte slice and returns the number of bytes read. When reading, it also updates
+the remote address of the connection. Note: This is not a typical use case for
+datagrams, as they are connectionless. However, for compatibility with net.Conn,
+we implement it this way.</p>
+
+<h4 id="func-datagramconn-readfrom">func (*DatagramConn) ReadFrom</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) ReadFrom(p []byte) (n int, addr net.Addr, err error)
+</code></pre>
+
+<p>ReadFrom reads a datagram from the connection</p>
+
+<h4 id="func-datagramconn-remoteaddr">func (*DatagramConn) RemoteAddr</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) RemoteAddr() net.Addr
+</code></pre>
+
+<p>RemoteAddr returns the remote address of the connection. For datagram
+connections, this returns nil as there is no single remote address.</p>
+
+<h4 id="func-datagramconn-setdeadline">func (*DatagramConn) SetDeadline</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) SetDeadline(t time.Time) error
+</code></pre>
+
+<p>SetDeadline sets the read and write deadlines</p>
+
+<h4 id="func-datagramconn-setreaddeadline">func (*DatagramConn) SetReadDeadline</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) SetReadDeadline(t time.Time) error
+</code></pre>
+
+<p>SetReadDeadline sets the deadline for future ReadFrom calls</p>
+
+<h4 id="func-datagramconn-setwritedeadline">func (*DatagramConn) SetWriteDeadline</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) SetWriteDeadline(t time.Time) error
+</code></pre>
+
+<p>SetWriteDeadline sets the deadline for future WriteTo calls</p>
+
+<h4 id="func-datagramconn-write">func (*DatagramConn) Write</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) Write(b []byte) (n int, err error)
+</code></pre>
+
+<p>Write implements net.Conn by wrapping WriteTo. It writes data to the remote
+address and returns the number of bytes written. It uses the remote address set
+by the last Read operation. If no remote address is set, it returns an error.
+Note: This is not a typical use case for datagrams, as they are connectionless.
+However, for compatibility with net.Conn, we implement it this way.</p>
+
+<h4 id="func-datagramconn-writeto">func (*DatagramConn) WriteTo</h4>
+
+<pre><code class="language-go">func (c *DatagramConn) WriteTo(p []byte, addr net.Addr) (n int, err error)
+</code></pre>
+
+<p>WriteTo writes a datagram to the specified address</p>
+
+<h4 id="type-datagramlistener">type DatagramListener</h4>
+
+<pre><code class="language-go">type DatagramListener struct {
+}
+</code></pre>
+
+<p>DatagramListener implements net.DatagramListener for I2P datagram connections</p>
+
+<h4 id="func-datagramlistener-accept">func (*DatagramListener) Accept</h4>
+
+<pre><code class="language-go">func (l *DatagramListener) Accept() (net.Conn, error)
+</code></pre>
+
+<p>Accept waits for and returns the next packet connection to the listener</p>
+
+<h4 id="func-datagramlistener-addr">func (*DatagramListener) Addr</h4>
+
+<pre><code class="language-go">func (l *DatagramListener) Addr() net.Addr
+</code></pre>
+
+<p>Addr returns the listener&rsquo;s network address</p>
+
+<h4 id="func-datagramlistener-close">func (*DatagramListener) Close</h4>
+
+<pre><code class="language-go">func (l *DatagramListener) Close() error
+</code></pre>
+
+<p>Close closes the packet listener</p>
+
+<h4 id="type-datagramreader">type DatagramReader</h4>
+
+<pre><code class="language-go">type DatagramReader struct {
+}
+</code></pre>
+
+<p>DatagramReader handles incoming datagram reception</p>
+
+<h4 id="func-datagramreader-close">func (*DatagramReader) Close</h4>
+
+<pre><code class="language-go">func (r *DatagramReader) Close() error
+</code></pre>
+
+<h4 id="func-datagramreader-receivedatagram">func (*DatagramReader) ReceiveDatagram</h4>
+
+<pre><code class="language-go">func (r *DatagramReader) ReceiveDatagram() (*Datagram, error)
+</code></pre>
+
+<p>ReceiveDatagram receives a datagram from any source</p>
+
+<h4 id="type-datagramsession">type DatagramSession</h4>
+
+<pre><code class="language-go">type DatagramSession struct {
+	*common.BaseSession
+}
+</code></pre>
+
+<p>DatagramSession represents a datagram session that can send and receive
+datagrams</p>
+
+<h4 id="func-newdatagramsession">func  NewDatagramSession</h4>
+
+<pre><code class="language-go">func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
+</code></pre>
+
+<p>NewDatagramSession creates a new datagram session</p>
+
+<h4 id="func-datagramsession-addr">func (*DatagramSession) Addr</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Addr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>Addr returns the I2P address of this session</p>
+
+<h4 id="func-datagramsession-close">func (*DatagramSession) Close</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Close() error
+</code></pre>
+
+<p>Close closes the datagram session and all associated resources</p>
+
+<h4 id="func-datagramsession-dial">func (*DatagramSession) Dial</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) Dial(destination string) (net.PacketConn, error)
+</code></pre>
+
+<p>Dial establishes a datagram connection to the specified destination</p>
+
+<h4 id="func-datagramsession-dialcontext">func (*DatagramSession) DialContext</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error)
+</code></pre>
+
+<p>DialContext establishes a datagram connection with context support</p>
+
+<h4 id="func-datagramsession-diali2p">func (*DatagramSession) DialI2P</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) DialI2P(addr i2pkeys.I2PAddr) (net.PacketConn, error)
+</code></pre>
+
+<p>DialI2P establishes a datagram connection to an I2P address</p>
+
+<h4 id="func-datagramsession-diali2pcontext">func (*DatagramSession) DialI2PContext</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (net.PacketConn, error)
+</code></pre>
+
+<p>DialI2PContext establishes a datagram connection to an I2P address with context
+support</p>
+
+<h4 id="func-datagramsession-diali2ptimeout">func (*DatagramSession) DialI2PTimeout</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Duration) (net.PacketConn, error)
+</code></pre>
+
+<p>DialI2PTimeout establishes a datagram connection to an I2P address with timeout</p>
+
+<h4 id="func-datagramsession-dialtimeout">func (*DatagramSession) DialTimeout</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) DialTimeout(destination string, timeout time.Duration) (net.PacketConn, error)
+</code></pre>
+
+<p>DialTimeout establishes a datagram connection with a timeout</p>
+
+<h4 id="func-datagramsession-listen">func (*DatagramSession) Listen</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) Listen() (*DatagramListener, error)
+</code></pre>
+
+<h4 id="func-datagramsession-newreader">func (*DatagramSession) NewReader</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) NewReader() *DatagramReader
+</code></pre>
+
+<p>NewReader creates a DatagramReader for receiving datagrams</p>
+
+<h4 id="func-datagramsession-newwriter">func (*DatagramSession) NewWriter</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) NewWriter() *DatagramWriter
+</code></pre>
+
+<p>NewWriter creates a DatagramWriter for sending datagrams</p>
+
+<h4 id="func-datagramsession-packetconn">func (*DatagramSession) PacketConn</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) PacketConn() net.PacketConn
+</code></pre>
+
+<p>PacketConn returns a net.PacketConn interface for this session</p>
+
+<h4 id="func-datagramsession-receivedatagram">func (*DatagramSession) ReceiveDatagram</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) ReceiveDatagram() (*Datagram, error)
+</code></pre>
+
+<p>ReceiveDatagram receives a datagram from any source</p>
+
+<h4 id="func-datagramsession-senddatagram">func (*DatagramSession) SendDatagram</h4>
+
+<pre><code class="language-go">func (s *DatagramSession) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
+</code></pre>
+
+<p>SendDatagram sends a datagram to the specified destination</p>
+
+<h4 id="type-datagramwriter">type DatagramWriter</h4>
+
+<pre><code class="language-go">type DatagramWriter struct {
+}
+</code></pre>
+
+<p>DatagramWriter handles outgoing datagram transmission</p>
+
+<h4 id="func-datagramwriter-senddatagram">func (*DatagramWriter) SendDatagram</h4>
+
+<pre><code class="language-go">func (w *DatagramWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
+</code></pre>
+
+<p>SendDatagram sends a datagram to the specified destination</p>
+
+<h4 id="func-datagramwriter-settimeout">func (*DatagramWriter) SetTimeout</h4>
+
+<pre><code class="language-go">func (w *DatagramWriter) SetTimeout(timeout time.Duration) *DatagramWriter
+</code></pre>
+
+<p>SetTimeout sets the timeout for datagram operations</p>
+
+<h4 id="type-sam">type SAM</h4>
+
+<pre><code class="language-go">type SAM struct {
+	*common.SAM
+}
+</code></pre>
+
+<p>SAM wraps common.SAM to provide datagram-specific functionality</p>
+
+<h4 id="func-sam-newdatagramsession">func (*SAM) NewDatagramSession</h4>
+
+<pre><code class="language-go">func (s *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
+</code></pre>
+
+<p>NewDatagramSession creates a new datagram session with the SAM bridge</p>
+
+<h4 id="func-sam-newdatagramsessionwithports">func (*SAM) NewDatagramSessionWithPorts</h4>
+
+<pre><code class="language-go">func (s *SAM) NewDatagramSessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
+</code></pre>
+
+<p>NewDatagramSessionWithPorts creates a new datagram session with port
+specifications</p>
+
+<h4 id="func-sam-newdatagramsessionwithsignature">func (*SAM) NewDatagramSessionWithSignature</h4>
+
+<pre><code class="language-go">func (s *SAM) NewDatagramSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*DatagramSession, error)
+</code></pre>
+
+<p>NewDatagramSessionWithSignature creates a new datagram session with custom
+signature type</p>
+
+      </div>
+    </main>
+    
+    <footer class="page-footer">
+      <p>Generated on 2025-05-29 23:48:36 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>

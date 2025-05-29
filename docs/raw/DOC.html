@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>raw - go-i2p/go-sam-go</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <nav class="nav-sidebar">
+    <div class="repo-info">
+      <h2>
+        <a href="../index.html">go-i2p/go-sam-go</a>
+      </h2>
+      <div class="repo-meta">
+        📝 51 commits
+        
+      </div>
+    </div>
+    
+    <ul class="nav-links">
+      <li><a href="../index.html">Repository Overview</a></li>
+      
+      
+        <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="../docs/common/DOC.html" >common</a></li>
+        
+          <li><a href="../docs/datagram/DOC.html" >datagram</a></li>
+        
+          <li><a href="../docs/primary/DOC.html" >primary</a></li>
+        
+          <li><a href="../docs/raw/DOC.html" class="active">raw</a></li>
+        
+          <li><a href="../docs/DOC.html" >sam3</a></li>
+        
+          <li><a href="../docs/stream/DOC.html" >stream</a></li>
+        
+      
+    </ul>
+    
+    <div class="nav-footer">
+      <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a>
+    </div>
+  </nav>
+  
+  <div class="main-content">
+    <header class="page-header">
+      <h1>raw - go-i2p/go-sam-go</h1>
+    </header>
+    
+    <main>
+      <div class="doc-content">
+        <h1 id="raw">raw</h1>
+
+<p>&ndash;</p>
+
+<pre><code>import &quot;github.com/go-i2p/go-sam-go/raw&quot;
+</code></pre>
+
+<h2 id="usage">Usage</h2>
+
+<h4 id="type-rawaddr">type RawAddr</h4>
+
+<pre><code class="language-go">type RawAddr struct {
+}
+</code></pre>
+
+<p>RawAddr implements net.Addr for I2P raw addresses</p>
+
+<h4 id="func-rawaddr-network">func (*RawAddr) Network</h4>
+
+<pre><code class="language-go">func (a *RawAddr) Network() string
+</code></pre>
+
+<p>Network returns the network type</p>
+
+<h4 id="func-rawaddr-string">func (*RawAddr) String</h4>
+
+<pre><code class="language-go">func (a *RawAddr) String() string
+</code></pre>
+
+<p>String returns the string representation of the address</p>
+
+<h4 id="type-rawconn">type RawConn</h4>
+
+<pre><code class="language-go">type RawConn struct {
+}
+</code></pre>
+
+<p>RawConn implements net.PacketConn for I2P raw datagrams</p>
+
+<h4 id="func-rawconn-close">func (*RawConn) Close</h4>
+
+<pre><code class="language-go">func (c *RawConn) Close() error
+</code></pre>
+
+<p>Close closes the raw connection</p>
+
+<h4 id="func-rawconn-localaddr">func (*RawConn) LocalAddr</h4>
+
+<pre><code class="language-go">func (c *RawConn) LocalAddr() net.Addr
+</code></pre>
+
+<p>LocalAddr returns the local address</p>
+
+<h4 id="func-rawconn-read">func (*RawConn) Read</h4>
+
+<pre><code class="language-go">func (c *RawConn) Read(b []byte) (n int, err error)
+</code></pre>
+
+<p>Read implements net.Conn by wrapping ReadFrom</p>
+
+<h4 id="func-rawconn-readfrom">func (*RawConn) ReadFrom</h4>
+
+<pre><code class="language-go">func (c *RawConn) ReadFrom(p []byte) (n int, addr net.Addr, err error)
+</code></pre>
+
+<p>ReadFrom reads a raw datagram from the connection</p>
+
+<h4 id="func-rawconn-remoteaddr">func (*RawConn) RemoteAddr</h4>
+
+<pre><code class="language-go">func (c *RawConn) RemoteAddr() net.Addr
+</code></pre>
+
+<p>RemoteAddr returns the remote address of the connection</p>
+
+<h4 id="func-rawconn-setdeadline">func (*RawConn) SetDeadline</h4>
+
+<pre><code class="language-go">func (c *RawConn) SetDeadline(t time.Time) error
+</code></pre>
+
+<p>SetDeadline sets the read and write deadlines</p>
+
+<h4 id="func-rawconn-setreaddeadline">func (*RawConn) SetReadDeadline</h4>
+
+<pre><code class="language-go">func (c *RawConn) SetReadDeadline(t time.Time) error
+</code></pre>
+
+<p>SetReadDeadline sets the deadline for future ReadFrom calls</p>
+
+<h4 id="func-rawconn-setwritedeadline">func (*RawConn) SetWriteDeadline</h4>
+
+<pre><code class="language-go">func (c *RawConn) SetWriteDeadline(t time.Time) error
+</code></pre>
+
+<p>SetWriteDeadline sets the deadline for future WriteTo calls</p>
+
+<h4 id="func-rawconn-write">func (*RawConn) Write</h4>
+
+<pre><code class="language-go">func (c *RawConn) Write(b []byte) (n int, err error)
+</code></pre>
+
+<p>Write implements net.Conn by wrapping WriteTo</p>
+
+<h4 id="func-rawconn-writeto">func (*RawConn) WriteTo</h4>
+
+<pre><code class="language-go">func (c *RawConn) WriteTo(p []byte, addr net.Addr) (n int, err error)
+</code></pre>
+
+<p>WriteTo writes a raw datagram to the specified address</p>
+
+<h4 id="type-rawdatagram">type RawDatagram</h4>
+
+<pre><code class="language-go">type RawDatagram struct {
+	Data   []byte
+	Source i2pkeys.I2PAddr
+	Local  i2pkeys.I2PAddr
+}
+</code></pre>
+
+<p>RawDatagram represents an I2P raw datagram message</p>
+
+<h4 id="type-rawlistener">type RawListener</h4>
+
+<pre><code class="language-go">type RawListener struct {
+}
+</code></pre>
+
+<p>RawListener implements net.Listener for I2P raw connections</p>
+
+<h4 id="func-rawlistener-accept">func (*RawListener) Accept</h4>
+
+<pre><code class="language-go">func (l *RawListener) Accept() (net.Conn, error)
+</code></pre>
+
+<p>Accept waits for and returns the next raw connection to the listener</p>
+
+<h4 id="func-rawlistener-addr">func (*RawListener) Addr</h4>
+
+<pre><code class="language-go">func (l *RawListener) Addr() net.Addr
+</code></pre>
+
+<p>Addr returns the listener&rsquo;s network address</p>
+
+<h4 id="func-rawlistener-close">func (*RawListener) Close</h4>
+
+<pre><code class="language-go">func (l *RawListener) Close() error
+</code></pre>
+
+<p>Close closes the raw listener</p>
+
+<h4 id="type-rawreader">type RawReader</h4>
+
+<pre><code class="language-go">type RawReader struct {
+}
+</code></pre>
+
+<p>RawReader handles incoming raw datagram reception</p>
+
+<h4 id="func-rawreader-close">func (*RawReader) Close</h4>
+
+<pre><code class="language-go">func (r *RawReader) Close() error
+</code></pre>
+
+<h4 id="func-rawreader-receivedatagram">func (*RawReader) ReceiveDatagram</h4>
+
+<pre><code class="language-go">func (r *RawReader) ReceiveDatagram() (*RawDatagram, error)
+</code></pre>
+
+<p>ReceiveDatagram receives a raw datagram from any source</p>
+
+<h4 id="type-rawsession">type RawSession</h4>
+
+<pre><code class="language-go">type RawSession struct {
+	*common.BaseSession
+}
+</code></pre>
+
+<p>RawSession represents a raw session that can send and receive raw datagrams</p>
+
+<h4 id="func-newrawsession">func  NewRawSession</h4>
+
+<pre><code class="language-go">func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
+</code></pre>
+
+<p>NewRawSession creates a new raw session</p>
+
+<h4 id="func-rawsession-addr">func (*RawSession) Addr</h4>
+
+<pre><code class="language-go">func (s *RawSession) Addr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>Addr returns the I2P address of this session</p>
+
+<h4 id="func-rawsession-close">func (*RawSession) Close</h4>
+
+<pre><code class="language-go">func (s *RawSession) Close() error
+</code></pre>
+
+<p>Close closes the raw session and all associated resources</p>
+
+<h4 id="func-rawsession-dial">func (*RawSession) Dial</h4>
+
+<pre><code class="language-go">func (rs *RawSession) Dial(destination string) (net.PacketConn, error)
+</code></pre>
+
+<p>Dial establishes a raw connection to the specified destination</p>
+
+<h4 id="func-rawsession-dialcontext">func (*RawSession) DialContext</h4>
+
+<pre><code class="language-go">func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error)
+</code></pre>
+
+<p>DialContext establishes a raw connection with context support</p>
+
+<h4 id="func-rawsession-diali2p">func (*RawSession) DialI2P</h4>
+
+<pre><code class="language-go">func (rs *RawSession) DialI2P(addr i2pkeys.I2PAddr) (net.PacketConn, error)
+</code></pre>
+
+<p>DialI2P establishes a raw connection to an I2P address</p>
+
+<h4 id="func-rawsession-diali2pcontext">func (*RawSession) DialI2PContext</h4>
+
+<pre><code class="language-go">func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (net.PacketConn, error)
+</code></pre>
+
+<p>DialI2PContext establishes a raw connection to an I2P address with context
+support</p>
+
+<h4 id="func-rawsession-diali2ptimeout">func (*RawSession) DialI2PTimeout</h4>
+
+<pre><code class="language-go">func (rs *RawSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Duration) (net.PacketConn, error)
+</code></pre>
+
+<p>DialI2PTimeout establishes a raw connection to an I2P address with timeout</p>
+
+<h4 id="func-rawsession-dialtimeout">func (*RawSession) DialTimeout</h4>
+
+<pre><code class="language-go">func (rs *RawSession) DialTimeout(destination string, timeout time.Duration) (net.PacketConn, error)
+</code></pre>
+
+<p>DialTimeout establishes a raw connection with a timeout</p>
+
+<h4 id="func-rawsession-listen">func (*RawSession) Listen</h4>
+
+<pre><code class="language-go">func (s *RawSession) Listen() (*RawListener, error)
+</code></pre>
+
+<h4 id="func-rawsession-newreader">func (*RawSession) NewReader</h4>
+
+<pre><code class="language-go">func (s *RawSession) NewReader() *RawReader
+</code></pre>
+
+<p>NewReader creates a RawReader for receiving raw datagrams</p>
+
+<h4 id="func-rawsession-newwriter">func (*RawSession) NewWriter</h4>
+
+<pre><code class="language-go">func (s *RawSession) NewWriter() *RawWriter
+</code></pre>
+
+<p>NewWriter creates a RawWriter for sending raw datagrams</p>
+
+<h4 id="func-rawsession-packetconn">func (*RawSession) PacketConn</h4>
+
+<pre><code class="language-go">func (s *RawSession) PacketConn() net.PacketConn
+</code></pre>
+
+<p>PacketConn returns a net.PacketConn interface for this session</p>
+
+<h4 id="func-rawsession-receivedatagram">func (*RawSession) ReceiveDatagram</h4>
+
+<pre><code class="language-go">func (s *RawSession) ReceiveDatagram() (*RawDatagram, error)
+</code></pre>
+
+<p>ReceiveDatagram receives a raw datagram from any source</p>
+
+<h4 id="func-rawsession-senddatagram">func (*RawSession) SendDatagram</h4>
+
+<pre><code class="language-go">func (s *RawSession) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
+</code></pre>
+
+<p>SendDatagram sends a raw datagram to the specified destination</p>
+
+<h4 id="type-rawwriter">type RawWriter</h4>
+
+<pre><code class="language-go">type RawWriter struct {
+}
+</code></pre>
+
+<p>RawWriter handles outgoing raw datagram transmission</p>
+
+<h4 id="func-rawwriter-senddatagram">func (*RawWriter) SendDatagram</h4>
+
+<pre><code class="language-go">func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
+</code></pre>
+
+<p>SendDatagram sends a raw datagram to the specified destination</p>
+
+<h4 id="func-rawwriter-settimeout">func (*RawWriter) SetTimeout</h4>
+
+<pre><code class="language-go">func (w *RawWriter) SetTimeout(timeout time.Duration) *RawWriter
+</code></pre>
+
+<p>SetTimeout sets the timeout for raw datagram operations</p>
+
+<h4 id="type-sam">type SAM</h4>
+
+<pre><code class="language-go">type SAM struct {
+	*common.SAM
+}
+</code></pre>
+
+<p>SAM wraps common.SAM to provide raw-specific functionality</p>
+
+<h4 id="func-sam-newrawsession">func (*SAM) NewRawSession</h4>
+
+<pre><code class="language-go">func (s *SAM) NewRawSession(id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
+</code></pre>
+
+<p>NewRawSession creates a new raw session with the SAM bridge</p>
+
+<h4 id="func-sam-newrawsessionwithports">func (*SAM) NewRawSessionWithPorts</h4>
+
+<pre><code class="language-go">func (s *SAM) NewRawSessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
+</code></pre>
+
+<p>NewRawSessionWithPorts creates a new raw session with port specifications</p>
+
+<h4 id="func-sam-newrawsessionwithsignature">func (*SAM) NewRawSessionWithSignature</h4>
+
+<pre><code class="language-go">func (s *SAM) NewRawSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*RawSession, error)
+</code></pre>
+
+<p>NewRawSessionWithSignature creates a new raw session with custom signature type</p>
+
+      </div>
+    </main>
+    
+    <footer class="page-footer">
+      <p>Generated on 2025-05-29 23:48:36 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>
