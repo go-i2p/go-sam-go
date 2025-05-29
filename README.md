@@ -5,9 +5,9 @@
 
 A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focused on maintainability and clean architecture. This project is forked from `github.com/go-i2p/sam3` with reorganized code structure.
 
-**WARNING: This is a new package and nothing works yet.**
-**BUT, the point of it is to have carefully designed fixes to sam3's rough edges, so the API should be stable**
-**It should be ready soon but right now it's broke.**
+**WARNING: This is a new package. Streaming works and so does some of datagrams.**
+**The API should not change much.**
+**It needs more people looking at it.**
 
 ## 📦 Installation
 
