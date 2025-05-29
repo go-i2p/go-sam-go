@@ -31,6 +31,10 @@ func (sam SAM) NewGenericSessionWithSignature(style, id string, keys i2pkeys.I2P
 func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string, keys i2pkeys.I2PKeys, sigType string, extras []string) (Session, error) {
 	log.WithFields(logrus.Fields{"style": style, "id": id, "from": from, "to": to, "sigType": sigType}).Debug("Creating new generic session with signature and ports")
 
+	// Update SAM configuration with session-specific ports
+	sam.I2PConfig.Fromport = from
+	sam.I2PConfig.Toport = to
+
 	optStr := sam.SamOptionsString()
 	extraStr := strings.Join(extras, " ")
 
@@ -43,7 +47,7 @@ func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string
 	if to != "0" {
 		tp = " TO_PORT=" + to
 	}
-	scmsg := []byte("SESSION CREATE STYLE=" + style + fp + tp + " ID=" + id + " DESTINATION=" + keys.String() + " " + optStr + extraStr + "\n")
+	scmsg := []byte("SESSION CREATE STYLE=" + style + fp + tp + " ID=" + id + " DESTINATION=" + keys.String() + " " + optStr + " " + extraStr + "\n")
 
 	log.WithField("message", string(scmsg)).Debug("Sending SESSION CREATE message")
 

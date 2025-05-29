@@ -179,8 +179,8 @@ func (f *I2PConfig) samMax() float64 {
 // If no minimum version is set, returns default value "3.0"
 func (f *I2PConfig) MinSAM() string {
 	if f.SamMin == "" {
-		log.Debug("Using default MinSAM: 3.0")
-		return "3.0"
+		log.Debug("Using default MinSAM: " + DEFAULT_SAM_MIN)
+		return DEFAULT_SAM_MIN
 	}
 	log.WithField("minSAM", f.SamMin).Debug("MinSAM set")
 	return f.SamMin
@@ -190,8 +190,8 @@ func (f *I2PConfig) MinSAM() string {
 // If no maximum version is set, returns default value "3.1"
 func (f *I2PConfig) MaxSAM() string {
 	if f.SamMax == "" {
-		log.Debug("Using default MaxSAM: 3.1")
-		return "3.1"
+		log.Debug("Using default MaxSAM: " + DEFAULT_SAM_MAX)
+		return DEFAULT_SAM_MAX
 	}
 	log.WithField("maxSAM", f.SamMax).Debug("MaxSAM set")
 	return f.SamMax
@@ -369,23 +369,31 @@ func (f *I2PConfig) UsingCompression() string {
 
 // Print returns a slice of strings containing all the I2P configuration settings
 func (f *I2PConfig) Print() []string {
-	var settings []string
-	// Collect tunnel configuration settings
-	settings = append(settings, f.collectTunnelSettings()...)
-	// Collect connection behavior settings
-	settings = append(settings, f.collectConnectionSettings()...)
-	// Collect lease set settings
-	settings = append(settings, f.collectLeaseSetSettings()...)
-	// Collect access control settings
-	settings = append(settings, f.collectAccessSettings()...)
-	// Filter out empty strings to prevent duplicates
-	var filtered []string
-	for _, config := range settings {
+	var configs []string
+
+	// Helper function to add non-empty strings to the config slice
+	addConfig := func(config string) {
 		if strings.TrimSpace(config) != "" {
-			filtered = append(filtered, config)
+			configs = append(configs, strings.TrimSpace(config))
 		}
 	}
-	return filtered
+
+	// Collect all configuration settings, filtering out empty strings
+	allSettings := [][]string{
+		f.collectTunnelSettings(),
+		f.collectConnectionSettings(),
+		f.collectLeaseSetSettings(),
+		f.collectAccessSettings(),
+	}
+
+	for _, settingsGroup := range allSettings {
+		for _, setting := range settingsGroup {
+			addConfig(setting)
+		}
+	}
+
+	log.WithField("configs", configs).Debug("Configuration strings collected")
+	return configs
 }
 
 // Accesslisttype returns the I2CP access list configuration string based on the AccessListType setting
@@ -426,13 +434,14 @@ func (f *I2PConfig) Accesslist() string {
 func (f *I2PConfig) LeaseSetEncryptionType() string {
 	// Use default if not specified
 	if f.LeaseSetEncryption == "" {
-		return f.formatLeaseSetEncryptionType("4,0")
+		f.LeaseSetEncryption = "4,0" // Set default ECIES-X25519 and ElGamal compatibility
+		log.Debug("Using default lease set encryption type: 4,0")
 	}
 
 	// Validate all encryption types are integers
 	if err := f.validateEncryptionTypes(f.LeaseSetEncryption); err != nil {
 		log.WithError(err).Warn("Invalid encryption types, using default")
-		return f.formatLeaseSetEncryptionType("4,0")
+		f.LeaseSetEncryption = "4,0"
 	}
 
 	return f.formatLeaseSetEncryptionType(f.LeaseSetEncryption)

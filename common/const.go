@@ -20,6 +20,8 @@ const (
 	SIG_ECDSA_SHA384_P384    = "SIGNATURE_TYPE=ECDSA_SHA384_P384"
 	SIG_ECDSA_SHA512_P521    = "SIGNATURE_TYPE=ECDSA_SHA512_P521"
 	SIG_EdDSA_SHA512_Ed25519 = "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"
+	// Add a default constant that points to the recommended secure signature type
+	SIG_DEFAULT = SIG_EdDSA_SHA512_Ed25519
 )
 
 const (

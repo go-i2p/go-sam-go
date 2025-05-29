@@ -130,9 +130,9 @@ func (bs *BaseSession) SetWriteDeadline(t time.Time) error {
 }
 
 func (bs *BaseSession) From() string {
-	return bs.SAM.Fromport
+	return bs.SAM.FromPort()
 }
 
 func (bs *BaseSession) To() string {
-	return bs.SAM.Toport
+	return bs.SAM.ToPort()
 }
