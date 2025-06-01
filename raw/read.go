@@ -74,7 +74,12 @@ func (r *RawReader) Close() error {
 
 // receiveLoop continuously receives incoming raw datagrams
 func (r *RawReader) receiveLoop() {
-	logger := log.WithField("session_id", r.session.ID())
+	// Fix: Safe session ID retrieval with nil checks
+	sessionID := "unknown"
+	if r.session != nil && r.session.BaseSession != nil {
+		sessionID = r.session.ID()
+	}
+	logger := log.WithField("session_id", sessionID)
 	logger.Debug("Starting raw receive loop")
 
 	// Signal completion when this loop exits
@@ -88,6 +93,11 @@ func (r *RawReader) receiveLoop() {
 	}()
 
 	// Check session state before starting loop
+	if r.session == nil {
+		logger.Debug("Raw receive loop terminated - session is nil")
+		return
+	}
+
 	r.session.mu.RLock()
 	if r.session.closed || r.session.BaseSession == nil {
 		r.session.mu.RUnlock()
