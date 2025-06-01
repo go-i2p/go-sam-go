@@ -2,7 +2,6 @@ package raw
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
@@ -96,9 +95,4 @@ func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) 
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created I2P raw connection")
 	return conn, nil
-}
-
-// generateSessionID generates a unique session identifier
-func generateSessionID() string {
-	return fmt.Sprintf("raw_%d", time.Now().UnixNano())
 }

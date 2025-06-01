@@ -39,7 +39,12 @@ func (r *RawReader) Close() error {
 		return nil
 	}
 
-	logger := log.WithField("session_id", r.session.ID())
+	// Fix: Safe session ID retrieval with nil checks
+	sessionID := "unknown"
+	if r.session != nil && r.session.BaseSession != nil {
+		sessionID = r.session.ID()
+	}
+	logger := log.WithField("session_id", sessionID)
 	logger.Debug("Closing RawReader")
 
 	r.closed = true
