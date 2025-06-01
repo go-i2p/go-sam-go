@@ -101,7 +101,12 @@ func TestDatagramSession_DialContext(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	conn, err := dialerSession.DialContext(ctx, listener.Addr().String())
+	addr, err := dialerSession.sam.Lookup(listener.Addr().String())
+	if err != nil {
+		t.Fatalf("Failed to lookup listener address: %v", err)
+	}
+
+	conn, err := dialerSession.DialContext(ctx, addr.Base64())
 	if err != nil {
 		t.Fatalf("Failed to dial with context: %v", err)
 	}
@@ -126,11 +131,16 @@ func TestDatagramSession_DialContext_Timeout(t *testing.T) {
 	defer session.Close()
 
 	// Use very short timeout to force timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Microsecond)
 	defer cancel()
 
+	addr, err := session.sam.Lookup("idk.i2p")
+	if err != nil {
+		t.Fatalf("Failed to lookup address: %v", err)
+	}
+
 	// Try to dial with short timeout
-	conn, err := session.DialContext(ctx, "idk.i2p")
+	conn, err := session.DialContext(ctx, addr.Base64())
 
 	// Should get context deadline exceeded error
 	if err == nil {
