@@ -12,7 +12,6 @@ import (
 
 // ReceiveDatagram receives a datagram from any source
 func (r *DatagramReader) ReceiveDatagram() (*Datagram, error) {
-	// Check if closed first, but don't rely on this check for safety
 	r.mu.RLock()
 	if r.closed {
 		r.mu.RUnlock()
@@ -20,16 +19,12 @@ func (r *DatagramReader) ReceiveDatagram() (*Datagram, error) {
 	}
 	r.mu.RUnlock()
 
-	// Use select with closeChan to handle concurrent close operations safely
-	// The closeChan will be signaled when Close() is called, providing
-	// a reliable way to detect closure even if it happens during this function
 	select {
 	case datagram := <-r.recvChan:
 		return datagram, nil
 	case err := <-r.errorChan:
 		return nil, err
 	case <-r.closeChan:
-		// This case handles both initial closure check and concurrent closure
 		return nil, oops.Errorf("reader is closed")
 	}
 }
@@ -50,22 +45,34 @@ func (r *DatagramReader) Close() error {
 	// Signal termination to receiveLoop
 	close(r.closeChan)
 
-	// Wait for receiveLoop to signal it has exited by closing doneChan
-	// This ensures proper synchronization without arbitrary delays
+	// Wait for receiveLoop to signal completion with timeout protection
 	select {
 	case <-r.doneChan:
 		// receiveLoop has confirmed it stopped
+		logger.Debug("Receive loop terminated gracefully")
 	case <-time.After(5 * time.Second):
 		// Timeout protection - log warning but continue cleanup
 		logger.Warn("Timeout waiting for receive loop to stop")
 	}
 
-	// Now safe to close the receiver channels since receiveLoop has stopped
-	close(r.recvChan)
-	close(r.errorChan)
+	// Close receiver channels only after receiveLoop has stopped
+	// Use non-blocking close to avoid deadlock if channels are already closed
+	r.safeCloseChannel()
 
 	logger.Debug("Successfully closed DatagramReader")
 	return nil
+}
+
+// safeCloseChannel safely closes channels with panic recovery
+func (r *DatagramReader) safeCloseChannel() {
+	defer func() {
+		if recover() != nil {
+			// Channel was already closed - this is expected in some race conditions
+		}
+	}()
+
+	close(r.recvChan)
+	close(r.errorChan)
 }
 
 // receiveLoop continuously receives incoming datagrams
@@ -73,16 +80,18 @@ func (r *DatagramReader) receiveLoop() {
 	logger := log.WithField("session_id", r.session.ID())
 	logger.Debug("Starting receive loop")
 
-	// Signal completion when this loop exits - doneChan must be initialized
-	// before this goroutine starts to avoid race conditions with Close()
+	// Ensure doneChan is properly signaled when loop exits
 	defer func() {
-		if r.doneChan != nil {
-			close(r.doneChan)
+		// Use non-blocking send to avoid deadlock if Close() isn't waiting
+		select {
+		case r.doneChan <- struct{}{}:
+		default:
 		}
+		logger.Debug("Receive loop goroutine terminated")
 	}()
 
 	for {
-		// Check for closure in a non-blocking way first
+		// Check for closure signal before any blocking operations
 		select {
 		case <-r.closeChan:
 			logger.Debug("Receive loop terminated - reader closed")
@@ -90,15 +99,16 @@ func (r *DatagramReader) receiveLoop() {
 		default:
 		}
 
-		// Now perform the blocking read operation
+		// Perform the blocking read operation
 		datagram, err := r.receiveDatagram()
 		if err != nil {
-			// Use atomic check and send pattern to avoid race
+			// Use atomic send pattern with close check to prevent panic
 			select {
 			case r.errorChan <- err:
 				logger.WithError(err).Error("Failed to receive datagram")
 			case <-r.closeChan:
-				// Reader was closed during error handling
+				// Reader was closed during error handling - exit gracefully
+				logger.Debug("Receive loop terminated during error handling")
 				return
 			}
 			continue
@@ -109,7 +119,8 @@ func (r *DatagramReader) receiveLoop() {
 		case r.recvChan <- datagram:
 			logger.Debug("Successfully received datagram")
 		case <-r.closeChan:
-			// Reader was closed during datagram send
+			// Reader was closed during datagram send - exit gracefully
+			logger.Debug("Receive loop terminated during datagram send")
 			return
 		}
 	}

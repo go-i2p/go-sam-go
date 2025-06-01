@@ -2,11 +2,11 @@ package datagram
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,10 +24,31 @@ func (ds *DatagramSession) DialTimeout(destination string, timeout time.Duration
 
 // DialContext establishes a datagram connection with context support
 func (ds *DatagramSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error) {
+	// Check if session is closed first
+	ds.mu.RLock()
+	if ds.closed {
+		ds.mu.RUnlock()
+		return nil, oops.Errorf("session is closed")
+	}
+	ds.mu.RUnlock()
+
 	logger := log.WithFields(logrus.Fields{
 		"destination": destination,
 	})
 	logger.Debug("Dialing datagram destination")
+
+	// Check context cancellation before proceeding
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	// Parse destination address
+	destAddr, err := i2pkeys.NewI2PAddrFromString(destination)
+	if err != nil {
+		return nil, oops.Errorf("invalid destination address: %w", err)
+	}
 
 	// Create a datagram connection
 	conn := &DatagramConn{
@@ -36,10 +57,22 @@ func (ds *DatagramSession) DialContext(ctx context.Context, destination string) 
 		writer:  ds.NewWriter(),
 	}
 
-	// Start the reader loop
-	go conn.reader.receiveLoop()
+	// Set remote address for the connection
+	conn.remoteAddr = &destAddr
 
-	logger.WithField("session_id", ds.ID()).Debug("Successfully created datagram connection")
+	// Start the reader loop in a goroutine with context cancellation
+	go func() {
+		select {
+		case <-ctx.Done():
+			// Context cancelled, close the reader
+			conn.reader.Close()
+			return
+		default:
+			conn.reader.receiveLoop()
+		}
+	}()
+
+	logger.Debug("Successfully created datagram connection")
 	return conn, nil
 }
 
@@ -57,10 +90,25 @@ func (ds *DatagramSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Dur
 
 // DialI2PContext establishes a datagram connection to an I2P address with context support
 func (ds *DatagramSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (net.PacketConn, error) {
+	// Check if session is closed first
+	ds.mu.RLock()
+	if ds.closed {
+		ds.mu.RUnlock()
+		return nil, oops.Errorf("session is closed")
+	}
+	ds.mu.RUnlock()
+
 	logger := log.WithFields(logrus.Fields{
 		"destination": addr.Base32(),
 	})
 	logger.Debug("Dialing I2P datagram destination")
+
+	// Check context cancellation before proceeding
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
 
 	// Create a datagram connection
 	conn := &DatagramConn{
@@ -69,14 +117,21 @@ func (ds *DatagramSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PA
 		writer:  ds.NewWriter(),
 	}
 
-	// Start the reader loop
-	go conn.reader.receiveLoop()
+	// Set remote address for the connection
+	conn.remoteAddr = &addr
 
-	logger.WithField("session_id", ds.ID()).Debug("Successfully created I2P datagram connection")
+	// Start the reader loop in a goroutine with context cancellation
+	go func() {
+		select {
+		case <-ctx.Done():
+			// Context cancelled, close the reader
+			conn.reader.Close()
+			return
+		default:
+			conn.reader.receiveLoop()
+		}
+	}()
+
+	logger.Debug("Successfully created I2P datagram connection")
 	return conn, nil
-}
-
-// generateSessionID generates a unique session identifier
-func generateSessionID() string {
-	return fmt.Sprintf("datagram_%d", time.Now().UnixNano())
 }

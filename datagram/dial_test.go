@@ -2,6 +2,7 @@ package datagram
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -43,7 +44,11 @@ func TestDatagramSession_Dial(t *testing.T) {
 	defer dialerSession.Close()
 
 	// Test dial
-	conn, err := dialerSession.Dial(listener.Addr().String())
+	dest, err := dialerSession.sam.Lookup(listener.Addr().String())
+	if err != nil {
+		t.Fatalf("Failed to lookup listener address: %v", err)
+	}
+	conn, err := dialerSession.Dial(dest.Base64())
 	if err != nil {
 		t.Fatalf("Failed to dial: %v", err)
 	}
@@ -124,12 +129,20 @@ func TestDatagramSession_DialContext_Timeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
 
-	// Try to dial invalid address with short timeout
-	conn, err := session.DialContext(ctx, "invalid.b32.i2p")
+	// Try to dial with short timeout
+	conn, err := session.DialContext(ctx, "idk.i2p")
+
+	// Should get context deadline exceeded error
 	if err == nil {
 		if conn != nil {
 			conn.Close()
 		}
+		t.Fatal("Expected timeout error")
+	}
+
+	// Should be a context deadline exceeded error
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("Expected context.DeadlineExceeded, got: %v", err)
 	}
 
 	if conn != nil {

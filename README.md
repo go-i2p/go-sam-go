@@ -94,6 +94,20 @@ raw, err := session.NewRawSession("raw", keys, options, 0)
 n, err := raw.WriteTo(data, dest)
 ```
 
+#### `datagram2` Package
+Authenticated repliable datagrams:
+```go
+dgram2, err := session.NewDatagram2Session("udp", keys, options, 0)
+n, err := dgram.WriteTo(data, dest)
+```
+
+#### `datagram3` Package
+Authenticated repliable datagrams:
+```go
+dgram3, err := session.NewDatagram3Session("udp", keys, options, 0)
+n, err := dgram.WriteTo(data, dest)
+```
+
 ### Configuration
 
 Built-in configuration profiles:

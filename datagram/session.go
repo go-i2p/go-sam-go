@@ -49,7 +49,7 @@ func (s *DatagramSession) NewReader() *DatagramReader {
 		recvChan:  make(chan *Datagram, 10), // Buffer for incoming datagrams
 		errorChan: make(chan error, 1),
 		closeChan: make(chan struct{}),
-		doneChan:  make(chan struct{}),
+		doneChan:  make(chan struct{}, 1),
 		closed:    false,
 		mu:        sync.RWMutex{},
 	}
