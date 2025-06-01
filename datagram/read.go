@@ -63,24 +63,38 @@ func (r *DatagramReader) Close() error {
 
 // Improved channel closing with better error handling
 func (r *DatagramReader) safeCloseChannel() {
-	// Close channels in order of dependency
+	// Use defer to ensure recovery from any panics
 	defer func() {
 		if recover() != nil {
 			// Channels already closed - expected in concurrent scenarios
 		}
 	}()
 
-	// First close the done channel
+	// Close done channel first with protection
 	select {
 	case <-r.doneChan:
-		// Already closed
+		// Already closed or received signal
 	default:
-		close(r.doneChan)
+		// Try to close, but protect against concurrent closure
+		select {
+		case r.doneChan <- struct{}{}:
+			// Successfully signaled
+		default:
+			// Channel full or closed, close it
+			close(r.doneChan)
+		}
 	}
 
-	// Then close data channels
-	close(r.recvChan)
-	close(r.errorChan)
+	// Close data channels with protection against double-close
+	func() {
+		defer func() { recover() }()
+		close(r.recvChan)
+	}()
+
+	func() {
+		defer func() { recover() }()
+		close(r.errorChan)
+	}()
 }
 
 func (r *DatagramReader) receiveLoop() {
