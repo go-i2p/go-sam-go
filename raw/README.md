@@ -12,7 +12,7 @@ The package provides unencrypted raw datagram messaging over I2P networks. [`Raw
 
 Create sessions using [`NewRawSession`](raw/session.go), send messages with [`SendDatagram()`](raw/session.go), and receive messages using [`ReceiveDatagram()`](raw/session.go). The implementation supports I2P address resolution, configurable tunnel parameters, and comprehensive error handling with proper resource cleanup.
 
-Key features include full `net.PacketConn` and `net.Conn` compatibility, I2P destination management, base64 payload encoding, and concurrent raw datagram processing with proper synchronization.
+Key features include full `net.PacketConn` compatibility, I2P destination management, base64 payload encoding, and concurrent raw datagram processing with proper synchronization.
 
 ## Dependencies
 
