@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,6 +25,19 @@ func (rs *RawSession) DialTimeout(destination string, timeout time.Duration) (ne
 
 // DialContext establishes a raw connection with context support
 func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error) {
+	// Validate session state first
+	rs.mu.RLock()
+	if rs.closed {
+		rs.mu.RUnlock()
+		return nil, oops.Errorf("session is closed")
+	}
+	rs.mu.RUnlock()
+
+	// Validate destination
+	if destination == "" {
+		return nil, oops.Errorf("destination cannot be empty")
+	}
+
 	logger := log.WithFields(logrus.Fields{
 		"destination": destination,
 	})
@@ -36,7 +50,7 @@ func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.
 		writer:  rs.NewWriter(),
 	}
 
-	// Start the reader loop
+	// Start the reader loop only if session is valid
 	go conn.reader.receiveLoop()
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created raw connection")
@@ -57,6 +71,14 @@ func (rs *RawSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Duration
 
 // DialI2PContext establishes a raw connection to an I2P address with context support
 func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (net.PacketConn, error) {
+	// Validate session state first
+	rs.mu.RLock()
+	if rs.closed {
+		rs.mu.RUnlock()
+		return nil, oops.Errorf("session is closed")
+	}
+	rs.mu.RUnlock()
+
 	logger := log.WithFields(logrus.Fields{
 		"destination": addr.Base32(),
 	})
@@ -69,7 +91,7 @@ func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) 
 		writer:  rs.NewWriter(),
 	}
 
-	// Start the reader loop
+	// Start the reader loop only if session is valid
 	go conn.reader.receiveLoop()
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created I2P raw connection")

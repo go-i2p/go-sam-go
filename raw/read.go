@@ -56,7 +56,10 @@ func (r *RawReader) Close() error {
 		logger.Warn("Timeout waiting for receive loop to stop")
 	}
 
-	// Now safe to close the receiver channels since receiveLoop has stopped
+	// Fix: Close doneChan here to prevent multiple closes
+	close(r.doneChan)
+
+	// Fix: Close receiver channels here under mutex protection
 	close(r.recvChan)
 	close(r.errorChan)
 
@@ -71,10 +74,22 @@ func (r *RawReader) receiveLoop() {
 
 	// Signal completion when this loop exits
 	defer func() {
-		if r.doneChan != nil {
-			close(r.doneChan)
+		select {
+		case r.doneChan <- struct{}{}:
+			// Successfully signaled completion
+		default:
+			// Channel may be closed or blocked - that's okay
 		}
 	}()
+
+	// Check session state before starting loop
+	r.session.mu.RLock()
+	if r.session.closed || r.session.BaseSession == nil {
+		r.session.mu.RUnlock()
+		logger.Debug("Raw receive loop terminated - session invalid")
+		return
+	}
+	r.session.mu.RUnlock()
 
 	for {
 		// Check for closure in a non-blocking way first
@@ -113,6 +128,25 @@ func (r *RawReader) receiveLoop() {
 // receiveDatagram handles the low-level raw datagram reception
 func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 	logger := log.WithField("session_id", r.session.ID())
+
+	// Check if session is valid and not closed
+	r.session.mu.RLock()
+	if r.session.closed {
+		r.session.mu.RUnlock()
+		return nil, oops.Errorf("session is closed")
+	}
+
+	// Check if BaseSession is properly initialized
+	if r.session.BaseSession == nil {
+		r.session.mu.RUnlock()
+		return nil, oops.Errorf("session is not properly initialized")
+	}
+
+	if r.session.BaseSession.Conn() == nil {
+		r.session.mu.RUnlock()
+		return nil, oops.Errorf("session connection is not available")
+	}
+	r.session.mu.RUnlock()
 
 	// Read from the session connection for incoming raw datagrams
 	buf := make([]byte, 4096)

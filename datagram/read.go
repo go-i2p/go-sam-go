@@ -82,6 +82,7 @@ func (r *DatagramReader) safeCloseChannel() {
 	close(r.recvChan)
 	close(r.errorChan)
 }
+
 func (r *DatagramReader) receiveLoop() {
 	logger := log.WithField("session_id", r.session.ID())
 	logger.Debug("Starting receive loop")

@@ -103,6 +103,10 @@ type BaseSession struct {
 	SAM  SAM
 }
 
+func (bs *BaseSession) Conn() net.Conn {
+	return bs.conn
+}
+
 func (bs *BaseSession) ID() string                  { return bs.id }
 func (bs *BaseSession) Keys() i2pkeys.I2PKeys       { return bs.keys }
 func (bs *BaseSession) Read(b []byte) (int, error)  { return bs.conn.Read(b) }
