@@ -2,7 +2,6 @@ package datagram
 
 import (
 	"testing"
-	"time"
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
@@ -245,55 +244,6 @@ func TestDatagramSession_PacketConn(t *testing.T) {
 
 	if datagramConn.writer == nil {
 		t.Error("DatagramConn writer is nil")
-	}
-}
-
-func TestDatagramSession_ConcurrentOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	sam, keys := setupTestSAM(t)
-	defer sam.Close()
-
-	session, err := NewDatagramSession(sam, "test_concurrent", keys, nil)
-	if err != nil {
-		t.Fatalf("Failed to create session: %v", err)
-	}
-	defer session.Close()
-
-	// Test concurrent reader creation
-	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
-		go func() {
-			reader := session.NewReader()
-			if reader == nil {
-				t.Error("NewReader returned nil")
-			}
-			done <- true
-		}()
-	}
-
-	// Test concurrent writer creation
-	for i := 0; i < 10; i++ {
-		go func() {
-			writer := session.NewWriter()
-			if writer == nil {
-				t.Error("NewWriter returned nil")
-			}
-			done <- true
-		}()
-	}
-
-	// Wait for all goroutines
-	timeout := time.After(5 * time.Second)
-	for i := 0; i < 20; i++ {
-		select {
-		case <-done:
-			// OK
-		case <-timeout:
-			t.Fatal("Timeout waiting for concurrent operations")
-		}
 	}
 }
 

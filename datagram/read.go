@@ -45,53 +45,66 @@ func (r *DatagramReader) Close() error {
 	// Signal termination to receiveLoop
 	close(r.closeChan)
 
-	// Wait for receiveLoop to signal completion with timeout protection
+	// Wait for receiveLoop to signal completion with shorter timeout
 	select {
 	case <-r.doneChan:
-		// receiveLoop has confirmed it stopped
 		logger.Debug("Receive loop terminated gracefully")
-	case <-time.After(5 * time.Second):
-		// Timeout protection - log warning but continue cleanup
-		logger.Warn("Timeout waiting for receive loop to stop")
+	case <-time.After(2 * time.Second):
+		// Shorter timeout to prevent test hangs
+		logger.Warn("Timeout waiting for receive loop to stop, forcing cleanup")
 	}
 
-	// Close receiver channels only after receiveLoop has stopped
-	// Use non-blocking close to avoid deadlock if channels are already closed
+	// Force close channels to prevent goroutine leaks
 	r.safeCloseChannel()
 
 	logger.Debug("Successfully closed DatagramReader")
 	return nil
 }
 
-// safeCloseChannel safely closes channels with panic recovery
+// Improved channel closing with better error handling
 func (r *DatagramReader) safeCloseChannel() {
+	// Close channels in order of dependency
 	defer func() {
 		if recover() != nil {
-			// Channel was already closed - this is expected in some race conditions
+			// Channels already closed - expected in concurrent scenarios
 		}
 	}()
 
+	// First close the done channel
+	select {
+	case <-r.doneChan:
+		// Already closed
+	default:
+		close(r.doneChan)
+	}
+
+	// Then close data channels
 	close(r.recvChan)
 	close(r.errorChan)
 }
-
-// receiveLoop continuously receives incoming datagrams
 func (r *DatagramReader) receiveLoop() {
 	logger := log.WithField("session_id", r.session.ID())
 	logger.Debug("Starting receive loop")
 
 	// Ensure doneChan is properly signaled when loop exits
 	defer func() {
-		// Use non-blocking send to avoid deadlock if Close() isn't waiting
+		// Use non-blocking send with recovery to prevent panics
+		defer func() {
+			if recover() != nil {
+				// doneChan already closed or other error - ignore
+			}
+		}()
+
 		select {
 		case r.doneChan <- struct{}{}:
-		default:
+		case <-time.After(100 * time.Millisecond):
+			// Timeout on done signal - continue cleanup anyway
 		}
 		logger.Debug("Receive loop goroutine terminated")
 	}()
 
 	for {
-		// Check for closure signal before any blocking operations
+		// Check for closure signal with immediate return
 		select {
 		case <-r.closeChan:
 			logger.Debug("Receive loop terminated - reader closed")
@@ -99,15 +112,25 @@ func (r *DatagramReader) receiveLoop() {
 		default:
 		}
 
-		// Perform the blocking read operation
+		// Add timeout to the blocking read to prevent indefinite hangs
+		r.session.SetReadDeadline(time.Now().Add(1 * time.Second))
 		datagram, err := r.receiveDatagram()
+		r.session.SetReadDeadline(time.Time{}) // Clear deadline
+
 		if err != nil {
-			// Use atomic send pattern with close check to prevent panic
+			// Check if this is a timeout error during shutdown
+			select {
+			case <-r.closeChan:
+				logger.Debug("Receive loop terminated during read timeout")
+				return
+			default:
+			}
+
+			// Use atomic send pattern with close check
 			select {
 			case r.errorChan <- err:
 				logger.WithError(err).Error("Failed to receive datagram")
 			case <-r.closeChan:
-				// Reader was closed during error handling - exit gracefully
 				logger.Debug("Receive loop terminated during error handling")
 				return
 			}
@@ -119,7 +142,6 @@ func (r *DatagramReader) receiveLoop() {
 		case r.recvChan <- datagram:
 			logger.Debug("Successfully received datagram")
 		case <-r.closeChan:
-			// Reader was closed during datagram send - exit gracefully
 			logger.Debug("Receive loop terminated during datagram send")
 			return
 		}
