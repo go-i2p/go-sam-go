@@ -339,6 +339,12 @@ type BaseSession struct {
 func (bs *BaseSession) Close() error
 ```
 
+#### func (*BaseSession) Conn
+
+```go
+func (bs *BaseSession) Conn() net.Conn
+```
+
 #### func (*BaseSession) From
 
 ```go
