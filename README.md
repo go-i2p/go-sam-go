@@ -5,7 +5,7 @@
 
 A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focused on maintainability and clean architecture. This project is forked from `github.com/go-i2p/sam3` with reorganized code structure.
 
-**WARNING: This is a new package. Streaming works. Repliable datagrams work except for some harmless errors. Raw datagrams kind of work. Primary Sessions, Authenticated Datagrams, and Unauthenticated Datagrams will be supported by I2P 2.10.0**
+**WARNING: This is a new package. Streaming works. Repliable datagrams work except for some harmless errors. Raw datagrams kind of work. Primary Sessions, Authenticated Datagrams, and Unauthenticated Datagrams will be supported by I2P 2.11.0**
 **The API should not change much.**
 **It needs more people looking at it.**
 
