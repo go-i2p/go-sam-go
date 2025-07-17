@@ -54,6 +54,9 @@ func (l *RawListener) Addr() net.Addr {
 	return &RawAddr{addr: l.session.Addr()}
 }
 
+// acceptLoop continuously accepts incoming raw connections in a separate goroutine.
+// This method manages the connection acceptance lifecycle, handles error conditions,
+// and maintains the acceptChan buffer for incoming connections until the listener is closed.
 // acceptLoop continuously accepts incoming raw connections
 func (l *RawListener) acceptLoop() {
 	logger := log.WithField("session_id", l.session.ID())
@@ -93,6 +96,9 @@ func (l *RawListener) acceptLoop() {
 	}
 }
 
+// acceptRawConnection creates a new raw connection for handling incoming datagrams.
+// For raw sessions, this method creates a RawConn that shares the session resources
+// but has its own dedicated reader and writer components for handling the specific connection.
 // acceptRawConnection creates a new raw connection for incoming datagrams
 func (l *RawListener) acceptRawConnection() (*RawConn, error) {
 	logger := log.WithField("session_id", l.session.ID())

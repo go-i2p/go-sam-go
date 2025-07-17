@@ -69,12 +69,17 @@ func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 	return nil
 }
 
+// parseSendResponse parses the RAW STATUS response from the SAM bridge after sending a datagram.
+// It examines the response string to determine if the send operation was successful or failed,
+// and returns appropriate error messages for different failure conditions like unreachable peers,
+// invalid keys, timeouts, and other I2P network errors.
 // parseSendResponse parses the RAW STATUS response
 func (w *RawWriter) parseSendResponse(response string) error {
 	if strings.Contains(response, "RESULT=OK") {
 		return nil
 	}
 
+	// Handle specific error conditions returned by the SAM bridge
 	switch {
 	case strings.Contains(response, "RESULT=CANT_REACH_PEER"):
 		return oops.Errorf("cannot reach peer")
@@ -87,6 +92,7 @@ func (w *RawWriter) parseSendResponse(response string) error {
 	case strings.Contains(response, "RESULT=TIMEOUT"):
 		return oops.Errorf("send timeout")
 	default:
+		// Handle unknown error responses by extracting the result portion
 		if strings.HasPrefix(response, "RAW STATUS RESULT=") {
 			result := strings.TrimSpace(response[18:])
 			return oops.Errorf("send failed: %s", result)

@@ -31,6 +31,8 @@ func (r *RawReader) ReceiveDatagram() (*RawDatagram, error) {
 	}
 }
 
+// Close closes the RawReader and stops its receive loop, cleaning up all associated resources.
+// This method is safe to call multiple times and will not block if the reader is already closed.
 func (r *RawReader) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -72,6 +74,9 @@ func (r *RawReader) Close() error {
 	return nil
 }
 
+// receiveLoop continuously receives incoming raw datagrams in a separate goroutine.
+// This method handles the SAM protocol communication, parses RAW RECEIVED responses,
+// and forwards datagrams to the appropriate channels until the reader is closed.
 // receiveLoop continuously receives incoming raw datagrams
 func (r *RawReader) receiveLoop() {
 	// Fix: Safe session ID retrieval with nil checks
@@ -140,6 +145,9 @@ func (r *RawReader) receiveLoop() {
 	}
 }
 
+// receiveDatagram handles the low-level protocol parsing for incoming raw datagrams.
+// It reads from the SAM connection, parses the RAW RECEIVED response format,
+// and constructs RawDatagram objects with decoded data and address information.
 // receiveDatagram handles the low-level raw datagram reception
 func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 	logger := log.WithField("session_id", r.session.ID())
