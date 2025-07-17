@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 )
 
@@ -77,73 +78,110 @@ func (r *RawReader) Close() error {
 // receiveLoop continuously receives incoming raw datagrams in a separate goroutine.
 // This method handles the SAM protocol communication, parses RAW RECEIVED responses,
 // and forwards datagrams to the appropriate channels until the reader is closed.
-// receiveLoop continuously receives incoming raw datagrams
 func (r *RawReader) receiveLoop() {
-	// Safe session ID retrieval with nil checks for logging
+	logger := r.initializeReceiveLoop()
+	defer r.signalReceiveLoopCompletion()
+
+	if !r.validateSessionForReceive(logger) {
+		return
+	}
+
+	r.runMainReceiveLoop(logger)
+}
+
+// initializeReceiveLoop sets up logging and returns a configured logger for the receive loop.
+func (r *RawReader) initializeReceiveLoop() *logger.Entry {
 	sessionID := "unknown"
 	if r.session != nil && r.session.BaseSession != nil {
 		sessionID = r.session.ID()
 	}
 	logger := log.WithField("session_id", sessionID)
 	logger.Debug("Starting raw receive loop")
+	return logger
+}
 
-	// Signal completion when this loop exits
-	defer func() {
-		select {
-		case r.doneChan <- struct{}{}:
-			// Successfully signaled completion
-		default:
-			// Channel may be closed or blocked - that's okay
-		}
-	}()
+// signalReceiveLoopCompletion signals that the receive loop has completed execution.
+func (r *RawReader) signalReceiveLoopCompletion() {
+	select {
+	case r.doneChan <- struct{}{}:
+		// Successfully signaled completion
+	default:
+		// Channel may be closed or blocked - that's okay
+	}
+}
 
-	// Check session state before starting loop
+// validateSessionForReceive checks if the session is valid for receiving operations.
+func (r *RawReader) validateSessionForReceive(logger *logger.Entry) bool {
 	if r.session == nil {
 		logger.Debug("Raw receive loop terminated - session is nil")
-		return
+		return false
 	}
 
 	r.session.mu.RLock()
-	if r.session.closed || r.session.BaseSession == nil {
-		r.session.mu.RUnlock()
-		logger.Debug("Raw receive loop terminated - session invalid")
-		return
-	}
-	r.session.mu.RUnlock()
+	defer r.session.mu.RUnlock()
 
-	// Main receive loop - continues until reader is closed
+	if r.session.closed || r.session.BaseSession == nil {
+		logger.Debug("Raw receive loop terminated - session invalid")
+		return false
+	}
+
+	return true
+}
+
+// runMainReceiveLoop executes the main receive loop that processes datagrams until closed.
+func (r *RawReader) runMainReceiveLoop(logger *logger.Entry) {
 	for {
-		// Check for closure in a non-blocking way first
-		select {
-		case <-r.closeChan:
-			logger.Debug("Raw receive loop terminated - reader closed")
+		if r.checkForClosure(logger) {
 			return
-		default:
 		}
 
-		// Now perform the blocking read operation
 		datagram, err := r.receiveDatagram()
 		if err != nil {
-			// Use atomic check and send pattern to avoid race
-			select {
-			case r.errorChan <- err:
-				logger.WithError(err).Error("Failed to receive raw datagram")
-			case <-r.closeChan:
-				// Reader was closed during error handling
+			if r.handleReceiveError(err, logger) {
 				return
 			}
 			continue
 		}
 
-		// Send the datagram or handle closure atomically
-		select {
-		case r.recvChan <- datagram:
-			logger.Debug("Successfully received raw datagram")
-		case <-r.closeChan:
-			// Reader was closed during datagram send
+		if r.forwardDatagram(datagram, logger) {
 			return
 		}
 	}
+}
+
+// checkForClosure checks if the reader has been closed in a non-blocking way.
+func (r *RawReader) checkForClosure(logger *logger.Entry) bool {
+	select {
+	case <-r.closeChan:
+		logger.Debug("Raw receive loop terminated - reader closed")
+		return true
+	default:
+		return false
+	}
+}
+
+// handleReceiveError handles errors that occur during datagram reception.
+func (r *RawReader) handleReceiveError(err error, logger *logger.Entry) bool {
+	select {
+	case r.errorChan <- err:
+		logger.WithError(err).Error("Failed to receive raw datagram")
+	case <-r.closeChan:
+		// Reader was closed during error handling
+		return true
+	}
+	return false
+}
+
+// forwardDatagram forwards a received datagram to the receive channel.
+func (r *RawReader) forwardDatagram(datagram *RawDatagram, logger *logger.Entry) bool {
+	select {
+	case r.recvChan <- datagram:
+		logger.Debug("Successfully received raw datagram")
+	case <-r.closeChan:
+		// Reader was closed during datagram send
+		return true
+	}
+	return false
 }
 
 // receiveDatagram handles the low-level protocol parsing for incoming raw datagrams.
