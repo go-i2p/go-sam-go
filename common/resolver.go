@@ -40,30 +40,68 @@ func NewFullSAMResolver(address string) (*SAMResolver, error) {
 func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error) {
 	log.WithField("name", name).Debug("Resolving name")
 
+	if err := sam.sendLookupRequest(name); err != nil {
+		return i2pkeys.I2PAddr(""), err
+	}
+
+	response, err := sam.readLookupResponse()
+	if err != nil {
+		return i2pkeys.I2PAddr(""), err
+	}
+
+	scanner, err := sam.prepareLookupScanner(response)
+	if err != nil {
+		return i2pkeys.I2PAddr(""), err
+	}
+
+	return sam.processLookupResponse(scanner, name)
+}
+
+// sendLookupRequest sends a NAMING LOOKUP request to the SAM connection.
+// It writes the lookup command and handles any connection errors.
+func (sam *SAMResolver) sendLookupRequest(name string) error {
 	if _, err := sam.Conn.Write([]byte("NAMING LOOKUP NAME=" + name + "\r\n")); err != nil {
 		log.WithError(err).Error("Failed to write to SAM connection")
 		sam.Close()
-		return i2pkeys.I2PAddr(""), err
+		return err
 	}
+	return nil
+}
+
+// readLookupResponse reads the response from the SAM connection.
+// It handles reading errors and connection cleanup on failure.
+func (sam *SAMResolver) readLookupResponse() ([]byte, error) {
 	buf := make([]byte, 4096)
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read from SAM connection")
 		sam.Close()
-		return i2pkeys.I2PAddr(""), err
+		return nil, err
 	}
-	if n <= 13 || !strings.HasPrefix(string(buf[:n]), "NAMING REPLY ") {
-		log.Error("Failed to parse SAM response")
-		return i2pkeys.I2PAddr(""), errors.New("Failed to parse.")
-	}
-	s := bufio.NewScanner(bytes.NewReader(buf[13:n]))
-	s.Split(bufio.ScanWords)
+	return buf[:n], nil
+}
 
+// prepareLookupScanner validates the response format and creates a scanner.
+// It ensures the response has the correct "NAMING REPLY" prefix and length.
+func (sam *SAMResolver) prepareLookupScanner(response []byte) (*bufio.Scanner, error) {
+	if len(response) <= 13 || !strings.HasPrefix(string(response), "NAMING REPLY ") {
+		log.Error("Failed to parse SAM response")
+		return nil, errors.New("failed to parse SAM response")
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(response[13:]))
+	scanner.Split(bufio.ScanWords)
+	return scanner, nil
+}
+
+// processLookupResponse processes the scanner tokens and returns the resolved address.
+// It handles different response types and accumulates error messages.
+func (sam *SAMResolver) processLookupResponse(scanner *bufio.Scanner, name string) (i2pkeys.I2PAddr, error) {
 	errStr := ""
-	for s.Scan() {
-		text := s.Text()
+	for scanner.Scan() {
+		text := scanner.Text()
 		log.WithField("text", text).Debug("Parsing SAM response token")
-		// log.Println("SAM3", text)
+
 		if text == SAM_RESULT_OK {
 			continue
 		} else if text == SAM_RESULT_INVALID_KEY {
