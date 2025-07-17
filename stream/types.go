@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"net"
 	"sync"
 	"time"
@@ -26,12 +27,16 @@ type StreamSession struct {
 // It manages incoming connection acceptance and provides thread-safe operations
 // for accepting connections from remote I2P destinations. The listener runs
 // an internal accept loop to handle incoming connections asynchronously.
+// A finalizer is attached to the listener to ensure that the accept loop is
+// cleaned up if the listener is garbage collected without being closed.
 // Example usage: listener, err := session.Listen(); conn, err := listener.Accept()
 type StreamListener struct {
 	session    *StreamSession
 	acceptChan chan *StreamConn
 	errorChan  chan error
 	closeChan  chan struct{}
+	ctx        context.Context
+	cancel     context.CancelFunc
 	closed     bool
 	mu         sync.RWMutex
 }

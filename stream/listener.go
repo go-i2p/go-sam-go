@@ -3,6 +3,7 @@ package stream
 import (
 	"bufio"
 	"net"
+	"runtime"
 	"strings"
 
 	"github.com/go-i2p/i2pkeys"
@@ -59,6 +60,12 @@ func (l *StreamListener) Close() error {
 
 	l.closed = true
 	close(l.closeChan)
+	if l.cancel != nil {
+		l.cancel()
+	}
+
+	// Remove the finalizer to prevent it from running on an already closed listener
+	runtime.SetFinalizer(l, nil)
 
 	logger.Debug("Successfully closed StreamListener")
 	return nil
@@ -80,8 +87,11 @@ func (l *StreamListener) acceptLoop() {
 
 	for {
 		select {
+		case <-l.ctx.Done():
+			logger.Debug("Accept loop terminated - listener closed (context)")
+			return
 		case <-l.closeChan:
-			logger.Debug("Accept loop terminated - listener closed")
+			logger.Debug("Accept loop terminated - listener closed (closeChan)")
 			return
 		default:
 			conn, err := l.acceptConnection()
@@ -96,6 +106,8 @@ func (l *StreamListener) acceptLoop() {
 					// Non-blocking error delivery with fallback to close detection
 					select {
 					case l.errorChan <- err:
+					case <-l.ctx.Done():
+						return
 					case <-l.closeChan:
 						return
 					}
@@ -107,6 +119,9 @@ func (l *StreamListener) acceptLoop() {
 			select {
 			case l.acceptChan <- conn:
 				logger.Debug("Successfully accepted new connection")
+			case <-l.ctx.Done():
+				conn.Close()
+				return
 			case <-l.closeChan:
 				// Close the connection if listener is shutting down
 				conn.Close()

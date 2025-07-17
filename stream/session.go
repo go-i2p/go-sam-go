@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/go-i2p/go-sam-go/common"
@@ -50,6 +51,8 @@ func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options 
 // It initializes a listener with buffered channels for connection handling and starts an internal
 // accept loop to manage incoming connections asynchronously. The listener provides thread-safe
 // operations and properly handles session closure and resource cleanup.
+// A finalizer is set on the listener to ensure that the accept loop is terminated
+// if the listener is garbage collected without being closed.
 // Example usage: listener, err := session.Listen(); conn, err := listener.Accept()
 func (s *StreamSession) Listen() (*StreamListener, error) {
 	s.mu.RLock()
@@ -62,12 +65,22 @@ func (s *StreamSession) Listen() (*StreamListener, error) {
 	logger := log.WithField("id", s.ID())
 	logger.Debug("Creating StreamListener")
 
+	ctx, cancel := context.WithCancel(context.Background())
 	listener := &StreamListener{
 		session:    s,
 		acceptChan: make(chan *StreamConn, 10), // Buffer for incoming connections
 		errorChan:  make(chan error, 1),
 		closeChan:  make(chan struct{}),
+		ctx:        ctx,
+		cancel:     cancel,
 	}
+
+	// Set a finalizer to ensure the listener is closed and the goroutine is cleaned up
+	// This prevents goroutine leaks if the user forgets to call Close()
+	runtime.SetFinalizer(listener, func(l *StreamListener) {
+		logger.Warn("StreamListener garbage collected without being closed, closing now to prevent goroutine leak")
+		l.Close()
+	})
 
 	// Start accepting connections in a goroutine
 	go listener.acceptLoop()
