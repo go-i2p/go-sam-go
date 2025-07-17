@@ -135,21 +135,44 @@ func (l *StreamListener) acceptLoop() {
 func (l *StreamListener) acceptConnection() (*StreamConn, error) {
 	logger := log.WithField("session_id", l.session.ID())
 
-	// Read from the session connection for incoming connection requests
+	response, err := l.readConnectionRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	logger.WithField("response", response).Debug("Received connection request")
+
+	status, dest, err := l.parseConnectionResponse(response)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := l.validateConnectionStatus(status); err != nil {
+		return nil, err
+	}
+
+	if err := l.validateDestination(dest); err != nil {
+		return nil, err
+	}
+
+	return l.createStreamConnection(dest)
+}
+
+// readConnectionRequest reads the incoming connection request from the session.
+func (l *StreamListener) readConnectionRequest() (string, error) {
 	buf := make([]byte, 4096)
 	n, err := l.session.Read(buf)
 	if err != nil {
-		return nil, oops.Errorf("failed to read from session: %w", err)
+		return "", oops.Errorf("failed to read from session: %w", err)
 	}
+	return string(buf[:n]), nil
+}
 
-	response := string(buf[:n])
-	logger.WithField("response", response).Debug("Received connection request")
-
-	// Parse the STREAM STATUS response using a word scanner for robust parsing
+// parseConnectionResponse parses the STREAM STATUS response and extracts status and destination.
+func (l *StreamListener) parseConnectionResponse(response string) (status, dest string, err error) {
 	scanner := bufio.NewScanner(strings.NewReader(response))
 	scanner.Split(bufio.ScanWords)
 
-	var status, dest string
 	for scanner.Scan() {
 		word := scanner.Text()
 		switch {
@@ -158,32 +181,40 @@ func (l *StreamListener) acceptConnection() (*StreamConn, error) {
 		case word == "STATUS":
 			continue
 		case strings.HasPrefix(word, "RESULT="):
-			// Extract the result status from the SAM protocol response
 			status = word[7:]
 		case strings.HasPrefix(word, "DESTINATION="):
-			// Extract the destination address from the SAM protocol response
 			dest = word[12:]
 		}
 	}
+	return status, dest, nil
+}
 
+// validateConnectionStatus checks if the connection status indicates success.
+func (l *StreamListener) validateConnectionStatus(status string) error {
 	if status != "OK" {
-		return nil, oops.Errorf("connection failed with status: %s", status)
+		return oops.Errorf("connection failed with status: %s", status)
 	}
+	return nil
+}
 
+// validateDestination ensures that a destination address was provided in the response.
+func (l *StreamListener) validateDestination(dest string) error {
 	if dest == "" {
-		return nil, oops.Errorf("no destination in connection request")
+		return oops.Errorf("no destination in connection request")
 	}
+	return nil
+}
 
-	// Parse the remote destination
+// createStreamConnection creates a new StreamConn from the parsed destination.
+func (l *StreamListener) createStreamConnection(dest string) (*StreamConn, error) {
 	remoteAddr, err := i2pkeys.NewI2PAddrFromString(dest)
 	if err != nil {
 		return nil, oops.Errorf("failed to parse remote address: %w", err)
 	}
 
-	// Create a new connection object
 	streamConn := &StreamConn{
 		session: l.session,
-		conn:    l.session.BaseSession, // Use the session connection
+		conn:    l.session.BaseSession,
 		laddr:   l.session.Addr(),
 		raddr:   remoteAddr,
 	}
