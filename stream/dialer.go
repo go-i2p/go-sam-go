@@ -51,35 +51,64 @@ func (d *StreamDialer) DialContext(ctx context.Context, destination string) (*St
 // and proper resource management for streaming connections over I2P.
 // Example usage: conn, err := dialer.DialI2PContext(ctx, addr)
 func (d *StreamDialer) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (*StreamConn, error) {
-	// Check session state before starting dial operation
-	d.session.mu.RLock()
-	if d.session.closed {
-		d.session.mu.RUnlock()
-		return nil, oops.Errorf("session is closed")
+	if err := d.validateSessionState(); err != nil {
+		return nil, err
 	}
-	d.session.mu.RUnlock()
 
-	logger := log.WithFields(logrus.Fields{
-		"session_id":  d.session.ID(),
-		"destination": addr.Base32(),
-	})
-	logger.Debug("Dialing I2P destination")
+	d.logDialAttempt(addr)
 
-	// Create a new SAM connection for this dial to avoid interference with session
-	sam, err := common.NewSAM(d.session.sam.Sam())
+	sam, err := d.createSAMConnection()
 	if err != nil {
-		logger.WithError(err).Error("Failed to create SAM connection")
-		return nil, oops.Errorf("failed to create SAM connection: %w", err)
+		return nil, err
 	}
 
-	// Set up timeout if specified, preserving existing context
-	var cancel context.CancelFunc
-	if d.timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, d.timeout)
+	ctx, cancel := d.setupTimeout(ctx)
+	if cancel != nil {
 		defer cancel()
 	}
 
-	// Perform the dial with timeout using goroutine and channels for cancellation
+	return d.performAsyncDial(ctx, sam, addr)
+}
+
+// validateSessionState checks if the session is valid and ready for dialing.
+func (d *StreamDialer) validateSessionState() error {
+	d.session.mu.RLock()
+	defer d.session.mu.RUnlock()
+
+	if d.session.closed {
+		return oops.Errorf("session is closed")
+	}
+	return nil
+}
+
+// logDialAttempt logs the dial attempt with appropriate context fields.
+func (d *StreamDialer) logDialAttempt(addr i2pkeys.I2PAddr) {
+	log.WithFields(logrus.Fields{
+		"session_id":  d.session.ID(),
+		"destination": addr.Base32(),
+	}).Debug("Dialing I2P destination")
+}
+
+// createSAMConnection creates a new SAM connection for the dial operation.
+func (d *StreamDialer) createSAMConnection() (*common.SAM, error) {
+	sam, err := common.NewSAM(d.session.sam.Sam())
+	if err != nil {
+		log.WithError(err).Error("Failed to create SAM connection")
+		return nil, oops.Errorf("failed to create SAM connection: %w", err)
+	}
+	return sam, nil
+}
+
+// setupTimeout configures context timeout if specified in the dialer.
+func (d *StreamDialer) setupTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if d.timeout > 0 {
+		return context.WithTimeout(ctx, d.timeout)
+	}
+	return ctx, nil
+}
+
+// performAsyncDial executes the dial operation asynchronously with proper cancellation support.
+func (d *StreamDialer) performAsyncDial(ctx context.Context, sam *common.SAM, addr i2pkeys.I2PAddr) (*StreamConn, error) {
 	connChan := make(chan *StreamConn, 1)
 	errChan := make(chan error, 1)
 
@@ -92,18 +121,22 @@ func (d *StreamDialer) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr)
 		connChan <- conn
 	}()
 
-	// Handle results with proper timeout and cancellation support
+	return d.handleDialResult(ctx, sam, connChan, errChan)
+}
+
+// handleDialResult manages the result of the dial operation with timeout and cancellation support.
+func (d *StreamDialer) handleDialResult(ctx context.Context, sam *common.SAM, connChan chan *StreamConn, errChan chan error) (*StreamConn, error) {
 	select {
 	case conn := <-connChan:
-		logger.Debug("Successfully established connection")
+		log.Debug("Successfully established connection")
 		return conn, nil
 	case err := <-errChan:
 		sam.Close()
-		logger.WithError(err).Error("Failed to establish connection")
+		log.WithError(err).Error("Failed to establish connection")
 		return nil, err
 	case <-ctx.Done():
 		sam.Close()
-		logger.Error("Connection attempt timed out")
+		log.Error("Connection attempt timed out")
 		return nil, oops.Errorf("connection attempt timed out: %w", ctx.Err())
 	}
 }
