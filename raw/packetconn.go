@@ -19,6 +19,7 @@ func (c *RawConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	}
 	c.mu.RUnlock()
 
+	// Receive a datagram from the reader
 	datagram, err := c.reader.ReceiveDatagram()
 	if err != nil {
 		return 0, nil, err
@@ -49,6 +50,7 @@ func (c *RawConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 		return 0, oops.Errorf("address must be a RawAddr")
 	}
 
+	// Send the datagram using the writer
 	err = c.writer.SendDatagram(p, i2pAddr.addr)
 	if err != nil {
 		return 0, err
@@ -94,10 +96,11 @@ func (c *RawConn) LocalAddr() net.Addr {
 }
 
 // SetDeadline sets the read and write deadlines for the connection.
-// This method implements the net.PacketConn interface by applying the deadline
+// This method implements the net.PacketConn interface and applies the deadline
 // to both read and write operations through separate deadline methods.
 // Example usage: conn.SetDeadline(time.Now().Add(30*time.Second))
 func (c *RawConn) SetDeadline(t time.Time) error {
+	// Apply the deadline to both read and write operations
 	if err := c.SetReadDeadline(t); err != nil {
 		return err
 	}
@@ -128,29 +131,43 @@ func (c *RawConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-// Read implements net.Conn by wrapping ReadFrom
+// Read implements net.Conn by wrapping ReadFrom for stream-like operations.
+// This method reads data and updates the remote address from the sender,
+// providing compatibility with net.Conn interface expectations.
+// Example usage: n, err := conn.Read(buffer)
 func (c *RawConn) Read(b []byte) (n int, err error) {
+	// Perform the ReadFrom operation
 	n, addr, err := c.ReadFrom(b)
+	// Update the remote address if one was received
 	if addr != nil {
 		c.remoteAddr = &addr.(*RawAddr).addr
 	}
 	return n, err
 }
 
-// RemoteAddr returns the remote address of the connection
+// RemoteAddr returns the remote address of the connection.
+// This method implements the net.Conn interface and returns the address of the last
+// sender if available, or nil if no remote address has been established.
+// Example usage: addr := conn.RemoteAddr()
 func (c *RawConn) RemoteAddr() net.Addr {
+	// Return the remote address if one has been set
 	if c.remoteAddr != nil {
 		return &RawAddr{addr: *c.remoteAddr}
 	}
 	return nil
 }
 
-// Write implements net.Conn by wrapping WriteTo
+// Write implements net.Conn by wrapping WriteTo for stream-like operations.
+// This method requires a remote address to be set through prior Read operations
+// and provides compatibility with net.Conn interface expectations.
+// Example usage: n, err := conn.Write(data)
 func (c *RawConn) Write(b []byte) (n int, err error) {
+	// Check if a remote address has been set
 	if c.remoteAddr == nil {
 		return 0, oops.Errorf("no remote address set, use WriteTo or Read first")
 	}
 
+	// Use the stored remote address for writing
 	addr := &RawAddr{addr: *c.remoteAddr}
 	return c.WriteTo(b, addr)
 }

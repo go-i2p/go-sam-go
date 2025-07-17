@@ -182,7 +182,7 @@ func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 	response := string(buf[:n])
 	logger.WithField("response", response).Debug("Received raw datagram data")
 
-	// Parse the RAW RECEIVED response
+	// Parse the RAW RECEIVED response using a scanner
 	scanner := bufio.NewScanner(strings.NewReader(response))
 	scanner.Split(bufio.ScanWords)
 
@@ -195,6 +195,7 @@ func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 		case word == "RECEIVED":
 			continue
 		case strings.HasPrefix(word, "DESTINATION="):
+			// Extract source destination from the response
 			source = word[12:]
 		case strings.HasPrefix(word, "SIZE="):
 			continue // We'll get the actual data size from the payload
@@ -208,6 +209,7 @@ func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 		}
 	}
 
+	// Validate that we have both source and data
 	if source == "" {
 		return nil, oops.Errorf("no source in raw datagram")
 	}
@@ -216,19 +218,19 @@ func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 		return nil, oops.Errorf("no data in raw datagram")
 	}
 
-	// Parse the source destination
+	// Parse the source destination into an I2P address
 	sourceAddr, err := i2pkeys.NewI2PAddrFromString(source)
 	if err != nil {
 		return nil, oops.Errorf("failed to parse source address: %w", err)
 	}
 
-	// Decode the base64 data
+	// Decode the base64 data into bytes
 	decodedData, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return nil, oops.Errorf("failed to decode raw datagram data: %w", err)
 	}
 
-	// Create the raw datagram
+	// Create the raw datagram with decoded data and address information
 	datagram := &RawDatagram{
 		Data:   decodedData,
 		Source: sourceAddr,
