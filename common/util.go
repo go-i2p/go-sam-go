@@ -1,6 +1,8 @@
 package common
 
 import (
+	cryptoRand "crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"net"
@@ -73,15 +75,16 @@ func ExtractDest(input string) string {
 	return dest
 }
 
-var (
-	randSource = rand.NewSource(time.Now().UnixNano())
-	randGen    = rand.New(randSource)
-)
-
 func RandPort() (portNumber string, err error) {
 	maxAttempts := 30
 	for range maxAttempts {
-		p := randGen.Intn(55534) + 10000
+		// Use crypto/rand for thread-safe random generation
+		var buf [4]byte
+		if _, err := cryptoRand.Read(buf[:]); err != nil {
+			return "", oops.Wrapf(err, "failed to generate random bytes")
+		}
+		// Convert to uint32 and scale to port range (10000-65534)
+		p := int(binary.BigEndian.Uint32(buf[:]))%55534 + 10000
 		port := strconv.Itoa(p)
 		if l, e := net.Listen("tcp", net.JoinHostPort("localhost", port)); e != nil {
 			continue
