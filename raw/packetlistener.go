@@ -31,7 +31,7 @@ func (l *RawListener) Close() error {
 	defer l.mu.Unlock()
 
 	if l.closed {
-		return nil
+		return oops.Errorf("listener is already closed")
 	}
 
 	logger := log.WithField("session_id", l.session.ID())

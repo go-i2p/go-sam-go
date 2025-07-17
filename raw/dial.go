@@ -17,6 +17,11 @@ func (rs *RawSession) Dial(destination string) (net.PacketConn, error) {
 
 // DialTimeout establishes a raw connection with a timeout
 func (rs *RawSession) DialTimeout(destination string, timeout time.Duration) (net.PacketConn, error) {
+	// Handle zero or negative timeout - no timeout should be applied
+	if timeout <= 0 {
+		return rs.DialContext(context.Background(), destination)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return rs.DialContext(ctx, destination)
@@ -24,6 +29,13 @@ func (rs *RawSession) DialTimeout(destination string, timeout time.Duration) (ne
 
 // DialContext establishes a raw connection with context support
 func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error) {
+	// Check if context is cancelled before starting
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	// Validate session state first
 	rs.mu.RLock()
 	if rs.closed {
@@ -65,6 +77,11 @@ func (rs *RawSession) DialI2P(addr i2pkeys.I2PAddr) (net.PacketConn, error) {
 
 // DialI2PTimeout establishes a raw connection to an I2P address with timeout
 func (rs *RawSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Duration) (net.PacketConn, error) {
+	// Handle zero or negative timeout - no timeout should be applied
+	if timeout <= 0 {
+		return rs.DialI2PContext(context.Background(), addr)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return rs.DialI2PContext(ctx, addr)
@@ -72,6 +89,13 @@ func (rs *RawSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Duration
 
 // DialI2PContext establishes a raw connection to an I2P address with context support
 func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (net.PacketConn, error) {
+	// Check if context is cancelled before starting
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	// Validate session state first
 	rs.mu.RLock()
 	if rs.closed {

@@ -134,9 +134,9 @@ func (bs *BaseSession) SetWriteDeadline(t time.Time) error {
 }
 
 func (bs *BaseSession) From() string {
-	return bs.SAM.FromPort()
+	return bs.SAM.SAMEmit.I2PConfig.Fromport
 }
 
 func (bs *BaseSession) To() string {
-	return bs.SAM.ToPort()
+	return bs.SAM.SAMEmit.I2PConfig.Toport
 }
