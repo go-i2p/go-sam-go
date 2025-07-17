@@ -14,6 +14,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// IgnorePortError filters out "missing port in address" errors for convenience.
+// This function is used when parsing addresses that may not include port numbers.
+// Returns nil if the error is about missing port, otherwise returns the original error.
 func IgnorePortError(err error) error {
 	if err == nil {
 		return nil
@@ -25,6 +28,9 @@ func IgnorePortError(err error) error {
 	return err
 }
 
+// SplitHostPort separates host and port from a combined address string.
+// Unlike net.SplitHostPort, this function handles addresses without ports gracefully.
+// Returns host, port as strings, and error. Port defaults to "0" if not specified.
 func SplitHostPort(hostport string) (string, string, error) {
 	host, port, err := net.SplitHostPort(hostport)
 	if err != nil {
@@ -41,6 +47,9 @@ func SplitHostPort(hostport string) (string, string, error) {
 	return host, port, nil
 }
 
+// ExtractPairString extracts the value from a key=value pair in a space-separated string.
+// Searches for the specified key prefix and returns the associated value.
+// Returns empty string if the key is not found or has no value.
 func ExtractPairString(input, value string) string {
 	log.WithFields(logrus.Fields{"input": input, "value": value}).Debug("ExtractPairString called")
 	parts := strings.Split(input, " ")
@@ -58,6 +67,9 @@ func ExtractPairString(input, value string) string {
 	return ""
 }
 
+// ExtractPairInt extracts an integer value from a key=value pair in a space-separated string.
+// Uses ExtractPairString internally and converts the result to integer.
+// Returns 0 if the key is not found or the value cannot be converted to integer.
 func ExtractPairInt(input, value string) int {
 	rv, err := strconv.Atoi(ExtractPairString(input, value))
 	if err != nil {
@@ -68,6 +80,9 @@ func ExtractPairInt(input, value string) int {
 	return rv
 }
 
+// ExtractDest extracts the destination address from a SAM protocol response.
+// Takes the first space-separated token from the input string as the destination.
+// Used for parsing SAM session creation responses and connection messages.
 func ExtractDest(input string) string {
 	log.WithField("input", input).Debug("ExtractDest called")
 	dest := strings.Split(input, " ")[0]
@@ -75,6 +90,9 @@ func ExtractDest(input string) string {
 	return dest
 }
 
+// RandPort generates a random available port number for local testing.
+// Attempts to find a port that is available for both TCP and UDP connections.
+// Returns the port as a string or an error if no available port is found after 30 attempts.
 func RandPort() (portNumber string, err error) {
 	maxAttempts := 30
 	for range maxAttempts {

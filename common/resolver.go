@@ -9,6 +9,9 @@ import (
 	"github.com/go-i2p/i2pkeys"
 )
 
+// NewSAMResolver creates a new SAMResolver using an existing SAM instance.
+// This allows sharing a single SAM connection for both session management and address resolution.
+// Returns a configured resolver ready for performing I2P address lookups.
 func NewSAMResolver(parent *SAM) (*SAMResolver, error) {
 	log.Debug("Creating new SAMResolver from existing SAM instance")
 	var s SAMResolver
@@ -16,6 +19,9 @@ func NewSAMResolver(parent *SAM) (*SAMResolver, error) {
 	return &s, nil
 }
 
+// NewFullSAMResolver creates a complete SAMResolver with its own SAM connection.
+// Establishes a new connection to the specified SAM bridge address for address resolution.
+// Returns a fully configured resolver or an error if connection fails.
 func NewFullSAMResolver(address string) (*SAMResolver, error) {
 	log.WithField("address", address).Debug("Creating new full SAMResolver")
 	var s SAMResolver

@@ -335,38 +335,56 @@ func (f *I2PConfig) formatConfigPair(direction, property string, value interface
 	return fmt.Sprintf("%s.%s=%s", direction, property, valueStr)
 }
 
+// InboundLength returns the inbound tunnel length configuration string.
+// Specifies the desired length of the inbound tunnel (number of hops).
 func (f *I2PConfig) InboundLength() string {
 	return f.formatConfigPair("inbound", "length", f.InLength)
 }
 
+// OutboundLength returns the outbound tunnel length configuration string.
+// Specifies the desired length of the outbound tunnel (number of hops).
 func (f *I2PConfig) OutboundLength() string {
 	return f.formatConfigPair("outbound", "length", f.OutLength)
 }
 
+// InboundLengthVariance returns the inbound tunnel length variance configuration string.
+// Controls the randomness in inbound tunnel hop count for improved anonymity.
 func (f *I2PConfig) InboundLengthVariance() string {
 	return f.formatConfigPair("inbound", "lengthVariance", f.InVariance)
 }
 
+// OutboundLengthVariance returns the outbound tunnel length variance configuration string.
+// Controls the randomness in outbound tunnel hop count for improved anonymity.
 func (f *I2PConfig) OutboundLengthVariance() string {
 	return f.formatConfigPair("outbound", "lengthVariance", f.OutVariance)
 }
 
+// InboundBackupQuantity returns the inbound tunnel backup quantity configuration string.
+// Specifies the number of backup tunnels to maintain for inbound connections.
 func (f *I2PConfig) InboundBackupQuantity() string {
 	return f.formatConfigPair("inbound", "backupQuantity", f.InBackupQuantity)
 }
 
+// OutboundBackupQuantity returns the outbound tunnel backup quantity configuration string.
+// Specifies the number of backup tunnels to maintain for outbound connections.
 func (f *I2PConfig) OutboundBackupQuantity() string {
 	return f.formatConfigPair("outbound", "backupQuantity", f.OutBackupQuantity)
 }
 
+// InboundQuantity returns the inbound tunnel quantity configuration string.
+// Specifies the number of parallel inbound tunnels to maintain for load balancing.
 func (f *I2PConfig) InboundQuantity() string {
 	return f.formatConfigPair("inbound", "quantity", f.InQuantity)
 }
 
+// OutboundQuantity returns the outbound tunnel quantity configuration string.
+// Specifies the number of parallel outbound tunnels to maintain for load balancing.
 func (f *I2PConfig) OutboundQuantity() string {
 	return f.formatConfigPair("outbound", "quantity", f.OutQuantity)
 }
 
+// UsingCompression returns the compression configuration string for I2P streams.
+// Enables or disables data compression to reduce bandwidth usage at the cost of CPU overhead.
 func (f *I2PConfig) UsingCompression() string {
 	return f.formatConfigPair("i2cp", "useCompression", f.UseCompression)
 }
@@ -451,6 +469,9 @@ func (f *I2PConfig) LeaseSetEncryptionType() string {
 	return f.formatLeaseSetEncryptionType(f.LeaseSetEncryption)
 }
 
+// NewConfig creates a new I2PConfig instance with default values and applies functional options.
+// Returns a configured instance ready for use in session creation or an error if any option fails.
+// Example: config, err := NewConfig(SetInLength(4), SetOutLength(4))
 func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error) {
 	// Initialize with struct literal containing only non-zero defaults
 	// Go automatically zero-initializes all other fields

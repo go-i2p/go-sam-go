@@ -57,6 +57,8 @@ type I2PConfig struct {
 	AccessList     []string
 }
 
+// SAMEmit handles SAM protocol message generation and configuration.
+// It embeds I2PConfig to provide access to all tunnel and session configuration options.
 type SAMEmit struct {
 	I2PConfig
 }
@@ -73,6 +75,8 @@ type SAM struct {
 	Context context.Context
 }
 
+// SAMResolver provides I2P address resolution services through SAM protocol.
+// It maintains a connection to the SAM bridge for performing address lookups.
 type SAMResolver struct {
 	*SAM
 }
@@ -88,6 +92,9 @@ func (opts Options) AsList() (ls []string) {
 	return
 }
 
+// Session represents a generic I2P session interface for different connection types.
+// It extends net.Conn with I2P-specific functionality for session identification and key management.
+// All session implementations (stream, datagram, raw) must implement this interface.
 type Session interface {
 	net.Conn
 	ID() string
@@ -96,6 +103,9 @@ type Session interface {
 	// Add other session methods as needed
 }
 
+// BaseSession provides common functionality for all I2P session types.
+// It implements the Session interface and serves as the foundation for stream, datagram, and raw sessions.
+// Contains connection management, key handling, and basic I/O operations.
 type BaseSession struct {
 	id   string
 	conn net.Conn
@@ -103,40 +113,70 @@ type BaseSession struct {
 	SAM  SAM
 }
 
+// Conn returns the underlying network connection for the session.
+// This provides access to the raw connection for advanced operations.
 func (bs *BaseSession) Conn() net.Conn {
 	return bs.conn
 }
 
-func (bs *BaseSession) ID() string                  { return bs.id }
-func (bs *BaseSession) Keys() i2pkeys.I2PKeys       { return bs.keys }
-func (bs *BaseSession) Read(b []byte) (int, error)  { return bs.conn.Read(b) }
-func (bs *BaseSession) Write(b []byte) (int, error) { return bs.conn.Write(b) }
-func (bs *BaseSession) Close() error                { return bs.conn.Close() }
+// ID returns the unique session identifier used by the SAM bridge.
+// This identifier is used to distinguish between multiple sessions on the same connection.
+func (bs *BaseSession) ID() string { return bs.id }
 
+// Keys returns the I2P cryptographic keys associated with this session.
+// These keys define the session's I2P destination and identity.
+func (bs *BaseSession) Keys() i2pkeys.I2PKeys { return bs.keys }
+
+// Read reads data from the session connection into the provided buffer.
+// Implements the io.Reader interface for standard Go I/O operations.
+func (bs *BaseSession) Read(b []byte) (int, error) { return bs.conn.Read(b) }
+
+// Write writes data from the buffer to the session connection.
+// Implements the io.Writer interface for standard Go I/O operations.
+func (bs *BaseSession) Write(b []byte) (int, error) { return bs.conn.Write(b) }
+
+// Close closes the session connection and releases associated resources.
+// Implements the io.Closer interface for proper resource cleanup.
+func (bs *BaseSession) Close() error { return bs.conn.Close() }
+
+// LocalAddr returns the local network address of the session connection.
+// Implements the net.Conn interface for network address information.
 func (bs *BaseSession) LocalAddr() net.Addr {
 	return bs.conn.LocalAddr()
 }
 
+// RemoteAddr returns the remote network address of the session connection.
+// Implements the net.Conn interface for network address information.
 func (bs *BaseSession) RemoteAddr() net.Addr {
 	return bs.conn.RemoteAddr()
 }
 
+// SetDeadline sets read and write deadlines for the session connection.
+// Implements the net.Conn interface for timeout control.
 func (bs *BaseSession) SetDeadline(t time.Time) error {
 	return bs.conn.SetDeadline(t)
 }
 
+// SetReadDeadline sets the read deadline for the session connection.
+// Implements the net.Conn interface for read timeout control.
 func (bs *BaseSession) SetReadDeadline(t time.Time) error {
 	return bs.conn.SetReadDeadline(t)
 }
 
+// SetWriteDeadline sets the write deadline for the session connection.
+// Implements the net.Conn interface for write timeout control.
 func (bs *BaseSession) SetWriteDeadline(t time.Time) error {
 	return bs.conn.SetWriteDeadline(t)
 }
 
+// From returns the configured source port for the session.
+// Used in port-based session configurations for service identification.
 func (bs *BaseSession) From() string {
 	return bs.SAM.SAMEmit.I2PConfig.Fromport
 }
 
+// To returns the configured destination port for the session.
+// Used in port-based session configurations for service identification.
 func (bs *BaseSession) To() string {
 	return bs.SAM.SAMEmit.I2PConfig.Toport
 }

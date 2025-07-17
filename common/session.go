@@ -18,6 +18,11 @@ func (sam SAM) NewGenericSession(style, id string, keys i2pkeys.I2PKeys, extras 
 	return sam.NewGenericSessionWithSignature(style, id, keys, SIG_EdDSA_SHA512_Ed25519, extras)
 }
 
+// Creates a new session with the style of either "STREAM", "DATAGRAM" or "RAW",
+// for a new I2P tunnel with name id, using the cypher keys specified, with the
+// I2CP/streaminglib-options as specified. Extra arguments can be specified by
+// setting extra to something else than []string{}.
+// This sam3 instance is now a session
 func (sam SAM) NewGenericSessionWithSignature(style, id string, keys i2pkeys.I2PKeys, sigType string, extras []string) (Session, error) {
 	log.WithFields(logrus.Fields{"style": style, "id": id, "sigType": sigType}).Debug("Creating new generic session with signature")
 	return sam.NewGenericSessionWithSignatureAndPorts(style, id, "0", "0", keys, sigType, extras)

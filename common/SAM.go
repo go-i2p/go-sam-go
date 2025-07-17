@@ -12,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Keys retrieves the I2P destination keys associated with this SAM instance.
+// Returns a pointer to the keys used for this SAM session's I2P identity.
 func (sam *SAM) Keys() (k *i2pkeys.I2PKeys) {
 	// TODO: copy them?
 	log.Debug("Retrieving SAM keys")

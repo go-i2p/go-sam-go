@@ -279,6 +279,8 @@ func SetCompress(b bool) func(*SAMEmit) error {
 	}
 }
 
+// SetFastRecieve enables or disables fast receive mode for improved performance.
+// When enabled, allows bypassing some protocol overhead for faster data transmission.
 // SetFastRecieve tells clients to use compression
 func SetFastRecieve(b bool) func(*SAMEmit) error {
 	return func(c *SAMEmit) error {
