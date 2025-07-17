@@ -96,28 +96,58 @@ func ExtractDest(input string) string {
 func RandPort() (portNumber string, err error) {
 	maxAttempts := 30
 	for range maxAttempts {
-		// Use crypto/rand for thread-safe random generation
-		var buf [4]byte
-		if _, err := cryptoRand.Read(buf[:]); err != nil {
-			return "", oops.Wrapf(err, "failed to generate random bytes")
+		port, err := generateRandomPort()
+		if err != nil {
+			return "", err
 		}
-		// Convert to uint32 and scale to port range (10000-65534)
-		p := int(binary.BigEndian.Uint32(buf[:]))%55534 + 10000
-		port := strconv.Itoa(p)
-		if l, e := net.Listen("tcp", net.JoinHostPort("localhost", port)); e != nil {
-			continue
-		} else {
-			defer l.Close()
-			if l, e := net.Listen("udp", net.JoinHostPort("localhost", port)); e != nil {
-				continue
-			} else {
-				defer l.Close()
-				return strconv.Itoa(l.Addr().(*net.UDPAddr).Port), nil
-			}
+
+		if isPortAvailable(port) {
+			return port, nil
 		}
 	}
 
 	return "", oops.Errorf("unable to find a pair of available tcp and udp ports in %v attempts", maxAttempts)
+}
+
+// generateRandomPort creates a random port number in the range 10000-65534.
+// Uses crypto/rand for thread-safe random generation.
+func generateRandomPort() (string, error) {
+	var buf [4]byte
+	if _, err := cryptoRand.Read(buf[:]); err != nil {
+		return "", oops.Wrapf(err, "failed to generate random bytes")
+	}
+
+	// Convert to uint32 and scale to port range (10000-65534)
+	p := int(binary.BigEndian.Uint32(buf[:]))%55534 + 10000
+	return strconv.Itoa(p), nil
+}
+
+// isPortAvailable checks if a port is available for both TCP and UDP connections.
+// Returns true if the port can be bound on both protocols, false otherwise.
+func isPortAvailable(port string) bool {
+	return isTCPPortAvailable(port) && isUDPPortAvailable(port)
+}
+
+// isTCPPortAvailable checks if a TCP port is available for binding.
+// Returns true if the port can be bound, false otherwise.
+func isTCPPortAvailable(port string) bool {
+	l, err := net.Listen("tcp", net.JoinHostPort("localhost", port))
+	if err != nil {
+		return false
+	}
+	defer l.Close()
+	return true
+}
+
+// isUDPPortAvailable checks if a UDP port is available for binding.
+// Returns true if the port can be bound, false otherwise.
+func isUDPPortAvailable(port string) bool {
+	l, err := net.Listen("udp", net.JoinHostPort("localhost", port))
+	if err != nil {
+		return false
+	}
+	defer l.Close()
+	return true
 }
 
 // generateRandomTunnelName creates a random 12-character tunnel name using lowercase letters.
