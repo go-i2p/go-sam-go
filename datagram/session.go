@@ -52,6 +52,7 @@ func (s *DatagramSession) NewReader() *DatagramReader {
 		doneChan:  make(chan struct{}, 1),
 		closed:    false,
 		mu:        sync.RWMutex{},
+		closeOnce: sync.Once{},
 	}
 }
 

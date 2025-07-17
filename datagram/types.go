@@ -26,6 +26,7 @@ type DatagramReader struct {
 	doneChan  chan struct{}
 	closed    bool
 	mu        sync.RWMutex
+	closeOnce sync.Once
 }
 
 // DatagramWriter handles outgoing datagram transmission

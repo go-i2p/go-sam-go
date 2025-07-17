@@ -42,8 +42,10 @@ func (r *DatagramReader) Close() error {
 
 	r.closed = true
 
-	// Signal termination to receiveLoop
-	close(r.closeChan)
+	// Use sync.Once to ensure channels are closed only once
+	r.closeOnce.Do(func() {
+		close(r.closeChan)
+	})
 
 	// Wait for receiveLoop to signal completion with shorter timeout
 	select {
@@ -54,66 +56,28 @@ func (r *DatagramReader) Close() error {
 		logger.Warn("Timeout waiting for receive loop to stop, forcing cleanup")
 	}
 
-	// Force close channels to prevent goroutine leaks
-	r.safeCloseChannel()
-
 	logger.Debug("Successfully closed DatagramReader")
 	return nil
 }
 
 // Improved channel closing with better error handling
-func (r *DatagramReader) safeCloseChannel() {
-	// Use defer to ensure recovery from any panics
-	defer func() {
-		if recover() != nil {
-			// Channels already closed - expected in concurrent scenarios
-		}
-	}()
-
-	// Close done channel first with protection
-	select {
-	case <-r.doneChan:
-		// Already closed or received signal
-	default:
-		// Try to close, but protect against concurrent closure
-		select {
-		case r.doneChan <- struct{}{}:
-			// Successfully signaled
-		default:
-			// Channel full or closed, close it
-			close(r.doneChan)
-		}
-	}
-
-	// Close data channels with protection against double-close
-	func() {
-		defer func() { recover() }()
-		close(r.recvChan)
-	}()
-
-	func() {
-		defer func() { recover() }()
-		close(r.errorChan)
-	}()
-}
-
 func (r *DatagramReader) receiveLoop() {
 	logger := log.WithField("session_id", r.session.ID())
 	logger.Debug("Starting receive loop")
 
 	// Ensure doneChan is properly signaled when loop exits
 	defer func() {
-		// Use non-blocking send with recovery to prevent panics
-		defer func() {
-			if recover() != nil {
-				// doneChan already closed or other error - ignore
-			}
-		}()
+		// Use sync.Once to ensure channels are closed only once
+		r.closeOnce.Do(func() {
+			close(r.recvChan)
+			close(r.errorChan)
+		})
 
+		// Signal completion
 		select {
 		case r.doneChan <- struct{}{}:
-		case <-time.After(100 * time.Millisecond):
-			// Timeout on done signal - continue cleanup anyway
+		default:
+			// Channel might be full or closed, ignore
 		}
 		logger.Debug("Receive loop goroutine terminated")
 	}()
