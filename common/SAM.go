@@ -127,21 +127,63 @@ func (sam *SAM) saveKeysToFile(keys i2pkeys.I2PKeys, fname string) error {
 // desination (the address) that anyone can send messages to.
 func (sam *SAM) NewKeys(sigType ...string) (i2pkeys.I2PKeys, error) {
 	log.WithField("sigType", sigType).Debug("Generating new keys")
-	sigtmp := ""
+
+	sigTypeStr := sam.prepareSigType(sigType)
+
+	if err := sam.sendDestGenerateCommand(sigTypeStr); err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+
+	response, err := sam.readKeyGenerationResponse()
+	if err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+
+	pub, priv, err := sam.parseKeyResponse(response)
+	if err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+
+	log.Debug("Successfully generated new keys")
+	return i2pkeys.NewKeys(i2pkeys.I2PAddr(pub), priv), nil
+}
+
+// prepareSigType extracts the signature type from the input parameters.
+// It returns the first signature type if provided, otherwise returns an empty string.
+func (sam *SAM) prepareSigType(sigType []string) string {
 	if len(sigType) > 0 {
-		sigtmp = sigType[0]
+		return sigType[0]
 	}
-	if _, err := sam.Conn.Write([]byte("DEST GENERATE " + sigtmp + "\n")); err != nil {
+	return ""
+}
+
+// sendDestGenerateCommand sends the DEST GENERATE command to the SAM connection.
+// It constructs and transmits the command with the specified signature type.
+func (sam *SAM) sendDestGenerateCommand(sigType string) error {
+	command := "DEST GENERATE " + sigType + "\n"
+	if _, err := sam.Conn.Write([]byte(command)); err != nil {
 		log.WithError(err).Error("Failed to write DEST GENERATE command")
-		return i2pkeys.I2PKeys{}, oops.Errorf("error with writing in SAM: %w", err)
+		return oops.Errorf("error with writing in SAM: %w", err)
 	}
+	return nil
+}
+
+// readKeyGenerationResponse reads the response from the SAM connection.
+// It allocates a buffer and reads the response data for key generation.
+func (sam *SAM) readKeyGenerationResponse() ([]byte, error) {
 	buf := make([]byte, 8192)
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read SAM response for key generation")
-		return i2pkeys.I2PKeys{}, oops.Errorf("error with reading in SAM: %w", err)
+		return nil, oops.Errorf("error with reading in SAM: %w", err)
 	}
-	s := bufio.NewScanner(bytes.NewReader(buf[:n]))
+	return buf[:n], nil
+}
+
+// parseKeyResponse parses the SAM response to extract public and private keys.
+// It scans the response tokens and extracts the PUB and PRIV key values.
+func (sam *SAM) parseKeyResponse(response []byte) (string, string, error) {
+	s := bufio.NewScanner(bytes.NewReader(response))
 	s.Split(bufio.ScanWords)
 
 	var pub, priv string
@@ -157,11 +199,10 @@ func (sam *SAM) NewKeys(sigType ...string) (i2pkeys.I2PKeys, error) {
 			priv = text[5:]
 		} else {
 			log.Error("Failed to parse keys from SAM response")
-			return i2pkeys.I2PKeys{}, oops.Errorf("Failed to parse keys.")
+			return "", "", oops.Errorf("Failed to parse keys.")
 		}
 	}
-	log.Debug("Successfully generated new keys")
-	return i2pkeys.NewKeys(i2pkeys.I2PAddr(pub), priv), nil
+	return pub, priv, nil
 }
 
 // Performs a lookup, probably this order: 1) routers known addresses, cached
