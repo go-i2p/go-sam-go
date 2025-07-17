@@ -12,17 +12,29 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Dial establishes a connection to the specified destination
+// Dial establishes a connection to the specified destination using the default context.
+// This method resolves the destination string and establishes a streaming connection
+// using the dialer's configured timeout. It provides a simple interface for connection
+// establishment without requiring explicit context management.
+// Example usage: conn, err := dialer.Dial("destination.b32.i2p")
 func (d *StreamDialer) Dial(destination string) (*StreamConn, error) {
 	return d.DialContext(context.Background(), destination)
 }
 
-// DialI2P establishes a connection to the specified I2P address
+// DialI2P establishes a connection to the specified I2P address using native addressing.
+// This method accepts an i2pkeys.I2PAddr directly, bypassing the need for destination
+// resolution. It uses the dialer's configured timeout and provides efficient connection
+// establishment for known I2P addresses.
+// Example usage: conn, err := dialer.DialI2P(addr)
 func (d *StreamDialer) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error) {
 	return d.DialI2PContext(context.Background(), addr)
 }
 
-// DialContext establishes a connection with context support
+// DialContext establishes a connection with context support for cancellation and timeout.
+// This method resolves the destination string and establishes a streaming connection
+// with context-based cancellation support. The context can override the dialer's
+// default timeout and provides fine-grained control over connection establishment.
+// Example usage: conn, err := dialer.DialContext(ctx, "destination.b32.i2p")
 func (d *StreamDialer) DialContext(ctx context.Context, destination string) (*StreamConn, error) {
 	// First resolve the destination
 	addr, err := d.session.sam.Lookup(destination)
@@ -33,8 +45,13 @@ func (d *StreamDialer) DialContext(ctx context.Context, destination string) (*St
 	return d.DialI2PContext(ctx, addr)
 }
 
-// DialI2PContext establishes a connection to an I2P address with context support
+// DialI2PContext establishes a connection to an I2P address with context support.
+// This method provides the core dialing functionality with context-based cancellation
+// and timeout support. It handles SAM protocol communication, connection establishment,
+// and proper resource management for streaming connections over I2P.
+// Example usage: conn, err := dialer.DialI2PContext(ctx, addr)
 func (d *StreamDialer) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (*StreamConn, error) {
+	// Check session state before starting dial operation
 	d.session.mu.RLock()
 	if d.session.closed {
 		d.session.mu.RUnlock()
@@ -48,21 +65,21 @@ func (d *StreamDialer) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr)
 	})
 	logger.Debug("Dialing I2P destination")
 
-	// Create a new SAM connection for this dial
+	// Create a new SAM connection for this dial to avoid interference with session
 	sam, err := common.NewSAM(d.session.sam.Sam())
 	if err != nil {
 		logger.WithError(err).Error("Failed to create SAM connection")
 		return nil, oops.Errorf("failed to create SAM connection: %w", err)
 	}
 
-	// Set up timeout if specified
+	// Set up timeout if specified, preserving existing context
 	var cancel context.CancelFunc
 	if d.timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, d.timeout)
 		defer cancel()
 	}
 
-	// Perform the dial with timeout
+	// Perform the dial with timeout using goroutine and channels for cancellation
 	connChan := make(chan *StreamConn, 1)
 	errChan := make(chan error, 1)
 
@@ -75,6 +92,7 @@ func (d *StreamDialer) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr)
 		connChan <- conn
 	}()
 
+	// Handle results with proper timeout and cancellation support
 	select {
 	case conn := <-connChan:
 		logger.Debug("Successfully established connection")

@@ -7,17 +7,29 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// SAM wraps common.SAM to provide stream-specific functionality
+// SAM wraps common.SAM to provide stream-specific functionality and convenience methods.
+// It extends the base SAM connection with streaming-specific session creation methods,
+// providing a more convenient API for creating streaming sessions without requiring
+// direct interaction with the generic session creation methods.
+// Example usage: sam := &SAM{SAM: commonSAM}; session, err := sam.NewStreamSession("id", keys, options)
 type SAM struct {
 	*common.SAM
 }
 
-// NewStreamSession creates a new streaming session with the SAM bridge
+// NewStreamSession creates a new streaming session with the SAM bridge using default signature.
+// This is a convenience method that wraps the generic session creation with streaming-specific
+// parameters. It uses the default Ed25519 signature type and provides a simpler API for
+// creating streaming sessions without requiring explicit signature type specification.
+// Example usage: session, err := sam.NewStreamSession("my-session", keys, options)
 func (s *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error) {
 	return NewStreamSession(s.SAM, id, keys, options)
 }
 
-// NewStreamSessionWithSignature creates a new streaming session with custom signature type
+// NewStreamSessionWithSignature creates a new streaming session with custom signature type.
+// This method provides advanced control over the cryptographic signature type used for
+// the I2P destination. It supports various signature algorithms like Ed25519, ECDSA,
+// and DSA, allowing applications to choose the most appropriate signature type for their needs.
+// Example usage: session, err := sam.NewStreamSessionWithSignature("my-session", keys, options, "EdDSA_SHA512_Ed25519")
 func (s *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,

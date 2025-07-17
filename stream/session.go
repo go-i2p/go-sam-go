@@ -10,7 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// NewStreamSession creates a new streaming session
+// NewStreamSession creates a new streaming session for TCP-like I2P connections.
+// It initializes the session with the provided SAM connection, session ID, cryptographic keys,
+// and configuration options. The session provides both client and server capabilities for
+// establishing reliable streaming connections over the I2P network.
+// Example usage: session, err := NewStreamSession(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error) {
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
@@ -42,7 +46,11 @@ func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options 
 	return ss, nil
 }
 
-// Listen creates a StreamListener that accepts incoming connections
+// Listen creates a StreamListener that accepts incoming connections from remote I2P destinations.
+// It initializes a listener with buffered channels for connection handling and starts an internal
+// accept loop to manage incoming connections asynchronously. The listener provides thread-safe
+// operations and properly handles session closure and resource cleanup.
+// Example usage: listener, err := session.Listen(); conn, err := listener.Accept()
 func (s *StreamSession) Listen() (*StreamListener, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -68,7 +76,10 @@ func (s *StreamSession) Listen() (*StreamListener, error) {
 	return listener, nil
 }
 
-// NewDialer creates a StreamDialer for establishing outbound connections
+// NewDialer creates a StreamDialer for establishing outbound connections to I2P destinations.
+// It initializes a dialer with a default timeout of 30 seconds, which can be customized using
+// the SetTimeout method. The dialer supports both string destinations and native I2P addresses.
+// Example usage: dialer := session.NewDialer().SetTimeout(60*time.Second)
 func (s *StreamSession) NewDialer() *StreamDialer {
 	return &StreamDialer{
 		session: s,
@@ -76,28 +87,47 @@ func (s *StreamSession) NewDialer() *StreamDialer {
 	}
 }
 
-// SetTimeout sets the default timeout for new dialers
+// SetTimeout sets the default timeout duration for dial operations.
+// This method allows customization of the connection timeout and returns the dialer
+// for method chaining. The timeout applies to all subsequent dial operations.
+// Example usage: dialer.SetTimeout(60*time.Second)
 func (d *StreamDialer) SetTimeout(timeout time.Duration) *StreamDialer {
 	d.timeout = timeout
 	return d
 }
 
-// Dial establishes a connection to the specified I2P destination
+// Dial establishes a connection to the specified I2P destination using the default timeout.
+// This is a convenience method that creates a new dialer and establishes a connection
+// to the specified destination string. For custom timeout or multiple connections,
+// use NewDialer() for better performance.
+// Example usage: conn, err := session.Dial("destination.b32.i2p")
 func (s *StreamSession) Dial(destination string) (*StreamConn, error) {
 	return s.NewDialer().Dial(destination)
 }
 
-// DialI2P establishes a connection to the specified I2P address
+// DialI2P establishes a connection to the specified I2P address using native addressing.
+// This is a convenience method that creates a new dialer and establishes a connection
+// to the specified I2P address using the i2pkeys.I2PAddr type. The method uses the
+// session's default timeout settings.
+// Example usage: conn, err := session.DialI2P(addr)
 func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error) {
 	return s.NewDialer().DialI2P(addr)
 }
 
-// DialContext establishes a connection with context support
+// DialContext establishes a connection with context support for cancellation and timeout.
+// This is a convenience method that creates a new dialer and establishes a connection
+// to the specified destination with context-based cancellation support. The context
+// can be used to cancel the connection attempt or apply custom timeouts.
+// Example usage: conn, err := session.DialContext(ctx, "destination.b32.i2p")
 func (s *StreamSession) DialContext(ctx context.Context, destination string) (*StreamConn, error) {
 	return s.NewDialer().DialContext(ctx, destination)
 }
 
-// Close closes the streaming session and all associated resources
+// Close closes the streaming session and all associated resources.
+// This method is safe to call multiple times and will only perform cleanup once.
+// All listeners and connections created from this session will become invalid after closing.
+// The method properly handles concurrent access and resource cleanup.
+// Example usage: defer session.Close()
 func (s *StreamSession) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -111,7 +141,7 @@ func (s *StreamSession) Close() error {
 
 	s.closed = true
 
-	// Close the base session
+	// Close the base session and handle potential cleanup errors
 	if err := s.BaseSession.Close(); err != nil {
 		logger.WithError(err).Error("Failed to close base session")
 		return oops.Errorf("failed to close stream session: %w", err)
@@ -121,7 +151,11 @@ func (s *StreamSession) Close() error {
 	return nil
 }
 
-// Addr returns the I2P address of this session
+// Addr returns the I2P address of this session for identification purposes.
+// This address can be used by other I2P nodes to connect to this session.
+// The address is derived from the session's cryptographic keys and remains constant
+// for the lifetime of the session.
+// Example usage: addr := session.Addr()
 func (s *StreamSession) Addr() i2pkeys.I2PAddr {
 	return s.Keys().Addr()
 }

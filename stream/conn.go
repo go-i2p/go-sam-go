@@ -8,7 +8,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Read reads data from the connection
+// Read reads data from the connection into the provided buffer.
+// This method implements the net.Conn interface and provides thread-safe reading
+// from the underlying I2P streaming connection. It handles connection state checking
+// and proper error reporting for closed connections.
+// Example usage: n, err := conn.Read(buffer)
 func (c *StreamConn) Read(b []byte) (int, error) {
 	c.mu.RLock()
 	if c.closed {
@@ -28,7 +32,11 @@ func (c *StreamConn) Read(b []byte) (int, error) {
 	return n, err
 }
 
-// Write writes data to the connection
+// Write writes data to the connection from the provided buffer.
+// This method implements the net.Conn interface and provides thread-safe writing
+// to the underlying I2P streaming connection. It handles connection state checking
+// and proper error reporting for closed connections.
+// Example usage: n, err := conn.Write(data)
 func (c *StreamConn) Write(b []byte) (int, error) {
 	c.mu.RLock()
 	if c.closed {
@@ -48,7 +56,11 @@ func (c *StreamConn) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// Close closes the connection
+// Close closes the connection and releases all associated resources.
+// This method implements the net.Conn interface and is safe to call multiple times.
+// It properly handles concurrent access and ensures clean shutdown of the underlying
+// I2P streaming connection with appropriate error handling.
+// Example usage: defer conn.Close()
 func (c *StreamConn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -77,17 +89,29 @@ func (c *StreamConn) Close() error {
 	return nil
 }
 
-// LocalAddr returns the local network address
+// LocalAddr returns the local network address of the connection.
+// This method implements the net.Conn interface and provides the I2P address
+// of the local endpoint. The returned address implements the net.Addr interface
+// and can be used for logging or connection management.
+// Example usage: localAddr := conn.LocalAddr()
 func (c *StreamConn) LocalAddr() net.Addr {
 	return &i2pAddr{addr: c.laddr}
 }
 
-// RemoteAddr returns the remote network address
+// RemoteAddr returns the remote network address of the connection.
+// This method implements the net.Conn interface and provides the I2P address
+// of the remote endpoint. The returned address implements the net.Addr interface
+// and can be used for logging, authentication, or connection management.
+// Example usage: remoteAddr := conn.RemoteAddr()
 func (c *StreamConn) RemoteAddr() net.Addr {
 	return &i2pAddr{addr: c.raddr}
 }
 
-// SetDeadline sets the read and write deadlines
+// SetDeadline sets the read and write deadlines for the connection.
+// This method implements the net.Conn interface and sets both read and write
+// deadlines to the same time. It provides a convenient way to set overall
+// connection timeouts for both read and write operations.
+// Example usage: conn.SetDeadline(time.Now().Add(30*time.Second))
 func (c *StreamConn) SetDeadline(t time.Time) error {
 	if err := c.SetReadDeadline(t); err != nil {
 		return err
@@ -95,7 +119,11 @@ func (c *StreamConn) SetDeadline(t time.Time) error {
 	return c.SetWriteDeadline(t)
 }
 
-// SetReadDeadline sets the deadline for future Read calls
+// SetReadDeadline sets the deadline for future Read calls on the connection.
+// This method implements the net.Conn interface and allows setting read-specific
+// timeouts. A zero time value disables the deadline, and the deadline applies
+// to all future and pending Read calls.
+// Example usage: conn.SetReadDeadline(time.Now().Add(30*time.Second))
 func (c *StreamConn) SetReadDeadline(t time.Time) error {
 	c.mu.RLock()
 	conn := c.conn
@@ -108,7 +136,11 @@ func (c *StreamConn) SetReadDeadline(t time.Time) error {
 	return conn.SetReadDeadline(t)
 }
 
-// SetWriteDeadline sets the deadline for future Write calls
+// SetWriteDeadline sets the deadline for future Write calls on the connection.
+// This method implements the net.Conn interface and allows setting write-specific
+// timeouts. A zero time value disables the deadline, and the deadline applies
+// to all future and pending Write calls.
+// Example usage: conn.SetWriteDeadline(time.Now().Add(30*time.Second))
 func (c *StreamConn) SetWriteDeadline(t time.Time) error {
 	c.mu.RLock()
 	conn := c.conn
