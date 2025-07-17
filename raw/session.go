@@ -44,6 +44,13 @@ func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []s
 
 // NewReader creates a RawReader for receiving raw datagrams
 func (s *RawSession) NewReader() *RawReader {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil
+	}
+
 	return &RawReader{
 		session:   s,
 		recvChan:  make(chan *RawDatagram, 10), // Buffer for incoming datagrams
@@ -54,6 +61,8 @@ func (s *RawSession) NewReader() *RawReader {
 		mu:        sync.RWMutex{},
 	}
 }
+
+// ...existing code...
 
 // NewWriter creates a RawWriter for sending raw datagrams
 func (s *RawSession) NewWriter() *RawWriter {
@@ -80,9 +89,18 @@ func (s *RawSession) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 // ReceiveDatagram receives a raw datagram from any source
 func (s *RawSession) ReceiveDatagram() (*RawDatagram, error) {
 	reader := s.NewReader()
-	// Start the receive loop
+	if reader == nil {
+		return nil, oops.Errorf("session is closed")
+	}
+
+	// Start the receive loop for this reader
 	go reader.receiveLoop()
-	return reader.ReceiveDatagram()
+
+	// Get one datagram and then close the reader to clean up the goroutine
+	datagram, err := reader.ReceiveDatagram()
+	reader.Close()
+
+	return datagram, err
 }
 
 // Close closes the raw session and all associated resources

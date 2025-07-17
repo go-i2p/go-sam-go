@@ -106,8 +106,10 @@ func (l *RawListener) acceptRawConnection() (*RawConn, error) {
 		writer:  l.session.NewWriter(),
 	}
 
-	// Start the reader loop for this connection
-	go conn.reader.receiveLoop()
+	// Start the reader loop once for this connection
+	if conn.reader != nil {
+		go conn.reader.receiveLoop()
+	}
 
 	return conn, nil
 }

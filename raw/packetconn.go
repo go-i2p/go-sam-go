@@ -16,9 +16,6 @@ func (c *RawConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	}
 	c.mu.RUnlock()
 
-	// Start receive loop if not already started
-	go c.reader.receiveLoop()
-
 	datagram, err := c.reader.ReceiveDatagram()
 	if err != nil {
 		return 0, nil, err

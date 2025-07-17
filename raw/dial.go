@@ -49,8 +49,10 @@ func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.
 		writer:  rs.NewWriter(),
 	}
 
-	// Start the reader loop only if session is valid
-	go conn.reader.receiveLoop()
+	// Start the reader loop once for this connection
+	if conn.reader != nil {
+		go conn.reader.receiveLoop()
+	}
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created raw connection")
 	return conn, nil
@@ -90,8 +92,10 @@ func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) 
 		writer:  rs.NewWriter(),
 	}
 
-	// Start the reader loop only if session is valid
-	go conn.reader.receiveLoop()
+	// Start the reader loop once for this connection
+	if conn.reader != nil {
+		go conn.reader.receiveLoop()
+	}
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created I2P raw connection")
 	return conn, nil
