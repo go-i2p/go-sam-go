@@ -35,52 +35,91 @@ func (sam *SAM) ReadKeys(r io.Reader) (err error) {
 	return
 }
 
-// if keyfile fname does not exist
+// EnsureKeyfile ensures cryptographic keys are available, either by generating transient keys
+// or by loading/creating persistent keys from the specified file.
 func (sam *SAM) EnsureKeyfile(fname string) (keys i2pkeys.I2PKeys, err error) {
-	log.WithError(err).Error("Failed to load keys")
 	if fname == "" {
-		// transient
-		keys, err = sam.NewKeys()
-		if err == nil {
-			sam.SAMEmit.I2PConfig.DestinationKeys = &keys
-			log.WithFields(logrus.Fields{
-				"keys": keys,
-			}).Debug("Generated new transient keys")
-		}
+		keys, err = sam.generateTransientKeys()
 	} else {
-		// persistent
-		_, err = os.Stat(fname)
-		if os.IsNotExist(err) {
-			// make the keys
-			keys, err = sam.NewKeys()
-			if err == nil {
-				sam.SAMEmit.I2PConfig.DestinationKeys = &keys
-				// save keys
-				var f io.WriteCloser
-				f, err = os.OpenFile(fname, os.O_WRONLY|os.O_CREATE, 0o600)
-				if err == nil {
-					err = i2pkeys.StoreKeysIncompat(keys, f)
-					f.Close()
-					log.Debug("Generated and saved new keys")
-				}
-			}
-		} else if err == nil {
-			// we haz key file
-			var f *os.File
-			f, err = os.Open(fname)
-			if err == nil {
-				keys, err = i2pkeys.LoadKeysIncompat(f)
-				if err == nil {
-					sam.SAMEmit.I2PConfig.DestinationKeys = &keys
-					log.Debug("Loaded existing keys from file")
-				}
-			}
-		}
+		keys, err = sam.ensurePersistentKeys(fname)
 	}
+
 	if err != nil {
 		log.WithError(err).Error("Failed to ensure keyfile")
 	}
 	return
+}
+
+// generateTransientKeys creates new temporary keys that are not saved to disk.
+func (sam *SAM) generateTransientKeys() (i2pkeys.I2PKeys, error) {
+	keys, err := sam.NewKeys()
+	if err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+
+	sam.SAMEmit.I2PConfig.DestinationKeys = &keys
+	log.WithFields(logrus.Fields{
+		"keys": keys,
+	}).Debug("Generated new transient keys")
+
+	return keys, nil
+}
+
+// ensurePersistentKeys loads existing keys from file or creates new ones if file doesn't exist.
+func (sam *SAM) ensurePersistentKeys(fname string) (i2pkeys.I2PKeys, error) {
+	_, err := os.Stat(fname)
+	if os.IsNotExist(err) {
+		return sam.createAndSaveKeys(fname)
+	} else if err == nil {
+		return sam.loadKeysFromFile(fname)
+	}
+	return i2pkeys.I2PKeys{}, err
+}
+
+// createAndSaveKeys generates new keys and saves them to the specified file.
+func (sam *SAM) createAndSaveKeys(fname string) (i2pkeys.I2PKeys, error) {
+	keys, err := sam.NewKeys()
+	if err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+
+	sam.SAMEmit.I2PConfig.DestinationKeys = &keys
+
+	if err := sam.saveKeysToFile(keys, fname); err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+
+	log.Debug("Generated and saved new keys")
+	return keys, nil
+}
+
+// loadKeysFromFile loads cryptographic keys from the specified file.
+func (sam *SAM) loadKeysFromFile(fname string) (i2pkeys.I2PKeys, error) {
+	f, err := os.Open(fname)
+	if err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+	defer f.Close()
+
+	keys, err := i2pkeys.LoadKeysIncompat(f)
+	if err != nil {
+		return i2pkeys.I2PKeys{}, err
+	}
+
+	sam.SAMEmit.I2PConfig.DestinationKeys = &keys
+	log.Debug("Loaded existing keys from file")
+	return keys, nil
+}
+
+// saveKeysToFile saves cryptographic keys to the specified file with appropriate permissions.
+func (sam *SAM) saveKeysToFile(keys i2pkeys.I2PKeys, fname string) error {
+	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE, 0o600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return i2pkeys.StoreKeysIncompat(keys, f)
 }
 
 // Creates the I2P-equivalent of an IP address, that is unique and only the one

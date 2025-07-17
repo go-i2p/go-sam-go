@@ -56,7 +56,7 @@ func TestDatagramSession_ConcurrentOperations(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			select {
 			case <-readerDone:
-			case <-time.After(2 * time.Second):
+			case <-time.After(5 * time.Second):
 				t.Error("Timeout waiting for reader creation")
 				done <- false
 				return

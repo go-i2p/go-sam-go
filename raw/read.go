@@ -149,44 +149,68 @@ func (r *RawReader) receiveLoop() {
 // receiveDatagram handles the low-level protocol parsing for incoming raw datagrams.
 // It reads from the SAM connection, parses the RAW RECEIVED response format,
 // and constructs RawDatagram objects with decoded data and address information.
-// receiveDatagram handles the low-level raw datagram reception
 func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 	logger := log.WithField("session_id", r.session.ID())
 
-	// Check if session is valid and not closed
-	r.session.mu.RLock()
-	if r.session.closed {
-		r.session.mu.RUnlock()
-		return nil, oops.Errorf("session is closed")
+	// Validate session state before processing
+	if err := r.validateSessionState(); err != nil {
+		return nil, err
 	}
 
-	// Check if BaseSession is properly initialized
+	// Read raw response from SAM connection
+	response, err := r.readRawResponse()
+	if err != nil {
+		return nil, err
+	}
+
+	logger.WithField("response", response).Debug("Received raw datagram data")
+
+	// Parse the RAW RECEIVED response to extract source and data
+	source, data, err := r.parseRawResponse(response)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create and return the raw datagram
+	return r.createRawDatagram(source, data)
+}
+
+// validateSessionState checks if the session is valid and ready for use.
+func (r *RawReader) validateSessionState() error {
+	r.session.mu.RLock()
+	defer r.session.mu.RUnlock()
+
+	if r.session.closed {
+		return oops.Errorf("session is closed")
+	}
+
 	if r.session.BaseSession == nil {
-		r.session.mu.RUnlock()
-		return nil, oops.Errorf("session is not properly initialized")
+		return oops.Errorf("session is not properly initialized")
 	}
 
 	if r.session.BaseSession.Conn() == nil {
-		r.session.mu.RUnlock()
-		return nil, oops.Errorf("session connection is not available")
+		return oops.Errorf("session connection is not available")
 	}
-	r.session.mu.RUnlock()
 
-	// Read from the session connection for incoming raw datagrams
+	return nil
+}
+
+// readRawResponse reads the raw response from the SAM connection.
+func (r *RawReader) readRawResponse() (string, error) {
 	buf := make([]byte, 4096)
 	n, err := r.session.Read(buf)
 	if err != nil {
-		return nil, oops.Errorf("failed to read from session: %w", err)
+		return "", oops.Errorf("failed to read from session: %w", err)
 	}
 
-	response := string(buf[:n])
-	logger.WithField("response", response).Debug("Received raw datagram data")
+	return string(buf[:n]), nil
+}
 
-	// Parse the RAW RECEIVED response using a scanner
+// parseRawResponse parses the RAW RECEIVED response to extract source and data.
+func (r *RawReader) parseRawResponse(response string) (source, data string, err error) {
 	scanner := bufio.NewScanner(strings.NewReader(response))
 	scanner.Split(bufio.ScanWords)
 
-	var source, data string
 	for scanner.Scan() {
 		word := scanner.Text()
 		switch {
@@ -211,13 +235,18 @@ func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
 
 	// Validate that we have both source and data
 	if source == "" {
-		return nil, oops.Errorf("no source in raw datagram")
+		return "", "", oops.Errorf("no source in raw datagram")
 	}
 
 	if data == "" {
-		return nil, oops.Errorf("no data in raw datagram")
+		return "", "", oops.Errorf("no data in raw datagram")
 	}
 
+	return source, data, nil
+}
+
+// createRawDatagram creates a RawDatagram from source and data strings.
+func (r *RawReader) createRawDatagram(source, data string) (*RawDatagram, error) {
 	// Parse the source destination into an I2P address
 	sourceAddr, err := i2pkeys.NewI2PAddrFromString(source)
 	if err != nil {

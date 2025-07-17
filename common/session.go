@@ -36,54 +36,92 @@ func (sam SAM) NewGenericSessionWithSignature(style, id string, keys i2pkeys.I2P
 func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string, keys i2pkeys.I2PKeys, sigType string, extras []string) (Session, error) {
 	log.WithFields(logrus.Fields{"style": style, "id": id, "from": from, "to": to, "sigType": sigType}).Debug("Creating new generic session with signature and ports")
 
-	// Configure SAMEmit with all session parameters for message generation
+	if err := sam.configureSessionParameters(style, id, from, to, keys, sigType); err != nil {
+		return nil, err
+	}
+
+	message, err := sam.buildSessionCreateMessage(extras)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := sam.transmitSessionMessage(message); err != nil {
+		return nil, err
+	}
+
+	response, err := sam.readSessionResponse()
+	if err != nil {
+		return nil, err
+	}
+
+	return sam.parseSessionResponse(response, id, keys)
+}
+
+// configureSessionParameters sets up the SAMEmit configuration with session parameters.
+func (sam *SAM) configureSessionParameters(style, id, from, to string, keys i2pkeys.I2PKeys, sigType string) error {
 	sam.SAMEmit.I2PConfig.Style = style
 	sam.SAMEmit.I2PConfig.TunName = id
 	sam.SAMEmit.I2PConfig.DestinationKeys = &keys
 	sam.SAMEmit.I2PConfig.SigType = sigType
 	sam.SAMEmit.I2PConfig.Fromport = from
 	sam.SAMEmit.I2PConfig.Toport = to
+	return nil
+}
 
-	// Generate the base SESSION CREATE message using emitter
+// buildSessionCreateMessage constructs the SESSION CREATE message with optional extras.
+func (sam *SAM) buildSessionCreateMessage(extras []string) ([]byte, error) {
 	baseMsg := strings.TrimSuffix(sam.SAMEmit.Create(), " \n")
 
-	// Append any extra parameters if provided
 	extraStr := strings.Join(extras, " ")
 	if extraStr != "" {
 		baseMsg += " " + extraStr
 	}
 
-	// Create final message with proper line termination
-	scmsg := []byte(baseMsg + "\n")
+	message := []byte(baseMsg + "\n")
+	log.WithField("message", string(message)).Debug("Sending SESSION CREATE message " + string(message))
+	return message, nil
+}
 
-	log.WithField("message", string(scmsg)).Debug("Sending SESSION CREATE message " + string(scmsg))
-
+// transmitSessionMessage sends the SESSION CREATE message to the SAM connection.
+func (sam *SAM) transmitSessionMessage(message []byte) error {
 	conn := sam.Conn
-	n, err := conn.Write(scmsg)
+	n, err := conn.Write(message)
 	if err != nil {
 		log.WithError(err).Error("Failed to write to SAM connection")
 		conn.Close()
-		return nil, oops.Errorf("writing to connection failed: %w", err)
+		return oops.Errorf("writing to connection failed: %w", err)
 	}
-	if n != len(scmsg) {
+	if n != len(message) {
 		log.WithFields(logrus.Fields{
 			"written": n,
-			"total":   len(scmsg),
+			"total":   len(message),
 		}).Error("Incomplete write to SAM connection")
 		conn.Close()
-		return nil, oops.Errorf("incomplete write to connection: wrote %d bytes, expected %d bytes", n, len(scmsg))
+		return oops.Errorf("incomplete write to connection: wrote %d bytes, expected %d bytes", n, len(message))
 	}
+	return nil
+}
+
+// readSessionResponse reads the response from the SAM connection.
+func (sam *SAM) readSessionResponse() (string, error) {
 	buf := make([]byte, 4096)
-	n, err = conn.Read(buf)
+	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read SAM response")
-		conn.Close()
-		return nil, oops.Errorf("reading from connection failed: %w", err)
+		sam.Conn.Close()
+		return "", oops.Errorf("reading from connection failed: %w", err)
 	}
-	text := string(buf[:n])
-	log.WithField("response", text).Debug("Received SAM response")
-	if strings.HasPrefix(text, SESSION_OK) {
-		if keys.String() != text[len(SESSION_OK):len(text)-1] {
+	response := string(buf[:n])
+	log.WithField("response", response).Debug("Received SAM response")
+	return response, nil
+}
+
+// parseSessionResponse parses the SAM response and returns the appropriate session or error.
+func (sam *SAM) parseSessionResponse(response, id string, keys i2pkeys.I2PKeys) (Session, error) {
+	conn := sam.Conn
+
+	if strings.HasPrefix(response, SESSION_OK) {
+		if keys.String() != response[len(SESSION_OK):len(response)-1] {
 			log.Error("SAM created a tunnel with different keys than requested")
 			conn.Close()
 			return nil, oops.Errorf("SAMv3 created a tunnel with keys other than the ones we asked it for")
@@ -93,27 +131,27 @@ func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string
 			id:   id,
 			conn: conn,
 			keys: keys,
-			SAM:  sam,
+			SAM:  *sam,
 		}, nil
-	} else if text == SESSION_DUPLICATE_ID {
+	} else if response == SESSION_DUPLICATE_ID {
 		log.Error("Duplicate tunnel name")
 		conn.Close()
 		return nil, oops.Errorf("Duplicate tunnel name")
-	} else if text == SESSION_DUPLICATE_DEST {
+	} else if response == SESSION_DUPLICATE_DEST {
 		log.Error("Duplicate destination")
 		conn.Close()
 		return nil, oops.Errorf("Duplicate destination")
-	} else if text == SESSION_INVALID_KEY {
+	} else if response == SESSION_INVALID_KEY {
 		log.Error("Invalid key for SAM session")
 		conn.Close()
 		return nil, oops.Errorf("Invalid key - SAM session")
-	} else if strings.HasPrefix(text, SESSION_I2P_ERROR) {
-		log.WithField("error", text[len(SESSION_I2P_ERROR):]).Error("I2P error")
+	} else if strings.HasPrefix(response, SESSION_I2P_ERROR) {
+		log.WithField("error", response[len(SESSION_I2P_ERROR):]).Error("I2P error")
 		conn.Close()
-		return nil, oops.Errorf("I2P error " + text[len(SESSION_I2P_ERROR):])
+		return nil, oops.Errorf("I2P error " + response[len(SESSION_I2P_ERROR):])
 	} else {
-		log.WithField("reply", text).Error("Unable to parse SAMv3 reply")
+		log.WithField("reply", response).Error("Unable to parse SAMv3 reply")
 		conn.Close()
-		return nil, oops.Errorf("Unable to parse SAMv3 reply: " + text)
+		return nil, oops.Errorf("Unable to parse SAMv3 reply: " + response)
 	}
 }

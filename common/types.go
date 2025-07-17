@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
@@ -111,11 +112,14 @@ type BaseSession struct {
 	conn net.Conn
 	keys i2pkeys.I2PKeys
 	SAM  SAM
+	mu   sync.RWMutex
 }
 
 // Conn returns the underlying network connection for the session.
 // This provides access to the raw connection for advanced operations.
 func (bs *BaseSession) Conn() net.Conn {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
 	return bs.conn
 }
 
@@ -129,43 +133,65 @@ func (bs *BaseSession) Keys() i2pkeys.I2PKeys { return bs.keys }
 
 // Read reads data from the session connection into the provided buffer.
 // Implements the io.Reader interface for standard Go I/O operations.
-func (bs *BaseSession) Read(b []byte) (int, error) { return bs.conn.Read(b) }
+func (bs *BaseSession) Read(b []byte) (int, error) {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
+	return bs.conn.Read(b)
+}
 
 // Write writes data from the buffer to the session connection.
 // Implements the io.Writer interface for standard Go I/O operations.
-func (bs *BaseSession) Write(b []byte) (int, error) { return bs.conn.Write(b) }
+func (bs *BaseSession) Write(b []byte) (int, error) {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
+	return bs.conn.Write(b)
+}
 
 // Close closes the session connection and releases associated resources.
 // Implements the io.Closer interface for proper resource cleanup.
-func (bs *BaseSession) Close() error { return bs.conn.Close() }
+func (bs *BaseSession) Close() error {
+	bs.mu.Lock()
+	defer bs.mu.Unlock()
+	return bs.conn.Close()
+}
 
 // LocalAddr returns the local network address of the session connection.
 // Implements the net.Conn interface for network address information.
 func (bs *BaseSession) LocalAddr() net.Addr {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
 	return bs.conn.LocalAddr()
 }
 
 // RemoteAddr returns the remote network address of the session connection.
 // Implements the net.Conn interface for network address information.
 func (bs *BaseSession) RemoteAddr() net.Addr {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
 	return bs.conn.RemoteAddr()
 }
 
 // SetDeadline sets read and write deadlines for the session connection.
 // Implements the net.Conn interface for timeout control.
 func (bs *BaseSession) SetDeadline(t time.Time) error {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
 	return bs.conn.SetDeadline(t)
 }
 
 // SetReadDeadline sets the read deadline for the session connection.
 // Implements the net.Conn interface for read timeout control.
 func (bs *BaseSession) SetReadDeadline(t time.Time) error {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
 	return bs.conn.SetReadDeadline(t)
 }
 
 // SetWriteDeadline sets the write deadline for the session connection.
 // Implements the net.Conn interface for write timeout control.
 func (bs *BaseSession) SetWriteDeadline(t time.Time) error {
+	bs.mu.RLock()
+	defer bs.mu.RUnlock()
 	return bs.conn.SetWriteDeadline(t)
 }
 
