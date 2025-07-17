@@ -4,10 +4,15 @@ import (
 	"github.com/samber/oops"
 )
 
+// Listen creates a RawListener for accepting incoming raw connections.
+// This method initializes the listener with buffered channels for incoming connections
+// and starts the accept loop in a background goroutine to handle incoming datagrams.
+// Example usage: listener, err := session.Listen()
 func (s *RawSession) Listen() (*RawListener, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	// Check if the session is already closed before creating listener
 	if s.closed {
 		return nil, oops.Errorf("session is closed")
 	}
@@ -15,6 +20,8 @@ func (s *RawSession) Listen() (*RawListener, error) {
 	logger := log.WithField("id", s.ID())
 	logger.Debug("Creating RawListener")
 
+	// Initialize listener with buffered channels for connection management
+	// The acceptChan buffers incoming connections to prevent blocking
 	listener := &RawListener{
 		session:    s,
 		reader:     s.NewReader(),
@@ -24,6 +31,7 @@ func (s *RawSession) Listen() (*RawListener, error) {
 	}
 
 	// Start accepting raw connections in a goroutine
+	// This allows the listener to handle multiple concurrent connections
 	go listener.acceptLoop()
 
 	logger.Debug("Successfully created RawListener")

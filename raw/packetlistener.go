@@ -6,7 +6,10 @@ import (
 	"github.com/samber/oops"
 )
 
-// Accept waits for and returns the next raw connection to the listener
+// Accept waits for and returns the next raw connection to the listener.
+// This method implements the net.Listener interface and blocks until a connection
+// is available or an error occurs, returning the connection or error.
+// Example usage: conn, err := listener.Accept()
 func (l *RawListener) Accept() (net.Conn, error) {
 	l.mu.RLock()
 	if l.closed {
@@ -15,6 +18,8 @@ func (l *RawListener) Accept() (net.Conn, error) {
 	}
 	l.mu.RUnlock()
 
+	// Use select to handle multiple channels atomically
+	// This ensures proper handling of connections, errors, and close signals
 	select {
 	case conn := <-l.acceptChan:
 		return conn, nil
@@ -25,7 +30,10 @@ func (l *RawListener) Accept() (net.Conn, error) {
 	}
 }
 
-// Close closes the raw listener
+// Close closes the raw listener and stops accepting new connections.
+// This method is safe to call multiple times and will clean up all resources
+// including the reader and associated channels.
+// Example usage: defer listener.Close()
 func (l *RawListener) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -49,7 +57,10 @@ func (l *RawListener) Close() error {
 	return nil
 }
 
-// Addr returns the listener's network address
+// Addr returns the listener's network address.
+// This method implements the net.Listener interface and returns the I2P address
+// of the session wrapped in a RawAddr for compatibility with net.Addr.
+// Example usage: addr := listener.Addr()
 func (l *RawListener) Addr() net.Addr {
 	return &RawAddr{addr: l.session.Addr()}
 }

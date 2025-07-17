@@ -11,13 +11,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// SetTimeout sets the timeout for raw datagram operations
+// SetTimeout sets the timeout for raw datagram operations.
+// This method configures the maximum time to wait for send operations to complete.
+// It returns the writer instance for method chaining.
+// Example usage: writer.SetTimeout(30*time.Second).SendDatagram(data, dest)
 func (w *RawWriter) SetTimeout(timeout time.Duration) *RawWriter {
 	w.timeout = timeout
 	return w
 }
 
-// SendDatagram sends a raw datagram to the specified destination
+// SendDatagram sends a raw datagram to the specified destination.
+// This method handles the complete send operation including data encoding,
+// SAM protocol communication, and response parsing for error handling.
+// Example usage: err := writer.SendDatagram([]byte("hello"), destAddr)
 func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 	w.session.mu.RLock()
 	if w.session.closed {
@@ -33,23 +39,24 @@ func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 	})
 	logger.Debug("Sending raw datagram")
 
-	// Encode the data as base64
+	// Encode the data as base64 for SAM protocol transmission
 	encodedData := base64.StdEncoding.EncodeToString(data)
 
-	// Create the RAW SEND command
+	// Create the RAW SEND command following SAMv3 protocol format
+	// The command includes session ID, destination, size, and base64-encoded data
 	sendCmd := fmt.Sprintf("RAW SEND ID=%s DESTINATION=%s SIZE=%d\n%s\n",
 		w.session.ID(), dest.Base64(), len(data), encodedData)
 
 	logger.WithField("command", strings.Split(sendCmd, "\n")[0]).Debug("Sending RAW SEND")
 
-	// Send the command
+	// Send the command to the SAM bridge over the session connection
 	_, err := w.session.Write([]byte(sendCmd))
 	if err != nil {
 		logger.WithError(err).Error("Failed to send raw datagram")
 		return oops.Errorf("failed to send raw datagram: %w", err)
 	}
 
-	// Read the response
+	// Read the response from the SAM bridge to determine send status
 	buf := make([]byte, 1024)
 	n, err := w.session.Read(buf)
 	if err != nil {
@@ -60,7 +67,7 @@ func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 	response := string(buf[:n])
 	logger.WithField("response", response).Debug("Received send response")
 
-	// Parse the response
+	// Parse the response to check for errors and handle failure conditions
 	if err := w.parseSendResponse(response); err != nil {
 		return err
 	}
@@ -73,13 +80,15 @@ func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 // It examines the response string to determine if the send operation was successful or failed,
 // and returns appropriate error messages for different failure conditions like unreachable peers,
 // invalid keys, timeouts, and other I2P network errors.
-// parseSendResponse parses the RAW STATUS response
+// Example response: "RAW STATUS RESULT=OK" or "RAW STATUS RESULT=CANT_REACH_PEER"
 func (w *RawWriter) parseSendResponse(response string) error {
+	// Check for successful send operation first
 	if strings.Contains(response, "RESULT=OK") {
 		return nil
 	}
 
 	// Handle specific error conditions returned by the SAM bridge
+	// These errors provide meaningful feedback about I2P network failures
 	switch {
 	case strings.Contains(response, "RESULT=CANT_REACH_PEER"):
 		return oops.Errorf("cannot reach peer")

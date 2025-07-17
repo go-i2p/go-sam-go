@@ -7,7 +7,10 @@ import (
 	"github.com/samber/oops"
 )
 
-// ReadFrom reads a raw datagram from the connection
+// ReadFrom reads a raw datagram from the connection.
+// This method implements the net.PacketConn interface and blocks until a datagram
+// is received or an error occurs, returning the data, source address, and any error.
+// Example usage: n, addr, err := conn.ReadFrom(buffer)
 func (c *RawConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	c.mu.RLock()
 	if c.closed {
@@ -28,7 +31,10 @@ func (c *RawConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	return n, addr, nil
 }
 
-// WriteTo writes a raw datagram to the specified address
+// WriteTo writes a raw datagram to the specified address.
+// This method implements the net.PacketConn interface and sends the data
+// to the destination address, returning the number of bytes written and any error.
+// Example usage: n, err := conn.WriteTo(data, destAddr)
 func (c *RawConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	c.mu.RLock()
 	if c.closed {
@@ -51,7 +57,10 @@ func (c *RawConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	return len(p), nil
 }
 
-// Close closes the raw connection
+// Close closes the raw connection and cleans up associated resources.
+// This method is safe to call multiple times and will only perform cleanup once.
+// The underlying session remains open and can be used by other connections.
+// Example usage: defer conn.Close()
 func (c *RawConn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -76,12 +85,18 @@ func (c *RawConn) Close() error {
 	return nil
 }
 
-// LocalAddr returns the local address
+// LocalAddr returns the local address of the connection.
+// This method implements the net.PacketConn interface and returns the I2P address
+// of the session wrapped in a RawAddr for compatibility with net.Addr.
+// Example usage: addr := conn.LocalAddr()
 func (c *RawConn) LocalAddr() net.Addr {
 	return &RawAddr{addr: c.session.Addr()}
 }
 
-// SetDeadline sets the read and write deadlines
+// SetDeadline sets the read and write deadlines for the connection.
+// This method implements the net.PacketConn interface by applying the deadline
+// to both read and write operations through separate deadline methods.
+// Example usage: conn.SetDeadline(time.Now().Add(30*time.Second))
 func (c *RawConn) SetDeadline(t time.Time) error {
 	if err := c.SetReadDeadline(t); err != nil {
 		return err
@@ -89,16 +104,23 @@ func (c *RawConn) SetDeadline(t time.Time) error {
 	return c.SetWriteDeadline(t)
 }
 
-// SetReadDeadline sets the deadline for future ReadFrom calls
+// SetReadDeadline sets the deadline for future ReadFrom calls.
+// This method implements the net.PacketConn interface for timeout support.
+// Currently this is a placeholder implementation for I2P raw datagrams.
+// Example usage: conn.SetReadDeadline(time.Now().Add(10*time.Second))
 func (c *RawConn) SetReadDeadline(t time.Time) error {
 	// For raw datagrams, we handle timeouts differently
 	// This is a placeholder implementation
 	return nil
 }
 
-// SetWriteDeadline sets the deadline for future WriteTo calls
+// SetWriteDeadline sets the deadline for future WriteTo calls.
+// This method implements the net.PacketConn interface by configuring the writer timeout
+// based on the deadline duration, providing timeout support for send operations.
+// Example usage: conn.SetWriteDeadline(time.Now().Add(5*time.Second))
 func (c *RawConn) SetWriteDeadline(t time.Time) error {
-	// Calculate timeout duration
+	// Calculate timeout duration from deadline and apply to writer
+	// Zero deadline means no timeout should be applied
 	if !t.IsZero() {
 		timeout := time.Until(t)
 		c.writer.SetTimeout(timeout)
