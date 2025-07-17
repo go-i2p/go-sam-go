@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 )
 
@@ -86,48 +87,75 @@ func (l *StreamListener) acceptLoop() {
 	logger.Debug("Starting accept loop")
 
 	for {
-		select {
-		case <-l.ctx.Done():
-			logger.Debug("Accept loop terminated - listener closed (context)")
+		if l.shouldTerminateLoop(logger) {
 			return
-		case <-l.closeChan:
-			logger.Debug("Accept loop terminated - listener closed (closeChan)")
-			return
-		default:
-			conn, err := l.acceptConnection()
-			if err != nil {
-				// Check if listener is closed before reporting error to avoid race conditions
-				l.mu.RLock()
-				closed := l.closed
-				l.mu.RUnlock()
-
-				if !closed {
-					logger.WithError(err).Error("Failed to accept connection")
-					// Non-blocking error delivery with fallback to close detection
-					select {
-					case l.errorChan <- err:
-					case <-l.ctx.Done():
-						return
-					case <-l.closeChan:
-						return
-					}
-				}
-				continue
-			}
-
-			// Non-blocking connection delivery with proper cleanup on close
-			select {
-			case l.acceptChan <- conn:
-				logger.Debug("Successfully accepted new connection")
-			case <-l.ctx.Done():
-				conn.Close()
-				return
-			case <-l.closeChan:
-				// Close the connection if listener is shutting down
-				conn.Close()
-				return
-			}
 		}
+
+		conn, err := l.acceptConnection()
+		if err != nil {
+			if l.handleAcceptError(err, logger) {
+				return
+			}
+			continue
+		}
+
+		if l.deliverConnection(conn, logger) {
+			return
+		}
+	}
+}
+
+// shouldTerminateLoop checks if the accept loop should terminate due to context cancellation or close signal.
+func (l *StreamListener) shouldTerminateLoop(logger *logger.Entry) bool {
+	select {
+	case <-l.ctx.Done():
+		logger.Debug("Accept loop terminated - listener closed (context)")
+		return true
+	case <-l.closeChan:
+		logger.Debug("Accept loop terminated - listener closed (closeChan)")
+		return true
+	default:
+		return false
+	}
+}
+
+// handleAcceptError processes connection acceptance errors and delivers them to the error channel.
+// It returns true if the loop should terminate, false if it should continue.
+func (l *StreamListener) handleAcceptError(err error, logger *logger.Entry) bool {
+	// Check if listener is closed before reporting error to avoid race conditions
+	l.mu.RLock()
+	closed := l.closed
+	l.mu.RUnlock()
+
+	if !closed {
+		logger.WithError(err).Error("Failed to accept connection")
+		// Non-blocking error delivery with fallback to close detection
+		select {
+		case l.errorChan <- err:
+		case <-l.ctx.Done():
+			return true
+		case <-l.closeChan:
+			return true
+		}
+	}
+	return false
+}
+
+// deliverConnection delivers an accepted connection to the accept channel with proper cleanup.
+// It returns true if the loop should terminate, false if it should continue.
+func (l *StreamListener) deliverConnection(conn *StreamConn, logger *logger.Entry) bool {
+	// Non-blocking connection delivery with proper cleanup on close
+	select {
+	case l.acceptChan <- conn:
+		logger.Debug("Successfully accepted new connection")
+		return false
+	case <-l.ctx.Done():
+		conn.Close()
+		return true
+	case <-l.closeChan:
+		// Close the connection if listener is shutting down
+		conn.Close()
+		return true
 	}
 }
 
