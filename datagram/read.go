@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 )
 
@@ -96,70 +97,86 @@ func (r *DatagramReader) Close() error {
 // This method handles the SAM protocol communication for datagram reception, parsing
 // DATAGRAM RECEIVED responses and forwarding datagrams to the appropriate channels.
 // It runs until the reader is closed and provides error handling for network issues.
-// receiveLoop continuously receives incoming datagrams
 func (r *DatagramReader) receiveLoop() {
-	// Create logging context for debugging receive operations
+	logger := r.initializeReceiveLoop()
+	defer r.signalReceiveLoopCompletion()
+
+	if err := r.validateSessionState(logger); err != nil {
+		return
+	}
+
+	r.runReceiveLoop(logger)
+}
+
+// initializeReceiveLoop sets up logging context and returns a logger for the receive loop.
+func (r *DatagramReader) initializeReceiveLoop() *logger.Entry {
 	sessionID := "unknown"
 	if r.session != nil && r.session.BaseSession != nil {
 		sessionID = r.session.ID()
 	}
 	logger := log.WithField("session_id", sessionID)
 	logger.Debug("Starting datagram receive loop")
+	return logger
+}
 
-	// Signal completion when the loop exits
-	// This allows Close() to wait for proper termination
-	defer func() {
-		select {
-		case r.doneChan <- struct{}{}:
-			// Successfully signaled completion
-		default:
-			// Channel may be closed or blocked - that's acceptable
-		}
-	}()
+// signalReceiveLoopCompletion signals that the receive loop has completed execution.
+func (r *DatagramReader) signalReceiveLoopCompletion() {
+	select {
+	case r.doneChan <- struct{}{}:
+		// Successfully signaled completion
+	default:
+		// Channel may be closed or blocked - that's acceptable
+	}
+}
 
-	// Check session state before starting the receive loop
-	// This prevents starting the loop on invalid sessions
+// validateSessionState checks if the session is valid before starting the receive loop.
+func (r *DatagramReader) validateSessionState(logger *logger.Entry) error {
 	if r.session == nil || r.session.BaseSession == nil {
 		logger.Error("Invalid session state")
 		select {
 		case r.errorChan <- oops.Errorf("invalid session state"):
 		case <-r.closeChan:
 		}
-		return
+		return oops.Errorf("invalid session state")
 	}
+	return nil
+}
 
-	// Main receive loop that continues until the reader is closed
+// runReceiveLoop executes the main receive loop until the reader is closed.
+func (r *DatagramReader) runReceiveLoop(logger *logger.Entry) {
 	for {
 		select {
 		case <-r.closeChan:
-			// Reader has been closed, terminate the loop
 			logger.Debug("Receive loop terminated")
 			return
 		default:
-			// Attempt to receive a datagram from the network
-			// This blocks until a datagram is available or an error occurs
-			datagram, err := r.receiveDatagram()
-			if err != nil {
-				// Forward errors to the error channel for handling
-				logger.WithError(err).Debug("Error receiving datagram")
-				select {
-				case r.errorChan <- err:
-				case <-r.closeChan:
-					return
-				}
-				continue
-			}
-
-			// Forward the received datagram to the receive channel
-			select {
-			case r.recvChan <- datagram:
-				// Successfully forwarded the datagram
-			case <-r.closeChan:
-				// Reader was closed while forwarding
+			if !r.processIncomingDatagram(logger) {
 				return
 			}
 		}
 	}
+}
+
+// processIncomingDatagram receives and forwards a single datagram, returning false if the loop should terminate.
+func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
+	datagram, err := r.receiveDatagram()
+	if err != nil {
+		logger.WithError(err).Debug("Error receiving datagram")
+		select {
+		case r.errorChan <- err:
+		case <-r.closeChan:
+			return false
+		}
+		return true
+	}
+
+	select {
+	case r.recvChan <- datagram:
+		// Successfully forwarded the datagram
+	case <-r.closeChan:
+		return false
+	}
+	return true
 }
 
 // receiveDatagram performs the actual datagram reception from the SAM bridge.
