@@ -41,7 +41,7 @@ func (r *RawReader) Close() error {
 		return nil
 	}
 
-	// Fix: Safe session ID retrieval with nil checks
+	// Safe session ID retrieval with nil checks for logging
 	sessionID := "unknown"
 	if r.session != nil && r.session.BaseSession != nil {
 		sessionID = r.session.ID()
@@ -63,10 +63,10 @@ func (r *RawReader) Close() error {
 		logger.Warn("Timeout waiting for receive loop to stop")
 	}
 
-	// Fix: Close doneChan here to prevent multiple closes
+	// Close doneChan here to prevent multiple closes
 	close(r.doneChan)
 
-	// Fix: Close receiver channels here under mutex protection
+	// Close receiver channels here under mutex protection
 	close(r.recvChan)
 	close(r.errorChan)
 
@@ -79,7 +79,7 @@ func (r *RawReader) Close() error {
 // and forwards datagrams to the appropriate channels until the reader is closed.
 // receiveLoop continuously receives incoming raw datagrams
 func (r *RawReader) receiveLoop() {
-	// Fix: Safe session ID retrieval with nil checks
+	// Safe session ID retrieval with nil checks for logging
 	sessionID := "unknown"
 	if r.session != nil && r.session.BaseSession != nil {
 		sessionID = r.session.ID()
@@ -111,6 +111,7 @@ func (r *RawReader) receiveLoop() {
 	}
 	r.session.mu.RUnlock()
 
+	// Main receive loop - continues until reader is closed
 	for {
 		// Check for closure in a non-blocking way first
 		select {

@@ -46,9 +46,10 @@ func (l *RawListener) Close() error {
 	logger.Debug("Closing RawListener")
 
 	l.closed = true
+	// Signal the accept loop to terminate
 	close(l.closeChan)
 
-	// Close the reader
+	// Close the reader to stop receiving datagrams
 	if l.reader != nil {
 		l.reader.Close()
 	}
@@ -73,14 +74,17 @@ func (l *RawListener) acceptLoop() {
 	logger := log.WithField("session_id", l.session.ID())
 	logger.Debug("Starting raw accept loop")
 
+	// Continuously accept connections until the listener is closed
 	for {
 		select {
 		case <-l.closeChan:
 			logger.Debug("Raw accept loop terminated - listener closed")
 			return
 		default:
+			// Try to accept a new raw connection
 			conn, err := l.acceptRawConnection()
 			if err != nil {
+				// Check if the listener is still open before sending error
 				l.mu.RLock()
 				closed := l.closed
 				l.mu.RUnlock()
@@ -96,10 +100,12 @@ func (l *RawListener) acceptLoop() {
 				continue
 			}
 
+			// Send the new connection to the accept channel
 			select {
 			case l.acceptChan <- conn:
 				logger.Debug("Successfully accepted new raw connection")
 			case <-l.closeChan:
+				// Clean up the connection if listener was closed
 				conn.Close()
 				return
 			}
