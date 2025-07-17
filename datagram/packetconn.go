@@ -8,7 +8,10 @@ import (
 	"github.com/samber/oops"
 )
 
-// ReadFrom reads a datagram from the connection
+// ReadFrom reads a datagram from the connection and returns the number of bytes read,
+// the source address, and any error encountered. This method implements the net.PacketConn interface.
+// It starts the receive loop if not already started and blocks until a datagram is received.
+// The data is copied to the provided buffer p, and the source address is returned as a DatagramAddr.
 func (c *DatagramConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	c.mu.RLock()
 	if c.closed {
@@ -32,7 +35,10 @@ func (c *DatagramConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	return n, addr, nil
 }
 
-// WriteTo writes a datagram to the specified address
+// WriteTo writes a datagram to the specified address and returns the number of bytes written
+// and any error encountered. This method implements the net.PacketConn interface.
+// The address must be a DatagramAddr containing a valid I2P destination.
+// The entire byte slice p is sent as a single datagram message.
 func (c *DatagramConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	c.mu.RLock()
 	if c.closed {
@@ -55,7 +61,10 @@ func (c *DatagramConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	return len(p), nil
 }
 
-// Close closes the datagram connection
+// Close closes the datagram connection and releases associated resources.
+// This method implements the net.Conn interface. It closes the reader and writer
+// but does not close the underlying session, which may be shared by other connections.
+// Multiple calls to Close are safe and will return nil after the first call.
 func (c *DatagramConn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -82,12 +91,17 @@ func (c *DatagramConn) Close() error {
 	return nil
 }
 
-// LocalAddr returns the local address
+// LocalAddr returns the local network address as a DatagramAddr containing
+// the I2P destination address of this connection's session. This method implements
+// the net.Conn interface and provides access to the local I2P destination.
 func (c *DatagramConn) LocalAddr() net.Addr {
 	return &DatagramAddr{addr: c.session.Addr()}
 }
 
-// SetDeadline sets the read and write deadlines
+// SetDeadline sets both read and write deadlines for the connection.
+// This method implements the net.Conn interface by calling both SetReadDeadline
+// and SetWriteDeadline with the same time value. If either deadline cannot be set,
+// the first error encountered is returned.
 func (c *DatagramConn) SetDeadline(t time.Time) error {
 	if err := c.SetReadDeadline(t); err != nil {
 		return err
@@ -95,14 +109,20 @@ func (c *DatagramConn) SetDeadline(t time.Time) error {
 	return c.SetWriteDeadline(t)
 }
 
-// SetReadDeadline sets the deadline for future ReadFrom calls
+// SetReadDeadline sets the deadline for future ReadFrom calls.
+// This method implements the net.Conn interface. For datagram connections,
+// this is currently a placeholder implementation that always returns nil.
+// Timeout handling is managed differently for datagram operations.
 func (c *DatagramConn) SetReadDeadline(t time.Time) error {
 	// For datagrams, we handle timeouts differently
 	// This is a placeholder implementation
 	return nil
 }
 
-// SetWriteDeadline sets the deadline for future WriteTo calls
+// SetWriteDeadline sets the deadline for future WriteTo calls.
+// This method implements the net.Conn interface. If the deadline is not zero,
+// it calculates the timeout duration and sets it on the writer for subsequent
+// write operations.
 func (c *DatagramConn) SetWriteDeadline(t time.Time) error {
 	// Calculate timeout duration
 	if !t.IsZero() {
@@ -112,19 +132,21 @@ func (c *DatagramConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-// Read implements net.Conn by wrapping ReadFrom.
+// Read implements net.Conn by wrapping ReadFrom for stream-like usage.
 // It reads data into the provided byte slice and returns the number of bytes read.
-// When reading, it also updates the remote address of the connection.
-// Note: This is not a typical use case for datagrams, as they are connectionless.
-// However, for compatibility with net.Conn, we implement it this way.
+// When reading, it also updates the remote address of the connection for subsequent
+// Write calls. Note: This is not typical for datagrams which are connectionless,
+// but provides compatibility with the net.Conn interface.
 func (c *DatagramConn) Read(b []byte) (n int, err error) {
 	n, addr, err := c.ReadFrom(b)
 	c.remoteAddr = addr.(*i2pkeys.I2PAddr)
 	return n, err
 }
 
-// RemoteAddr returns the remote address of the connection.
-// For datagram connections, this returns nil as there is no single remote address.
+// RemoteAddr returns the remote network address of the connection.
+// This method implements the net.Conn interface. For datagram connections,
+// this returns the address of the last peer that sent data (set by Read),
+// or nil if no data has been received yet.
 func (c *DatagramConn) RemoteAddr() net.Addr {
 	if c.remoteAddr != nil {
 		return &DatagramAddr{addr: *c.remoteAddr}
@@ -132,12 +154,11 @@ func (c *DatagramConn) RemoteAddr() net.Addr {
 	return nil
 }
 
-// Write implements net.Conn by wrapping WriteTo.
-// It writes data to the remote address and returns the number of bytes written.
-// It uses the remote address set by the last Read operation.
-// If no remote address is set, it returns an error.
-// Note: This is not a typical use case for datagrams, as they are connectionless.
-// However, for compatibility with net.Conn, we implement it this way.
+// Write implements net.Conn by wrapping WriteTo for stream-like usage.
+// It writes data to the remote address set by the last Read operation and
+// returns the number of bytes written. If no remote address has been set,
+// it returns an error. Note: This is not typical for datagrams which are
+// connectionless, but provides compatibility with the net.Conn interface.
 func (c *DatagramConn) Write(b []byte) (n int, err error) {
 	if c.remoteAddr == nil {
 		return 0, oops.Errorf("no remote address set, use WriteTo or Read first")
