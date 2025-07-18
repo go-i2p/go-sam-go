@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
@@ -67,6 +68,9 @@ func (r *DatagramReader) Close() error {
 
 		r.closed = true
 
+		// Set atomic flag to indicate we're closing
+		atomic.StoreInt32(&r.closing, 1)
+
 		// Signal the receive loop to terminate
 		// This prevents the background goroutine from continuing to run
 		close(r.closeChan)
@@ -121,12 +125,8 @@ func (r *DatagramReader) initializeReceiveLoop() *logger.Entry {
 
 // signalReceiveLoopCompletion signals that the receive loop has completed execution.
 func (r *DatagramReader) signalReceiveLoopCompletion() {
-	select {
-	case r.doneChan <- struct{}{}:
-		// Successfully signaled completion
-	default:
-		// Channel may be closed or blocked - that's acceptable
-	}
+	// Close doneChan to signal completion - channels should be closed by sender
+	close(r.doneChan)
 }
 
 // validateSessionState checks if the session is valid before starting the receive loop.
@@ -159,6 +159,11 @@ func (r *DatagramReader) runReceiveLoop(logger *logger.Entry) {
 
 // processIncomingDatagram receives and forwards a single datagram, returning false if the loop should terminate.
 func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
+	// Check atomic flag first to avoid race condition
+	if atomic.LoadInt32(&r.closing) == 1 {
+		return false
+	}
+
 	datagram, err := r.receiveDatagram()
 	if err != nil {
 		logger.WithError(err).Debug("Error receiving datagram")
@@ -168,6 +173,11 @@ func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
 			return false
 		}
 		return true
+	}
+
+	// Check atomic flag again before sending to avoid race condition
+	if atomic.LoadInt32(&r.closing) == 1 {
+		return false
 	}
 
 	select {

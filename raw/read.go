@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
@@ -52,6 +53,9 @@ func (r *RawReader) Close() error {
 
 	r.closed = true
 
+	// Set atomic flag to indicate we're closing
+	atomic.StoreInt32(&r.closing, 1)
+
 	// Signal termination to receiveLoop
 	close(r.closeChan)
 
@@ -64,8 +68,7 @@ func (r *RawReader) Close() error {
 		logger.Warn("Timeout waiting for receive loop to stop")
 	}
 
-	// Close doneChan here to prevent multiple closes
-	close(r.doneChan)
+	// Don't close doneChan - let the sender close it
 
 	// Close receiver channels here under mutex protection
 	close(r.recvChan)
@@ -102,12 +105,8 @@ func (r *RawReader) initializeReceiveLoop() *logger.Entry {
 
 // signalReceiveLoopCompletion signals that the receive loop has completed execution.
 func (r *RawReader) signalReceiveLoopCompletion() {
-	select {
-	case r.doneChan <- struct{}{}:
-		// Successfully signaled completion
-	default:
-		// Channel may be closed or blocked - that's okay
-	}
+	// Close doneChan to signal completion - channels should be closed by sender
+	close(r.doneChan)
 }
 
 // validateSessionForReceive checks if the session is valid for receiving operations.
@@ -174,6 +173,11 @@ func (r *RawReader) handleReceiveError(err error, logger *logger.Entry) bool {
 
 // forwardDatagram forwards a received datagram to the receive channel.
 func (r *RawReader) forwardDatagram(datagram *RawDatagram, logger *logger.Entry) bool {
+	// Check atomic flag first to avoid race condition
+	if atomic.LoadInt32(&r.closing) == 1 {
+		return true
+	}
+
 	select {
 	case r.recvChan <- datagram:
 		logger.Debug("Successfully received raw datagram")

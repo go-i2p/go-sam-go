@@ -33,6 +33,7 @@ type DatagramReader struct {
 	closeChan chan struct{}
 	doneChan  chan struct{}
 	closed    bool
+	closing   int32 // atomic flag to coordinate channel closure
 	mu        sync.RWMutex
 	closeOnce sync.Once
 }
