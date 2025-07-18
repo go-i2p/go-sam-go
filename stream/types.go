@@ -17,10 +17,11 @@ import (
 // Example usage: session, err := NewStreamSession(sam, "my-session", keys, options)
 type StreamSession struct {
 	*common.BaseSession
-	sam     *common.SAM
-	options []string
-	mu      sync.RWMutex
-	closed  bool
+	sam       *common.SAM
+	options   []string
+	listeners []*StreamListener
+	mu        sync.RWMutex
+	closed    bool
 }
 
 // StreamListener implements net.Listener for I2P streaming connections.

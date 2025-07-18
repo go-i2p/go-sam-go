@@ -85,6 +85,9 @@ func (s *StreamSession) Listen() (*StreamListener, error) {
 	// Start accepting connections in a goroutine
 	go listener.acceptLoop()
 
+	// Register the listener with the session
+	s.registerListener(listener)
+
 	logger.Debug("Successfully created StreamListener")
 	return listener, nil
 }
@@ -143,9 +146,9 @@ func (s *StreamSession) DialContext(ctx context.Context, destination string) (*S
 // Example usage: defer session.Close()
 func (s *StreamSession) Close() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if s.closed {
+		s.mu.Unlock()
 		return nil
 	}
 
@@ -153,6 +156,14 @@ func (s *StreamSession) Close() error {
 	logger.Debug("Closing StreamSession")
 
 	s.closed = true
+
+	// Close all listeners first to stop their accept loops
+	listeners := s.copyAndClearListeners()
+	s.mu.Unlock()
+
+	for _, listener := range listeners {
+		listener.closeWithoutUnregister()
+	}
 
 	// Close the base session and handle potential cleanup errors
 	if err := s.BaseSession.Close(); err != nil {
@@ -171,4 +182,31 @@ func (s *StreamSession) Close() error {
 // Example usage: addr := session.Addr()
 func (s *StreamSession) Addr() i2pkeys.I2PAddr {
 	return s.Keys().Addr()
+}
+
+// registerListener adds a listener to the session's listener list
+func (s *StreamSession) registerListener(listener *StreamListener) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.listeners = append(s.listeners, listener)
+}
+
+// unregisterListener removes a listener from the session's listener list
+func (s *StreamSession) unregisterListener(listener *StreamListener) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, l := range s.listeners {
+		if l == listener {
+			s.listeners = append(s.listeners[:i], s.listeners[i+1:]...)
+			break
+		}
+	}
+}
+
+// copyAndClearListeners returns a copy of listeners and clears the list (must be called with mutex held)
+func (s *StreamSession) copyAndClearListeners() []*StreamListener {
+	listeners := make([]*StreamListener, len(s.listeners))
+	copy(listeners, s.listeners)
+	s.listeners = nil
+	return listeners
 }

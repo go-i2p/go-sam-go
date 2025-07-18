@@ -65,10 +65,39 @@ func (l *StreamListener) Close() error {
 		l.cancel()
 	}
 
+	// Unregister this listener from the session
+	l.session.unregisterListener(l)
+
 	// Remove the finalizer to prevent it from running on an already closed listener
 	runtime.SetFinalizer(l, nil)
 
 	logger.Debug("Successfully closed StreamListener")
+	return nil
+}
+
+// closeWithoutUnregister closes the listener without unregistering from the session.
+// This method is used internally by closeAllListeners to avoid deadlock.
+func (l *StreamListener) closeWithoutUnregister() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.closed {
+		return nil
+	}
+
+	logger := log.WithField("session_id", l.session.ID())
+	logger.Debug("Closing StreamListener without unregister")
+
+	l.closed = true
+	close(l.closeChan)
+	if l.cancel != nil {
+		l.cancel()
+	}
+
+	// Remove the finalizer to prevent it from running on an already closed listener
+	runtime.SetFinalizer(l, nil)
+
+	logger.Debug("Successfully closed StreamListener without unregister")
 	return nil
 }
 
@@ -189,11 +218,30 @@ func (l *StreamListener) acceptConnection() (*StreamConn, error) {
 // readConnectionRequest reads the incoming connection request from the session.
 func (l *StreamListener) readConnectionRequest() (string, error) {
 	buf := make([]byte, 4096)
-	n, err := l.session.Read(buf)
-	if err != nil {
-		return "", oops.Errorf("failed to read from session: %w", err)
+
+	// Use a goroutine to make the read operation cancellable
+	type readResult struct {
+		n   int
+		err error
 	}
-	return string(buf[:n]), nil
+
+	readChan := make(chan readResult, 1)
+	go func() {
+		n, err := l.session.Read(buf)
+		readChan <- readResult{n: n, err: err}
+	}()
+
+	select {
+	case result := <-readChan:
+		if result.err != nil {
+			return "", oops.Errorf("failed to read from session: %w", result.err)
+		}
+		return string(buf[:result.n]), nil
+	case <-l.ctx.Done():
+		return "", oops.Errorf("listener context cancelled")
+	case <-l.closeChan:
+		return "", oops.Errorf("listener closed")
+	}
 }
 
 // parseConnectionResponse parses the STREAM STATUS response and extracts status and destination.
