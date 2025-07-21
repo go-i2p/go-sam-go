@@ -161,14 +161,14 @@ func (s *StreamSession) Close() error {
 	listeners := s.copyAndClearListeners()
 	s.mu.Unlock()
 
-	for _, listener := range listeners {
-		listener.closeWithoutUnregister()
-	}
-
-	// Close the base session and handle potential cleanup errors
+	// Close the base session first to unblock any pending reads
 	if err := s.BaseSession.Close(); err != nil {
 		logger.WithError(err).Error("Failed to close base session")
-		return oops.Errorf("failed to close stream session: %w", err)
+		// Continue with listener cleanup even if base session close fails
+	}
+
+	for _, listener := range listeners {
+		listener.closeWithoutUnregister()
 	}
 
 	logger.Debug("Successfully closed StreamSession")

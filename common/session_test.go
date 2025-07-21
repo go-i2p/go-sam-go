@@ -199,7 +199,39 @@ func TestNewGenericSessionWithSignatureAndPorts(t *testing.T) {
 	}
 	defer sam.Close()
 
-	tests := []struct {
+	tests := getSessionWithPortsTestCases()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testSam, testKeys := setupSessionTest(t)
+			defer testSam.Close()
+
+			session, err := testSam.NewGenericSessionWithSignatureAndPorts(tt.style, tt.id, tt.from, tt.to, testKeys, tt.sigType, tt.extras)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewGenericSessionWithSignatureAndPorts() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				validateSessionWithPorts(t, session, tt, testKeys)
+				session.Close()
+			}
+		})
+	}
+}
+
+// getSessionWithPortsTestCases returns test cases for session creation with ports and signature.
+func getSessionWithPortsTestCases() []struct {
+	name    string
+	style   string
+	id      string
+	from    string
+	to      string
+	sigType string
+	extras  []string
+	wantErr bool
+} {
+	return []struct {
 		name    string
 		style   string
 		id      string
@@ -240,58 +272,70 @@ func TestNewGenericSessionWithSignatureAndPorts(t *testing.T) {
 			wantErr: false,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create new SAM connection for each test
-			testSam, err := NewSAM("127.0.0.1:7656")
-			if err != nil {
-				t.Skipf("Failed to connect to SAM bridge: %v", err)
-			}
-			defer testSam.Close()
+// setupSessionTest creates a new SAM connection and generates test keys.
+func setupSessionTest(t *testing.T) (*SAM, i2pkeys.I2PKeys) {
+	testSam, err := NewSAM("127.0.0.1:7656")
+	if err != nil {
+		t.Skipf("Failed to connect to SAM bridge: %v", err)
+	}
 
-			// Generate unique keys for each test
-			testKeys, err := testSam.NewKeys()
-			if err != nil {
-				t.Fatalf("Failed to generate keys: %v", err)
-			}
+	testKeys, err := testSam.NewKeys()
+	if err != nil {
+		t.Fatalf("Failed to generate keys: %v", err)
+	}
 
-			session, err := testSam.NewGenericSessionWithSignatureAndPorts(tt.style, tt.id, tt.from, tt.to, testKeys, tt.sigType, tt.extras)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewGenericSessionWithSignatureAndPorts() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+	return testSam, testKeys
+}
 
-			if !tt.wantErr {
-				if session == nil {
-					t.Error("NewGenericSessionWithSignatureAndPorts() returned nil session")
-					return
-				}
+// validateSessionWithPorts verifies that a session was created correctly with the expected properties.
+func validateSessionWithPorts(t *testing.T, session Session, testCase struct {
+	name    string
+	style   string
+	id      string
+	from    string
+	to      string
+	sigType string
+	extras  []string
+	wantErr bool
+}, testKeys i2pkeys.I2PKeys) {
+	if session == nil {
+		t.Error("NewGenericSessionWithSignatureAndPorts() returned nil session")
+		return
+	}
 
-				// Verify session properties
-				if session.ID() != tt.id {
-					t.Errorf("Session ID = %v, want %v", session.ID(), tt.id)
-				}
+	validateSessionID(t, session, testCase.id)
+	validateSessionKeys(t, session, testKeys)
+	validateSessionPorts(t, session, testCase.from, testCase.to)
+}
 
-				if session.Keys().String() != testKeys.String() {
-					t.Error("Session keys don't match expected keys")
-				}
+// validateSessionID checks if the session ID matches the expected value.
+func validateSessionID(t *testing.T, session Session, expectedID string) {
+	if session.ID() != expectedID {
+		t.Errorf("Session ID = %v, want %v", session.ID(), expectedID)
+	}
+}
 
-				// Verify port settings if available
-				baseSession, ok := session.(*BaseSession)
-				if ok {
-					if tt.from != "0" && baseSession.From() != tt.from {
-						t.Errorf("Session FromPort = %v, want %v", baseSession.From(), tt.from)
-					}
-					if tt.to != "0" && baseSession.To() != tt.to {
-						t.Errorf("Session ToPort = %v, want %v", baseSession.To(), tt.to)
-					}
-				}
+// validateSessionKeys checks if the session keys match the expected keys.
+func validateSessionKeys(t *testing.T, session Session, expectedKeys i2pkeys.I2PKeys) {
+	if session.Keys().String() != expectedKeys.String() {
+		t.Error("Session keys don't match expected keys")
+	}
+}
 
-				// Clean up session
-				session.Close()
-			}
-		})
+// validateSessionPorts verifies that the session ports are set correctly.
+func validateSessionPorts(t *testing.T, session Session, expectedFrom, expectedTo string) {
+	baseSession, ok := session.(*BaseSession)
+	if !ok {
+		return
+	}
+
+	if expectedFrom != "0" && baseSession.From() != expectedFrom {
+		t.Errorf("Session FromPort = %v, want %v", baseSession.From(), expectedFrom)
+	}
+	if expectedTo != "0" && baseSession.To() != expectedTo {
+		t.Errorf("Session ToPort = %v, want %v", baseSession.To(), expectedTo)
 	}
 }
 

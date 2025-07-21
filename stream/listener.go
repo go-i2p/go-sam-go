@@ -5,6 +5,7 @@ import (
 	"net"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
@@ -89,6 +90,10 @@ func (l *StreamListener) closeWithoutUnregister() error {
 	logger.Debug("Closing StreamListener without unregister")
 
 	l.closed = true
+
+	// Set a read deadline to unblock any pending reads
+	l.session.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+
 	close(l.closeChan)
 	if l.cancel != nil {
 		l.cancel()
@@ -218,30 +223,11 @@ func (l *StreamListener) acceptConnection() (*StreamConn, error) {
 // readConnectionRequest reads the incoming connection request from the session.
 func (l *StreamListener) readConnectionRequest() (string, error) {
 	buf := make([]byte, 4096)
-
-	// Use a goroutine to make the read operation cancellable
-	type readResult struct {
-		n   int
-		err error
+	n, err := l.session.Read(buf)
+	if err != nil {
+		return "", oops.Errorf("failed to read from session: %w", err)
 	}
-
-	readChan := make(chan readResult, 1)
-	go func() {
-		n, err := l.session.Read(buf)
-		readChan <- readResult{n: n, err: err}
-	}()
-
-	select {
-	case result := <-readChan:
-		if result.err != nil {
-			return "", oops.Errorf("failed to read from session: %w", result.err)
-		}
-		return string(buf[:result.n]), nil
-	case <-l.ctx.Done():
-		return "", oops.Errorf("listener context cancelled")
-	case <-l.closeChan:
-		return "", oops.Errorf("listener closed")
-	}
+	return string(buf[:n]), nil
 }
 
 // parseConnectionResponse parses the STREAM STATUS response and extracts status and destination.
