@@ -143,46 +143,64 @@ func (d *StreamDialer) handleDialResult(ctx context.Context, sam *common.SAM, co
 
 // performDial handles the actual SAM protocol for establishing connections
 func (d *StreamDialer) performDial(sam *common.SAM, addr i2pkeys.I2PAddr) (*StreamConn, error) {
-	logger := log.WithFields(logrus.Fields{
-		"session_id":  d.session.ID(),
-		"destination": addr.Base32(),
-	})
-
-	// Send STREAM CONNECT command
-	connectCmd := fmt.Sprintf("STREAM CONNECT ID=%s DESTINATION=%s SILENT=false\n",
-		d.session.ID(), addr.Base64())
-
-	logger.WithField("command", strings.TrimSpace(connectCmd)).Debug("Sending STREAM CONNECT")
-
-	_, err := sam.Write([]byte(connectCmd))
-	if err != nil {
-		return nil, oops.Errorf("failed to send STREAM CONNECT: %w", err)
+	if err := d.sendStreamConnectCommand(sam, addr); err != nil {
+		return nil, err
 	}
 
-	// Read the response
-	buf := make([]byte, 4096)
-	n, err := sam.Read(buf)
+	response, err := d.readStreamConnectResponse(sam)
 	if err != nil {
-		return nil, oops.Errorf("failed to read STREAM CONNECT response: %w", err)
+		return nil, err
 	}
 
-	response := string(buf[:n])
-	logger.WithField("response", response).Debug("Received STREAM CONNECT response")
-
-	// Parse the response
 	if err := d.parseConnectResponse(response); err != nil {
 		return nil, err
 	}
 
-	// Create the StreamConn
-	conn := &StreamConn{
+	return d.createStreamConnection(sam, addr), nil
+}
+
+// sendStreamConnectCommand sends the STREAM CONNECT command to the SAM bridge.
+func (d *StreamDialer) sendStreamConnectCommand(sam *common.SAM, addr i2pkeys.I2PAddr) error {
+	connectCmd := fmt.Sprintf("STREAM CONNECT ID=%s DESTINATION=%s SILENT=false\n",
+		d.session.ID(), addr.Base64())
+
+	log.WithFields(logrus.Fields{
+		"session_id":  d.session.ID(),
+		"destination": addr.Base32(),
+		"command":     strings.TrimSpace(connectCmd),
+	}).Debug("Sending STREAM CONNECT")
+
+	_, err := sam.Write([]byte(connectCmd))
+	if err != nil {
+		return oops.Errorf("failed to send STREAM CONNECT: %w", err)
+	}
+	return nil
+}
+
+// readStreamConnectResponse reads and logs the response from the SAM bridge.
+func (d *StreamDialer) readStreamConnectResponse(sam *common.SAM) (string, error) {
+	buf := make([]byte, 4096)
+	n, err := sam.Read(buf)
+	if err != nil {
+		return "", oops.Errorf("failed to read STREAM CONNECT response: %w", err)
+	}
+
+	response := string(buf[:n])
+	log.WithFields(logrus.Fields{
+		"session_id": d.session.ID(),
+		"response":   response,
+	}).Debug("Received STREAM CONNECT response")
+	return response, nil
+}
+
+// createStreamConnection creates a new StreamConn instance with the established connection.
+func (d *StreamDialer) createStreamConnection(sam *common.SAM, addr i2pkeys.I2PAddr) *StreamConn {
+	return &StreamConn{
 		session: d.session,
 		conn:    sam,
 		laddr:   d.session.Addr(),
 		raddr:   addr,
 	}
-
-	return conn, nil
 }
 
 // parseConnectResponse parses the STREAM STATUS response
