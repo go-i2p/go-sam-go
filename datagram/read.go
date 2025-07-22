@@ -87,9 +87,9 @@ func (r *DatagramReader) Close() error {
 		}
 
 		// Clean up channels to prevent resource leaks
-		// Close channels that are safe to close
-		close(r.recvChan)
-		close(r.errorChan)
+		// Note: We don't close r.recvChan and r.errorChan here because the receive loop
+		// might still be sending on them. These channels will be garbage collected when
+		// all references are dropped. Only the receive loop should close send-channels.
 
 		logger.Debug("Successfully closed DatagramReader")
 	})
@@ -167,23 +167,28 @@ func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
 	datagram, err := r.receiveDatagram()
 	if err != nil {
 		logger.WithError(err).Debug("Error receiving datagram")
+		// Use non-blocking send to errorChan to prevent deadlock during shutdown
 		select {
 		case r.errorChan <- err:
+			// Error successfully queued
 		case <-r.closeChan:
+			// Reader was closed while handling error
 			return false
+		default:
+			// errorChan is full, drop the error to prevent blocking
+			// This prevents deadlock during shutdown when no one reads errorChan
+			logger.WithError(err).Debug("Dropped error due to full error channel")
 		}
 		return true
 	}
 
-	// Check atomic flag again before sending to avoid race condition
-	if atomic.LoadInt32(&r.closing) == 1 {
-		return false
-	}
-
+	// Use select statement to atomically check for closure and send datagram
+	// This prevents race condition between atomic flag check and channel send
 	select {
 	case r.recvChan <- datagram:
 		// Successfully forwarded the datagram
 	case <-r.closeChan:
+		// Reader was closed while attempting to send
 		return false
 	}
 	return true
