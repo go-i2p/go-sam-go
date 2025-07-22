@@ -84,6 +84,9 @@ func (ds *DatagramSession) DialContext(ctx context.Context, destination string) 
 		go conn.reader.receiveLoop()
 	}
 
+	// Set up finalizer to prevent resource leaks if Close() is not called
+	conn.setFinalizer()
+
 	logger.Debug("Successfully created datagram connection")
 	return conn, nil
 }
@@ -154,6 +157,9 @@ func (ds *DatagramSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PA
 	if conn.reader != nil {
 		go conn.reader.receiveLoop()
 	}
+
+	// Set up finalizer to prevent resource leaks if Close() is not called
+	conn.setFinalizer()
 
 	logger.Debug("Successfully created I2P datagram connection")
 	return conn, nil

@@ -111,17 +111,32 @@ func (d *StreamDialer) setupTimeout(ctx context.Context) (context.Context, conte
 func (d *StreamDialer) performAsyncDial(ctx context.Context, sam *common.SAM, addr i2pkeys.I2PAddr) (*StreamConn, error) {
 	connChan := make(chan *StreamConn, 1)
 	errChan := make(chan error, 1)
+	doneChan := make(chan struct{})
 
 	go func() {
+		defer close(doneChan)
 		conn, err := d.performDial(sam, addr)
 		if err != nil {
-			errChan <- err
+			select {
+			case errChan <- err:
+			case <-ctx.Done():
+				// Context cancelled, clean up and exit
+				return
+			}
 			return
 		}
-		connChan <- conn
+		select {
+		case connChan <- conn:
+		case <-ctx.Done():
+			// Context cancelled, close connection and exit
+			if conn != nil {
+				conn.Close()
+			}
+			return
+		}
 	}()
 
-	return d.handleDialResult(ctx, sam, connChan, errChan)
+	return d.handleDialResultWithCoordination(ctx, sam, connChan, errChan, doneChan)
 }
 
 // handleDialResult manages the result of the dial operation with timeout and cancellation support.
@@ -137,6 +152,30 @@ func (d *StreamDialer) handleDialResult(ctx context.Context, sam *common.SAM, co
 	case <-ctx.Done():
 		sam.Close()
 		log.Error("Connection attempt timed out")
+		return nil, oops.Errorf("connection attempt timed out: %w", ctx.Err())
+	}
+}
+
+// handleDialResultWithCoordination manages the result of the dial operation with proper goroutine coordination.
+// This method ensures that the dial goroutine completes or is properly cancelled before returning.
+func (d *StreamDialer) handleDialResultWithCoordination(ctx context.Context, sam *common.SAM, connChan chan *StreamConn, errChan chan error, doneChan chan struct{}) (*StreamConn, error) {
+	select {
+	case conn := <-connChan:
+		log.Debug("Successfully established connection")
+		// Wait for goroutine to complete cleanup
+		<-doneChan
+		return conn, nil
+	case err := <-errChan:
+		sam.Close()
+		log.WithError(err).Error("Failed to establish connection")
+		// Wait for goroutine to complete cleanup
+		<-doneChan
+		return nil, err
+	case <-ctx.Done():
+		sam.Close()
+		log.Error("Connection attempt timed out")
+		// Wait for goroutine to complete cleanup to prevent goroutine leak
+		<-doneChan
 		return nil, oops.Errorf("connection attempt timed out: %w", ctx.Err())
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/base64"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
@@ -66,9 +65,6 @@ func (r *DatagramReader) Close() error {
 		logger.Debug("Closing DatagramReader")
 
 		r.closed = true
-
-		// Set atomic flag to indicate we're closing
-		atomic.StoreInt32(&r.closing, 1)
 
 		// Signal the receive loop to terminate
 		// This prevents the background goroutine from continuing to run
@@ -158,8 +154,12 @@ func (r *DatagramReader) runReceiveLoop(logger *logger.Entry) {
 
 // processIncomingDatagram receives and forwards a single datagram, returning false if the loop should terminate.
 func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
-	// Check atomic flag first to avoid race condition
-	if atomic.LoadInt32(&r.closing) == 1 {
+	// Check closed state with consistent mutex protection
+	r.mu.RLock()
+	isClosed := r.closed
+	r.mu.RUnlock()
+
+	if isClosed {
 		return false
 	}
 
@@ -192,8 +192,12 @@ func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
 // the core functionality for the receive loop and handles protocol-specific details.
 // receiveDatagram performs the actual datagram reception from the SAM bridge
 func (r *DatagramReader) receiveDatagram() (*Datagram, error) {
-	// Check if reader is closing before attempting expensive I/O operation
-	if atomic.LoadInt32(&r.closing) == 1 {
+	// Check if reader is closed before attempting expensive I/O operation
+	r.mu.RLock()
+	isClosed := r.closed
+	r.mu.RUnlock()
+
+	if isClosed {
 		return nil, oops.Errorf("reader is closing")
 	}
 

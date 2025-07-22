@@ -2,6 +2,7 @@ package datagram
 
 import (
 	"net"
+	"runtime"
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
@@ -73,10 +74,19 @@ func (c *DatagramConn) Close() error {
 		return nil
 	}
 
-	logger := log.WithField("session_id", c.session.ID())
+	var sessionID string
+	if c.session != nil {
+		sessionID = c.session.ID()
+	} else {
+		sessionID = "unknown"
+	}
+	logger := log.WithField("session_id", sessionID)
 	logger.Debug("Closing DatagramConn")
 
 	c.closed = true
+
+	// Clear the finalizer since we're cleaning up explicitly
+	c.clearFinalizer()
 
 	// Close reader and writer - these are owned by this connection
 	if c.reader != nil {
@@ -166,4 +176,28 @@ func (c *DatagramConn) Write(b []byte) (n int, err error) {
 
 	addr := &DatagramAddr{addr: *c.remoteAddr}
 	return c.WriteTo(b, addr)
+}
+
+// connFinalizer is called by the garbage collector to ensure resources are cleaned up
+// even if the user forgets to call Close(). This prevents goroutine leaks.
+func datagramConnFinalizer(c *DatagramConn) {
+	c.mu.Lock()
+	if !c.closed {
+		log.Warn("DatagramConn was garbage collected without being closed - cleaning up resources")
+		c.closed = true
+		if c.reader != nil {
+			c.reader.Close()
+		}
+	}
+	c.mu.Unlock()
+}
+
+// setFinalizer sets up automatic cleanup for the connection to prevent resource leaks
+func (c *DatagramConn) setFinalizer() {
+	runtime.SetFinalizer(c, datagramConnFinalizer)
+}
+
+// clearFinalizer removes the finalizer when Close() is called explicitly
+func (c *DatagramConn) clearFinalizer() {
+	runtime.SetFinalizer(c, nil)
 }

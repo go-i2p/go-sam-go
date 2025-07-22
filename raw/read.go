@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/base64"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
@@ -54,9 +53,6 @@ func (r *RawReader) Close() error {
 
 	r.closed = true
 
-	// Set atomic flag to indicate we're closing
-	atomic.StoreInt32(&r.closing, 1)
-
 	// Signal termination to receiveLoop
 	close(r.closeChan)
 
@@ -71,9 +67,11 @@ func (r *RawReader) Close() error {
 
 	// Don't close doneChan - let the sender close it
 
-	// Close receiver channels here under mutex protection
-	close(r.recvChan)
-	close(r.errorChan)
+	// Clean up channels to prevent resource leaks
+	// Note: We don't close r.recvChan and r.errorChan here because the receive loop
+	// might still be sending on them. These channels will be garbage collected when
+	// all references are dropped. Only the receive loop should close send-channels.
+	// This matches the datagram package approach and prevents "send on closed channel" panics.
 
 	logger.Debug("Successfully closed RawReader")
 	return nil
@@ -174,8 +172,12 @@ func (r *RawReader) handleReceiveError(err error, logger *logger.Entry) bool {
 
 // forwardDatagram forwards a received datagram to the receive channel.
 func (r *RawReader) forwardDatagram(datagram *RawDatagram, logger *logger.Entry) bool {
-	// Check atomic flag first to avoid race condition
-	if atomic.LoadInt32(&r.closing) == 1 {
+	// Check closed state with consistent mutex protection
+	r.mu.RLock()
+	isClosed := r.closed
+	r.mu.RUnlock()
+
+	if isClosed {
 		return true
 	}
 

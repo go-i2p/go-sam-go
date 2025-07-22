@@ -2,6 +2,7 @@ package raw
 
 import (
 	"net"
+	"runtime"
 	"time"
 
 	"github.com/samber/oops"
@@ -71,10 +72,19 @@ func (c *RawConn) Close() error {
 		return nil
 	}
 
-	logger := log.WithField("session_id", c.session.ID())
+	var sessionID string
+	if c.session != nil {
+		sessionID = c.session.ID()
+	} else {
+		sessionID = "unknown"
+	}
+	logger := log.WithField("session_id", sessionID)
 	logger.Debug("Closing RawConn")
 
 	c.closed = true
+
+	// Clear the finalizer since we're cleaning up explicitly
+	c.clearFinalizer()
 
 	// Close reader and writer - these are owned by this connection
 	if c.reader != nil {
@@ -170,4 +180,28 @@ func (c *RawConn) Write(b []byte) (n int, err error) {
 	// Use the stored remote address for writing
 	addr := &RawAddr{addr: *c.remoteAddr}
 	return c.WriteTo(b, addr)
+}
+
+// connFinalizer is called by the garbage collector to ensure resources are cleaned up
+// even if the user forgets to call Close(). This prevents goroutine leaks.
+func connFinalizer(c *RawConn) {
+	c.mu.Lock()
+	if !c.closed {
+		log.Warn("RawConn was garbage collected without being closed - cleaning up resources")
+		c.closed = true
+		if c.reader != nil {
+			c.reader.Close()
+		}
+	}
+	c.mu.Unlock()
+}
+
+// setFinalizer sets up automatic cleanup for the connection to prevent resource leaks
+func (c *RawConn) setFinalizer() {
+	runtime.SetFinalizer(c, connFinalizer)
+}
+
+// clearFinalizer removes the finalizer when Close() is called explicitly
+func (c *RawConn) clearFinalizer() {
+	runtime.SetFinalizer(c, nil)
 }
