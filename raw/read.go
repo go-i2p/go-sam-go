@@ -14,15 +14,16 @@ import (
 
 // ReceiveDatagram receives a raw datagram from any source
 func (r *RawReader) ReceiveDatagram() (*RawDatagram, error) {
-	// Check if closed first, but don't rely on this check for safety
+	// Hold read lock for the entire operation to prevent race with Close()
 	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	if r.closed {
-		r.mu.RUnlock()
 		return nil, oops.Errorf("reader is closed")
 	}
-	r.mu.RUnlock()
 
 	// Use select with closeChan to handle concurrent close operations safely
+	// The lock ensures that channels won't be closed while we're selecting on them
 	select {
 	case datagram := <-r.recvChan:
 		return datagram, nil

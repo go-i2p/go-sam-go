@@ -18,17 +18,16 @@ import (
 // concurrent access safely and provides proper error handling for network issues.
 // Example usage: datagram, err := reader.ReceiveDatagram()
 func (r *DatagramReader) ReceiveDatagram() (*Datagram, error) {
-	// Check if the reader is closed before attempting to receive
-	// This prevents operations on invalid readers and provides clear error messages
+	// Hold read lock for the entire operation to prevent race with Close()
 	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	if r.closed {
-		r.mu.RUnlock()
 		return nil, oops.Errorf("reader is closed")
 	}
-	r.mu.RUnlock()
 
 	// Use select to handle multiple channel operations atomically
-	// This ensures proper handling of datagrams, errors, and close signals
+	// The lock ensures that channels won't be closed while we're selecting on them
 	select {
 	case datagram := <-r.recvChan:
 		// Successfully received a datagram from the network
@@ -167,17 +166,10 @@ func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
 	datagram, err := r.receiveDatagram()
 	if err != nil {
 		logger.WithError(err).Debug("Error receiving datagram")
-		// Use non-blocking send to errorChan to prevent deadlock during shutdown
 		select {
 		case r.errorChan <- err:
-			// Error successfully queued
 		case <-r.closeChan:
-			// Reader was closed while handling error
 			return false
-		default:
-			// errorChan is full, drop the error to prevent blocking
-			// This prevents deadlock during shutdown when no one reads errorChan
-			logger.WithError(err).Debug("Dropped error due to full error channel")
 		}
 		return true
 	}
@@ -200,6 +192,11 @@ func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
 // the core functionality for the receive loop and handles protocol-specific details.
 // receiveDatagram performs the actual datagram reception from the SAM bridge
 func (r *DatagramReader) receiveDatagram() (*Datagram, error) {
+	// Check if reader is closing before attempting expensive I/O operation
+	if atomic.LoadInt32(&r.closing) == 1 {
+		return nil, oops.Errorf("reader is closing")
+	}
+
 	// Read data from the SAM connection
 	// This blocks until data is available or an error occurs
 	conn := r.session.Conn()
