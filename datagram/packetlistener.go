@@ -91,31 +91,53 @@ func (l *DatagramListener) acceptLoop() {
 			logger.Debug("Packet accept loop terminated - listener closed")
 			return
 		default:
-			conn, err := l.acceptPacketConnection()
-			if err != nil {
-				l.mu.RLock()
-				closed := l.closed
-				l.mu.RUnlock()
-
-				if !closed {
-					logger.WithError(err).Error("Failed to accept packet connection")
-					select {
-					case l.errorChan <- err:
-					case <-l.closeChan:
-						return
-					}
-				}
-				continue
-			}
-
-			select {
-			case l.acceptChan <- conn:
-				logger.Debug("Successfully accepted new packet connection")
-			case <-l.closeChan:
-				conn.Close()
+			if !l.processIncomingPacket() {
 				return
 			}
 		}
+	}
+}
+
+// processIncomingPacket handles a single incoming packet connection attempt.
+// Returns false if the accept loop should terminate, true to continue.
+func (l *DatagramListener) processIncomingPacket() bool {
+	conn, err := l.acceptPacketConnection()
+	if err != nil {
+		return l.handlePacketError(err)
+	}
+	return l.dispatchPacketConnection(conn)
+}
+
+// handlePacketError processes errors from packet connection acceptance.
+// Returns false if the accept loop should terminate, true to continue.
+func (l *DatagramListener) handlePacketError(err error) bool {
+	l.mu.RLock()
+	closed := l.closed
+	l.mu.RUnlock()
+
+	if !closed {
+		logger := log.WithField("session_id", l.session.ID())
+		logger.WithError(err).Error("Failed to accept packet connection")
+		select {
+		case l.errorChan <- err:
+		case <-l.closeChan:
+			return false
+		}
+	}
+	return true
+}
+
+// dispatchPacketConnection sends an accepted packet connection to the accept channel.
+// Returns false if the accept loop should terminate, true to continue.
+func (l *DatagramListener) dispatchPacketConnection(conn net.Conn) bool {
+	logger := log.WithField("session_id", l.session.ID())
+	select {
+	case l.acceptChan <- conn:
+		logger.Debug("Successfully accepted new packet connection")
+		return true
+	case <-l.closeChan:
+		conn.Close()
+		return false
 	}
 }
 
