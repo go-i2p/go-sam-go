@@ -104,15 +104,15 @@ type Session interface {
 	// Add other session methods as needed
 }
 
-// BaseSession provides common functionality for all I2P session types.
-// It implements the Session interface and serves as the foundation for stream, datagram, and raw sessions.
-// Contains connection management, key handling, and basic I/O operations.
+// BaseSession provides the underlying SAM session functionality.  
+// It manages the connection to the SAM bridge and handles session lifecycle.
 type BaseSession struct {
-	id   string
-	conn net.Conn
-	keys i2pkeys.I2PKeys
-	SAM  SAM
-	mu   sync.RWMutex
+	id     string
+	conn   net.Conn
+	keys   i2pkeys.I2PKeys
+	SAM    SAM
+	mu     sync.RWMutex
+	closed bool
 }
 
 // Conn returns the underlying network connection for the session.
@@ -136,6 +136,9 @@ func (bs *BaseSession) Keys() i2pkeys.I2PKeys { return bs.keys }
 func (bs *BaseSession) Read(b []byte) (int, error) {
 	bs.mu.RLock()
 	defer bs.mu.RUnlock()
+	if bs.closed {
+		return 0, net.ErrClosed
+	}
 	return bs.conn.Read(b)
 }
 
@@ -151,8 +154,17 @@ func (bs *BaseSession) Write(b []byte) (int, error) {
 // Implements the io.Closer interface for proper resource cleanup.
 func (bs *BaseSession) Close() error {
 	bs.mu.Lock()
-	defer bs.mu.Unlock()
-	return bs.conn.Close()
+	if bs.closed {
+		bs.mu.Unlock()
+		return nil
+	}
+	bs.closed = true
+	conn := bs.conn
+	bs.mu.Unlock()
+	
+	// Close the connection without holding the lock to prevent deadlock
+	// when other goroutines are trying to read/write to the connection
+	return conn.Close()
 }
 
 // LocalAddr returns the local network address of the session connection.

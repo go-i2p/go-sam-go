@@ -164,6 +164,10 @@ func (s *StreamSession) Close() error {
 
 	// Close all listeners first to stop their accept loops
 	listeners := s.copyAndClearListeners()
+	
+	// CRITICAL FIX: Release the write lock BEFORE calling BaseSession.Close()
+	// This prevents deadlock when Listen() operations are waiting for registerListener()
+	// which needs the write lock, while BaseSession.Close() can block on network I/O
 	s.mu.Unlock()
 
 	// Close the base session first to unblock any pending reads
