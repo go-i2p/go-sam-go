@@ -148,10 +148,10 @@ func (sam *SAM) parseSessionResponse(response, id string, keys i2pkeys.I2PKeys) 
 	} else if strings.HasPrefix(response, SESSION_I2P_ERROR) {
 		log.WithField("error", response[len(SESSION_I2P_ERROR):]).Error("I2P error")
 		conn.Close()
-		return nil, oops.Errorf("I2P error " + response[len(SESSION_I2P_ERROR):])
+		return nil, oops.Errorf("I2P error %v", response[len(SESSION_I2P_ERROR):])
 	} else {
 		log.WithField("reply", response).Error("Unable to parse SAMv3 reply")
 		conn.Close()
-		return nil, oops.Errorf("Unable to parse SAMv3 reply: " + response)
+		return nil, oops.Errorf("Unable to parse SAMv3 reply: %v", response)
 	}
 }
