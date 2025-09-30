@@ -7,7 +7,6 @@ import (
 )
 
 func TestStreamSession_Dial(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -31,7 +30,6 @@ func TestStreamSession_Dial(t *testing.T) {
 }
 
 func TestStreamSession_DialI2P(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -57,7 +55,6 @@ func TestStreamSession_DialI2P(t *testing.T) {
 }
 
 func TestStreamSession_DialContext(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 

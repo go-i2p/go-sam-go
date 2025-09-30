@@ -91,10 +91,10 @@ func (s *RawSession) PacketConn() net.PacketConn {
 		reader:  s.NewReader(),
 		writer:  s.NewWriter(),
 	}
-	
+
 	// Set up cleanup to prevent resource leaks if Close() is not called
 	conn.addCleanup()
-	
+
 	return conn
 }
 

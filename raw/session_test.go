@@ -27,7 +27,6 @@ func setupTestSAM(t *testing.T) (*common.SAM, i2pkeys.I2PKeys) {
 }
 
 func TestNewRawSession(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		id      string
@@ -97,7 +96,6 @@ func TestNewRawSession(t *testing.T) {
 }
 
 func TestRawSession_Close(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -120,7 +118,6 @@ func TestRawSession_Close(t *testing.T) {
 }
 
 func TestRawSession_Addr(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -139,7 +136,6 @@ func TestRawSession_Addr(t *testing.T) {
 }
 
 func TestRawSession_NewReader(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -174,7 +170,6 @@ func TestRawSession_NewReader(t *testing.T) {
 }
 
 func TestRawSession_NewWriter(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -199,7 +194,6 @@ func TestRawSession_NewWriter(t *testing.T) {
 }
 
 func TestRawSession_PacketConn(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -240,7 +234,6 @@ func TestRawAddr_Network(t *testing.T) {
 }
 
 func TestRawAddr_String(t *testing.T) {
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 

@@ -8,7 +8,6 @@ import (
 
 // TestSessionListenerLifecycle tests that listeners are properly cleaned up when session closes
 func TestSessionListenerLifecycle(t *testing.T) {
-
 	// Create a session
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -67,7 +66,6 @@ func TestSessionListenerLifecycle(t *testing.T) {
 
 // TestExplicitListenerClose tests that explicitly closing listeners works correctly
 func TestExplicitListenerClose(t *testing.T) {
-
 	// Create a session
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
