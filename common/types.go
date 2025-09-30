@@ -104,7 +104,7 @@ type Session interface {
 	// Add other session methods as needed
 }
 
-// BaseSession provides the underlying SAM session functionality.  
+// BaseSession provides the underlying SAM session functionality.
 // It manages the connection to the SAM bridge and handles session lifecycle.
 type BaseSession struct {
 	id     string
@@ -161,7 +161,7 @@ func (bs *BaseSession) Close() error {
 	bs.closed = true
 	conn := bs.conn
 	bs.mu.Unlock()
-	
+
 	// Close the connection without holding the lock to prevent deadlock
 	// when other goroutines are trying to read/write to the connection
 	return conn.Close()
