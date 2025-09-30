@@ -1,10 +1,8 @@
 package common
 
 import (
-	cryptoRand "crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -12,6 +10,8 @@ import (
 
 	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
+
+	rand "github.com/go-i2p/crypto/rand"
 )
 
 // IgnorePortError filters out "missing port in address" errors for convenience.
@@ -113,7 +113,7 @@ func RandPort() (portNumber string, err error) {
 // Uses crypto/rand for thread-safe random generation.
 func generateRandomPort() (string, error) {
 	var buf [4]byte
-	if _, err := cryptoRand.Read(buf[:]); err != nil {
+	if _, err := rand.Read(buf[:]); err != nil {
 		return "", oops.Wrapf(err, "failed to generate random bytes")
 	}
 

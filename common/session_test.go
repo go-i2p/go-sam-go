@@ -299,7 +299,8 @@ func validateSessionWithPorts(t *testing.T, session Session, testCase struct {
 	sigType string
 	extras  []string
 	wantErr bool
-}, testKeys i2pkeys.I2PKeys) {
+}, testKeys i2pkeys.I2PKeys,
+) {
 	if session == nil {
 		t.Error("NewGenericSessionWithSignatureAndPorts() returned nil session")
 		return
