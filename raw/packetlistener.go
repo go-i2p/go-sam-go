@@ -69,47 +69,63 @@ func (l *RawListener) Addr() net.Addr {
 // acceptLoop continuously accepts incoming raw connections in a separate goroutine.
 // This method manages the connection acceptance lifecycle, handles error conditions,
 // and maintains the acceptChan buffer for incoming connections until the listener is closed.
-// acceptLoop continuously accepts incoming raw connections
 func (l *RawListener) acceptLoop() {
 	logger := log.WithField("session_id", l.session.ID())
 	logger.Debug("Starting raw accept loop")
 
-	// Continuously accept connections until the listener is closed
 	for {
 		select {
 		case <-l.closeChan:
 			logger.Debug("Raw accept loop terminated - listener closed")
 			return
 		default:
-			// Try to accept a new raw connection
-			conn, err := l.acceptRawConnection()
-			if err != nil {
-				// Check if the listener is still open before sending error
-				l.mu.RLock()
-				closed := l.closed
-				l.mu.RUnlock()
-
-				if !closed {
-					logger.WithError(err).Error("Failed to accept raw connection")
-					select {
-					case l.errorChan <- err:
-					case <-l.closeChan:
-						return
-					}
-				}
-				continue
-			}
-
-			// Send the new connection to the accept channel
-			select {
-			case l.acceptChan <- conn:
-				logger.Debug("Successfully accepted new raw connection")
-			case <-l.closeChan:
-				// Clean up the connection if listener was closed
-				conn.Close()
+			if !l.processIncomingConnection() {
 				return
 			}
 		}
+	}
+}
+
+// processIncomingConnection handles a single incoming connection attempt.
+// Returns false if the accept loop should terminate, true to continue.
+func (l *RawListener) processIncomingConnection() bool {
+	conn, err := l.acceptRawConnection()
+	if err != nil {
+		return l.handleConnectionError(err)
+	}
+	return l.dispatchConnection(conn)
+}
+
+// handleConnectionError processes errors from connection acceptance.
+// Returns false if the accept loop should terminate, true to continue.
+func (l *RawListener) handleConnectionError(err error) bool {
+	l.mu.RLock()
+	closed := l.closed
+	l.mu.RUnlock()
+
+	if !closed {
+		logger := log.WithField("session_id", l.session.ID())
+		logger.WithError(err).Error("Failed to accept raw connection")
+		select {
+		case l.errorChan <- err:
+		case <-l.closeChan:
+			return false
+		}
+	}
+	return true
+}
+
+// dispatchConnection sends an accepted connection to the accept channel.
+// Returns false if the accept loop should terminate, true to continue.
+func (l *RawListener) dispatchConnection(conn *RawConn) bool {
+	logger := log.WithField("session_id", l.session.ID())
+	select {
+	case l.acceptChan <- conn:
+		logger.Debug("Successfully accepted new raw connection")
+		return true
+	case <-l.closeChan:
+		conn.Close()
+		return false
 	}
 }
 
