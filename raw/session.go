@@ -86,11 +86,16 @@ func (s *RawSession) NewWriter() *RawWriter {
 // in a RawConn that implements the PacketConn interface for datagram operations.
 // Example usage: conn := session.PacketConn(); n, addr, err := conn.ReadFrom(buf)
 func (s *RawSession) PacketConn() net.PacketConn {
-	return &RawConn{
+	conn := &RawConn{
 		session: s,
 		reader:  s.NewReader(),
 		writer:  s.NewWriter(),
 	}
+	
+	// Set up cleanup to prevent resource leaks if Close() is not called
+	conn.addCleanup()
+	
+	return conn
 }
 
 // SendDatagram sends a raw datagram to the specified destination address.
