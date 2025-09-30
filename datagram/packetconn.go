@@ -206,7 +206,7 @@ func cleanupDatagramConn(c *DatagramConn) {
 
 // addCleanup sets up automatic cleanup for the connection to prevent resource leaks
 func (c *DatagramConn) addCleanup() {
-	c.cleanup = runtime.AddCleanup(c, cleanupDatagramConn, c)
+	c.cleanup = runtime.AddCleanup(&c.cleanup, cleanupDatagramConn, c)
 }
 
 // clearCleanup removes the cleanup when Close() is called explicitly

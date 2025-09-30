@@ -84,7 +84,7 @@ func (s *StreamSession) Listen() (*StreamListener, error) {
 
 	// Set up cleanup to ensure the listener is closed and the goroutine is cleaned up
 	// This prevents goroutine leaks if the user forgets to call Close()
-	listener.cleanup = runtime.AddCleanup(listener, cleanupStreamListener, listener)
+	listener.cleanup = runtime.AddCleanup(&listener.cleanup, cleanupStreamListener, listener)
 
 	// Start accepting connections in a goroutine
 	go listener.acceptLoop()
