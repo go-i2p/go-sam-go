@@ -7,9 +7,6 @@ import (
 )
 
 func TestStreamSession_Dial(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -34,9 +31,6 @@ func TestStreamSession_Dial(t *testing.T) {
 }
 
 func TestStreamSession_DialI2P(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -63,9 +57,6 @@ func TestStreamSession_DialI2P(t *testing.T) {
 }
 
 func TestStreamSession_DialContext(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()

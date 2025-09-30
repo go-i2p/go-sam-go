@@ -27,10 +27,6 @@ func setupTestSAM(t *testing.T) (*common.SAM, i2pkeys.I2PKeys) {
 }
 
 func TestNewStreamSession(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	tests := []struct {
 		name    string
 		id      string
@@ -100,10 +96,6 @@ func TestNewStreamSession(t *testing.T) {
 }
 
 func TestStreamSession_Close(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -132,10 +124,6 @@ func TestStreamSession_Close(t *testing.T) {
 }
 
 func TestStreamSession_Addr(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -154,10 +142,6 @@ func TestStreamSession_Addr(t *testing.T) {
 }
 
 func TestStreamSession_ConcurrentOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 

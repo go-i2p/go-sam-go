@@ -5,10 +5,6 @@ import (
 )
 
 func TestDatagramSession_Listen(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -54,10 +50,6 @@ func TestDatagramSession_Listen(t *testing.T) {
 }
 
 func TestDatagramSession_Listen_ClosedSession(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 

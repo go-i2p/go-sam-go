@@ -6,10 +6,6 @@ import (
 )
 
 func TestDatagramSession_ConcurrentOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	// Add overall test timeout
 	timeout := time.After(30 * time.Second)
 	done := make(chan bool)

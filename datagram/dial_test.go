@@ -8,10 +8,6 @@ import (
 )
 
 func TestDatagramSession_Dial(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	// Create two sessions - one for listener, one for dialer
 	sam1, keys1 := setupTestSAM(t)
 	defer sam1.Close()
@@ -66,10 +62,6 @@ func TestDatagramSession_Dial(t *testing.T) {
 }
 
 func TestDatagramSession_DialContext(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	// Create two sessions
 	sam1, keys1 := setupTestSAM(t)
 	defer sam1.Close()
@@ -117,10 +109,6 @@ func TestDatagramSession_DialContext(t *testing.T) {
 }
 
 func TestDatagramSession_DialContext_Timeout(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -161,10 +149,6 @@ func TestDatagramSession_DialContext_Timeout(t *testing.T) {
 }
 
 func TestDatagramSession_Dial_ClosedSession(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -191,10 +175,6 @@ func TestDatagramSession_Dial_ClosedSession(t *testing.T) {
 }
 
 func TestDatagramSession_NewDialer(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 

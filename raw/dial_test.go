@@ -14,9 +14,6 @@ func setupTestSession(t *testing.T) *RawSession {
 	t.Helper()
 
 	// Skip actual I2P connection for unit tests
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, err := common.NewSAM(testSAMAddr)
 	if err != nil {

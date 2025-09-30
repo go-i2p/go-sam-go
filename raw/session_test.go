@@ -27,9 +27,6 @@ func setupTestSAM(t *testing.T) (*common.SAM, i2pkeys.I2PKeys) {
 }
 
 func TestNewRawSession(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	tests := []struct {
 		name    string
@@ -100,9 +97,6 @@ func TestNewRawSession(t *testing.T) {
 }
 
 func TestRawSession_Close(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -126,9 +120,6 @@ func TestRawSession_Close(t *testing.T) {
 }
 
 func TestRawSession_Addr(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -148,9 +139,6 @@ func TestRawSession_Addr(t *testing.T) {
 }
 
 func TestRawSession_NewReader(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -186,9 +174,6 @@ func TestRawSession_NewReader(t *testing.T) {
 }
 
 func TestRawSession_NewWriter(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -214,9 +199,6 @@ func TestRawSession_NewWriter(t *testing.T) {
 }
 
 func TestRawSession_PacketConn(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
@@ -258,9 +240,6 @@ func TestRawAddr_Network(t *testing.T) {
 }
 
 func TestRawAddr_String(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()

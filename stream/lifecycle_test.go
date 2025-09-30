@@ -8,9 +8,6 @@ import (
 
 // TestSessionListenerLifecycle tests that listeners are properly cleaned up when session closes
 func TestSessionListenerLifecycle(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	// Create a session
 	sam, keys := setupTestSAM(t)
@@ -70,9 +67,6 @@ func TestSessionListenerLifecycle(t *testing.T) {
 
 // TestExplicitListenerClose tests that explicitly closing listeners works correctly
 func TestExplicitListenerClose(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
 
 	// Create a session
 	sam, keys := setupTestSAM(t)
