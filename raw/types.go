@@ -1,6 +1,7 @@
 package raw
 
 import (
+	"runtime"
 	"sync"
 	"time"
 
@@ -54,6 +55,7 @@ type RawConn struct {
 	remoteAddr *i2pkeys.I2PAddr
 	mu         sync.RWMutex
 	closed     bool
+	cleanup    runtime.Cleanup
 }
 
 // RawListener implements net.Listener for I2P raw connections

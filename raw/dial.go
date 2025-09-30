@@ -75,8 +75,8 @@ func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.
 		go conn.reader.receiveLoop()
 	}
 
-	// Set up finalizer to prevent resource leaks if Close() is not called
-	conn.setFinalizer()
+	// Set up cleanup to prevent resource leaks if Close() is not called
+	conn.addCleanup()
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created raw connection")
 	return conn, nil
@@ -142,8 +142,8 @@ func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) 
 		go conn.reader.receiveLoop()
 	}
 
-	// Set up finalizer to prevent resource leaks if Close() is not called
-	conn.setFinalizer()
+	// Set up cleanup to prevent resource leaks if Close() is not called
+	conn.addCleanup()
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created I2P raw connection")
 	return conn, nil

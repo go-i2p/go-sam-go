@@ -1,6 +1,7 @@
 package datagram
 
 import (
+	"runtime"
 	"sync"
 	"time"
 
@@ -79,4 +80,5 @@ type DatagramConn struct {
 	remoteAddr *i2pkeys.I2PAddr
 	mu         sync.RWMutex
 	closed     bool
+	cleanup    runtime.Cleanup
 }

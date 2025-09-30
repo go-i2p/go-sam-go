@@ -86,9 +86,7 @@ func (c *DatagramConn) Close() error {
 	c.closed = true
 
 	// Clear the finalizer since we're cleaning up explicitly
-	c.clearFinalizer()
-
-	// Close reader and writer - these are owned by this connection
+	c.clearCleanup() // Close reader and writer - these are owned by this connection
 	if c.reader != nil {
 		c.reader.Close()
 	}
@@ -192,12 +190,30 @@ func datagramConnFinalizer(c *DatagramConn) {
 	c.mu.Unlock()
 }
 
-// setFinalizer sets up automatic cleanup for the connection to prevent resource leaks
-func (c *DatagramConn) setFinalizer() {
-	runtime.SetFinalizer(c, datagramConnFinalizer)
+// cleanupDatagramConn is called by AddCleanup to ensure resources are cleaned up
+// even if the user forgets to call Close(). This prevents goroutine leaks.
+func cleanupDatagramConn(c *DatagramConn) {
+	c.mu.Lock()
+	if !c.closed {
+		log.Warn("DatagramConn was garbage collected without being closed - cleaning up resources")
+		c.closed = true
+		if c.reader != nil {
+			c.reader.Close()
+		}
+	}
+	c.mu.Unlock()
 }
 
-// clearFinalizer removes the finalizer when Close() is called explicitly
-func (c *DatagramConn) clearFinalizer() {
-	runtime.SetFinalizer(c, nil)
+// addCleanup sets up automatic cleanup for the connection to prevent resource leaks
+func (c *DatagramConn) addCleanup() {
+	c.cleanup = runtime.AddCleanup(c, cleanupDatagramConn, c)
+}
+
+// clearCleanup removes the cleanup when Close() is called explicitly
+func (c *DatagramConn) clearCleanup() {
+	var zero runtime.Cleanup
+	if c.cleanup != zero {
+		c.cleanup.Stop()
+		c.cleanup = zero
+	}
 }

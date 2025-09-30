@@ -49,8 +49,8 @@ func TestFinalizerPreventsGoroutineLeaks(t *testing.T) {
 				}
 			}(conn.reader)
 
-			// Set up the finalizer (this is what our fix does)
-			conn.setFinalizer()
+			// Set up the cleanup (this is what our fix does)
+			conn.addCleanup()
 		}
 		// Connections go out of scope here without Close() being called
 	}()
@@ -110,8 +110,8 @@ func TestExplicitCloseSkipsFinalizer(t *testing.T) {
 		}
 	}(conn.reader)
 
-	// Set up the finalizer
-	conn.setFinalizer()
+	// Set up the cleanup
+	conn.addCleanup()
 
 	// Wait a bit for the goroutine to start
 	time.Sleep(50 * time.Millisecond)

@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ type StreamListener struct {
 	cancel     context.CancelFunc
 	closed     bool
 	mu         sync.RWMutex
+	cleanup    runtime.Cleanup
 }
 
 // StreamConn implements net.Conn for I2P streaming connections.

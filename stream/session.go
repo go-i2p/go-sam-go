@@ -11,6 +11,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// cleanupStreamListener is called by AddCleanup to ensure the listener is closed and the goroutine is cleaned up
+// This prevents goroutine leaks if the user forgets to call Close()
+func cleanupStreamListener(l *StreamListener) {
+	log.Warn("StreamListener garbage collected without being closed, closing now to prevent goroutine leak")
+	l.Close()
+}
+
 // NewStreamSession creates a new streaming session for TCP-like I2P connections.
 // It initializes the session with the provided SAM connection, session ID, cryptographic keys,
 // and configuration options. The session provides both client and server capabilities for
@@ -75,12 +82,9 @@ func (s *StreamSession) Listen() (*StreamListener, error) {
 		cancel:     cancel,
 	}
 
-	// Set a finalizer to ensure the listener is closed and the goroutine is cleaned up
+	// Set up cleanup to ensure the listener is closed and the goroutine is cleaned up
 	// This prevents goroutine leaks if the user forgets to call Close()
-	runtime.SetFinalizer(listener, func(l *StreamListener) {
-		logger.Warn("StreamListener garbage collected without being closed, closing now to prevent goroutine leak")
-		l.Close()
-	})
+	listener.cleanup = runtime.AddCleanup(listener, cleanupStreamListener, listener)
 
 	// Start accepting connections in a goroutine
 	go listener.acceptLoop()

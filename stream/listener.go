@@ -69,8 +69,12 @@ func (l *StreamListener) Close() error {
 	// Unregister this listener from the session
 	l.session.unregisterListener(l)
 
-	// Remove the finalizer to prevent it from running on an already closed listener
-	runtime.SetFinalizer(l, nil)
+	// Remove the cleanup to prevent it from running on an already closed listener
+	var zero runtime.Cleanup
+	if l.cleanup != zero {
+		l.cleanup.Stop()
+		l.cleanup = zero
+	}
 
 	logger.Debug("Successfully closed StreamListener")
 	return nil
@@ -99,8 +103,12 @@ func (l *StreamListener) closeWithoutUnregister() error {
 		l.cancel()
 	}
 
-	// Remove the finalizer to prevent it from running on an already closed listener
-	runtime.SetFinalizer(l, nil)
+	// Remove the cleanup to prevent it from running on an already closed listener
+	var zero runtime.Cleanup
+	if l.cleanup != zero {
+		l.cleanup.Stop()
+		l.cleanup = zero
+	}
 
 	logger.Debug("Successfully closed StreamListener without unregister")
 	return nil
