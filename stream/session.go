@@ -62,12 +62,13 @@ func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options 
 // if the listener is garbage collected without being closed.
 // Example usage: listener, err := session.Listen(); conn, err := listener.Accept()
 func (s *StreamSession) Listen() (*StreamListener, error) {
+	// Check closed state with read lock, then release immediately to avoid deadlock
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	if s.closed {
+		s.mu.RUnlock()
 		return nil, oops.Errorf("session is closed")
 	}
+	s.mu.RUnlock()
 
 	logger := log.WithField("id", s.ID())
 	logger.Debug("Creating StreamListener")
@@ -89,7 +90,7 @@ func (s *StreamSession) Listen() (*StreamListener, error) {
 	// Start accepting connections in a goroutine
 	go listener.acceptLoop()
 
-	// Register the listener with the session
+	// Register the listener with the session (using separate write lock)
 	s.registerListener(listener)
 
 	logger.Debug("Successfully created StreamListener")
