@@ -19,7 +19,7 @@ func TestPacketConnHasCleanup(t *testing.T) {
 
 	// Get a PacketConn
 	packetConn := session.PacketConn()
-	
+
 	// Cast back to RawConn to check if cleanup was set up
 	rawConn, ok := packetConn.(*RawConn)
 	if !ok {
@@ -35,11 +35,11 @@ func TestPacketConnHasCleanup(t *testing.T) {
 				t.Errorf("addCleanup() caused panic: %v", r)
 			}
 		}()
-		
+
 		// Create a new conn and verify addCleanup doesn't panic
 		testConn := &RawConn{
 			session: session,
-			reader:  &RawReader{
+			reader: &RawReader{
 				recvChan:  make(chan *RawDatagram, 1),
 				errorChan: make(chan error, 1),
 				closeChan: make(chan struct{}),
@@ -47,7 +47,7 @@ func TestPacketConnHasCleanup(t *testing.T) {
 			},
 		}
 		testConn.addCleanup()
-		
+
 		// If we get here, addCleanup() worked
 		t.Log("addCleanup() call succeeded")
 	}
@@ -57,7 +57,7 @@ func TestPacketConnHasCleanup(t *testing.T) {
 func TestPacketConnCleanupComparison(t *testing.T) {
 	// This test verifies that PacketConn() now behaves like other connection creation methods
 	// by setting up cleanup
-	
+
 	session := &RawSession{
 		BaseSession: &common.BaseSession{},
 		sam:         nil,
@@ -68,20 +68,20 @@ func TestPacketConnCleanupComparison(t *testing.T) {
 	// Test that PacketConn creates a connection with proper initialization
 	conn := session.PacketConn()
 	rawConn := conn.(*RawConn)
-	
+
 	// Verify the connection has the expected components
 	if rawConn.session != session {
 		t.Error("PacketConn should set session reference")
 	}
-	
+
 	if rawConn.reader == nil {
 		t.Error("PacketConn should create reader")
 	}
-	
+
 	if rawConn.writer == nil {
 		t.Error("PacketConn should create writer")
 	}
-	
+
 	// The addCleanup() call should have been made
 	// We can verify this indirectly by checking that clearCleanup doesn't panic
 	defer func() {
@@ -89,6 +89,6 @@ func TestPacketConnCleanupComparison(t *testing.T) {
 			t.Errorf("clearCleanup() caused panic: %v", r)
 		}
 	}()
-	
+
 	rawConn.clearCleanup() // This should work if addCleanup was called
 }
