@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/go-i2p/go-sam-go/common"
+	"github.com/go-i2p/go-sam-go/primary"
+	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 
@@ -238,4 +240,87 @@ func NewFullSAMResolver(address string) (*SAMResolver, error) {
 	}
 
 	return resolver, nil
+}
+
+// NewPrimarySession creates a new primary session with the SAM bridge using default settings.
+// This method establishes a new primary session for managing multiple sub-sessions over I2P
+// with the specified session ID, cryptographic keys, and configuration options. It uses default
+// signature settings and provides a simple interface for basic primary session needs.
+//
+// The primary session acts as a master container that can create and manage multiple sub-sessions
+// of different types (stream, datagram, raw) while sharing the same I2P identity and tunnel
+// infrastructure for enhanced efficiency and consistent anonymity properties.
+//
+// Example:
+//
+//	sam, err := NewSAM("127.0.0.1:7656")
+//	if err != nil {
+//	    return err
+//	}
+//	defer sam.Close()
+//
+//	keys, err := sam.NewKeys()
+//	if err != nil {
+//	    return err
+//	}
+//
+//	session, err := NewPrimarySession(sam, "my-primary", keys, []string{"inbound.length=2"})
+//	if err != nil {
+//	    return err
+//	}
+//	defer session.Close()
+//
+//	// Create sub-sessions
+//	streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
+//	datagramSub, err := session.NewDatagramSubSession("datagram-1", datagramOptions)
+func NewPrimarySession(sam *SAM, id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error) {
+	return primary.NewPrimarySession(sam, id, keys, options)
+}
+
+// NewPrimarySessionWithSignature creates a new primary session with custom signature type.
+// This method allows specifying a custom cryptographic signature type for the session,
+// enabling advanced security configurations beyond the default signature algorithm.
+// Different signature types provide various security levels, compatibility options,
+// and performance characteristics for different I2P network requirements.
+//
+// The primary session created with custom signature maintains the same multi-session
+// management capabilities while using the specified cryptographic parameters for
+// enhanced security or compatibility with specific I2P network configurations.
+//
+// Example:
+//
+//	session, err := NewPrimarySessionWithSignature(sam, id, keys, options, "EdDSA_SHA512_Ed25519")
+//	if err != nil {
+//	    return err
+//	}
+//	defer session.Close()
+//
+//	datagramSub, err := session.NewDatagramSubSession("datagram-1", datagramOptions)
+func NewPrimarySessionWithSignature(sam *SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error) {
+	primarySAM := &primary.SAM{SAM: sam}
+	return primarySAM.NewPrimarySessionWithSignature(id, keys, options, sigType)
+}
+
+// NewPrimarySessionWithPorts creates a new primary session with port specifications.
+// This method allows configuring specific port ranges for the session, enabling fine-grained
+// control over network communication ports for advanced routing scenarios. Port configuration
+// is useful for applications requiring specific port mappings, firewall compatibility,
+// or integration with existing network infrastructure and service discovery mechanisms.
+//
+// The primary session created with port configuration maintains full multi-session management
+// capabilities while using the specified port parameters for network communication optimization
+// and compatibility with existing network configurations or security requirements.
+//
+// Example:
+//
+//	session, err := NewPrimarySessionWithPorts(sam, id, "8080", "8081", keys, options)
+//	if err != nil {
+//	    return err
+//	}
+//	defer session.Close()
+//
+//	rawSub, err := session.NewRawSubSession("raw-1", rawOptions)
+func NewPrimarySessionWithPorts(sam *SAM, id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error) {
+	primarySAM := &primary.SAM{SAM: sam}
+	return primarySAM.NewPrimarySessionWithPorts(id, fromPort, toPort, keys, options)
 }

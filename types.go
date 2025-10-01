@@ -6,6 +6,7 @@ package sam
 import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/go-sam-go/datagram"
+	"github.com/go-i2p/go-sam-go/primary"
 	"github.com/go-i2p/go-sam-go/raw"
 	"github.com/go-i2p/go-sam-go/stream"
 )
@@ -81,24 +82,7 @@ type StreamListener = stream.StreamListener
 // multiple sub-sessions of different types (stream, datagram, raw) within a single
 // I2P session context. This enables complex applications with multiple communication
 // patterns while sharing the same I2P identity and tunnel infrastructure.
-//
-// Note: This is a placeholder type that will be implemented when the primary
-// package is fully developed. Currently returns a basic structure that will
-// be enhanced with full sub-session management capabilities.
-type PrimarySession struct {
-	// sam holds the underlying SAM connection for session management
-	sam *SAM
-
-	// id uniquely identifies this primary session within the SAM bridge
-	id string
-
-	// options contains the configuration parameters for this session
-	options []string
-
-	// TODO: Add sub-session management when primary package is implemented
-	// This will include methods for creating stream, datagram, and raw sub-sessions
-	// with proper lifecycle management and resource cleanup capabilities.
-}
+type PrimarySession = primary.PrimarySession
 
 // BaseSession represents the underlying session functionality that all session types
 // extend. It provides common operations like connection management, key access,
