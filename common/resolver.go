@@ -102,26 +102,48 @@ func (sam *SAMResolver) processLookupResponse(scanner *bufio.Scanner, name strin
 		text := scanner.Text()
 		log.WithField("text", text).Debug("Parsing SAM response token")
 
-		if text == SAM_RESULT_OK {
-			continue
-		} else if text == SAM_RESULT_INVALID_KEY {
-			errStr += "Invalid key - resolver."
-			log.Error("Invalid key in resolver")
-		} else if text == SAM_RESULT_KEY_NOT_FOUND {
-			errStr += "Unable to resolve " + name
-			log.WithField("name", name).Error("Unable to resolve name")
-		} else if text == "NAME="+name {
-			continue
-		} else if strings.HasPrefix(text, "VALUE=") {
-			addr := i2pkeys.I2PAddr(text[6:])
-			log.WithField("addr", addr).Debug("Name resolved successfully")
-			return i2pkeys.I2PAddr(text[6:]), nil
-		} else if strings.HasPrefix(text, "MESSAGE=") {
-			errStr += " " + text[8:]
-			log.WithField("message", text[8:]).Warn("Received message from SAM")
-		} else {
+		if resolved, found := sam.handleValueResponse(text); found {
+			return resolved, nil
+		}
+
+		if sam.shouldSkipToken(text, name) {
 			continue
 		}
+
+		errStr = sam.handleErrorResponse(text, name, errStr)
 	}
 	return i2pkeys.I2PAddr(""), errors.New(errStr)
+}
+
+// handleValueResponse processes VALUE= responses and returns the resolved address.
+// Returns the address and true if this was a VALUE response, empty address and false otherwise.
+func (sam *SAMResolver) handleValueResponse(text string) (i2pkeys.I2PAddr, bool) {
+	if strings.HasPrefix(text, "VALUE=") {
+		addr := i2pkeys.I2PAddr(text[6:])
+		log.WithField("addr", addr).Debug("Name resolved successfully")
+		return addr, true
+	}
+	return i2pkeys.I2PAddr(""), false
+}
+
+// shouldSkipToken determines if a token should be skipped without processing.
+// Returns true for OK results and NAME= tokens that match the requested name.
+func (sam *SAMResolver) shouldSkipToken(text, name string) bool {
+	return text == SAM_RESULT_OK || text == "NAME="+name
+}
+
+// handleErrorResponse processes error responses and accumulates error messages.
+// Returns the updated error string with any new error information.
+func (sam *SAMResolver) handleErrorResponse(text, name, errStr string) string {
+	if text == SAM_RESULT_INVALID_KEY {
+		errStr += "Invalid key - resolver."
+		log.Error("Invalid key in resolver")
+	} else if text == SAM_RESULT_KEY_NOT_FOUND {
+		errStr += "Unable to resolve " + name
+		log.WithField("name", name).Error("Unable to resolve name")
+	} else if strings.HasPrefix(text, "MESSAGE=") {
+		errStr += " " + text[8:]
+		log.WithField("message", text[8:]).Warn("Received message from SAM")
+	}
+	return errStr
 }
