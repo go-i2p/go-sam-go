@@ -39,10 +39,25 @@ func (r *RawReader) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if r.closed {
+	if r.checkRawReaderAlreadyClosed() {
 		return nil
 	}
 
+	logger := r.initializeRawCloseLogger()
+	r.signalRawReaderClosure(logger)
+	r.waitForRawReceiveLoopTermination(logger)
+	r.finalizeRawReaderClosure(logger)
+
+	return nil
+}
+
+// checkRawReaderAlreadyClosed returns true if the reader is already closed.
+func (r *RawReader) checkRawReaderAlreadyClosed() bool {
+	return r.closed
+}
+
+// initializeRawCloseLogger sets up logging context for the raw reader close operation.
+func (r *RawReader) initializeRawCloseLogger() *logger.Entry {
 	// Safe session ID retrieval with nil checks for logging
 	sessionID := "unknown"
 	if r.session != nil && r.session.BaseSession != nil {
@@ -50,12 +65,18 @@ func (r *RawReader) Close() error {
 	}
 	logger := log.WithField("session_id", sessionID)
 	logger.Debug("Closing RawReader")
+	return logger
+}
 
+// signalRawReaderClosure marks the reader as closed and signals termination.
+func (r *RawReader) signalRawReaderClosure(logger *logger.Entry) {
 	r.closed = true
-
 	// Signal termination to receiveLoop
 	close(r.closeChan)
+}
 
+// waitForRawReceiveLoopTermination waits for the receive loop to stop with timeout protection.
+func (r *RawReader) waitForRawReceiveLoopTermination(logger *logger.Entry) {
 	// Wait for receiveLoop to signal it has exited
 	select {
 	case <-r.doneChan:
@@ -64,7 +85,10 @@ func (r *RawReader) Close() error {
 		// Timeout protection - log warning but continue cleanup
 		logger.Warn("Timeout waiting for receive loop to stop")
 	}
+}
 
+// finalizeRawReaderClosure performs final cleanup and logging.
+func (r *RawReader) finalizeRawReaderClosure(logger *logger.Entry) {
 	// Don't close doneChan - let the sender close it
 
 	// Clean up channels to prevent resource leaks
@@ -74,7 +98,6 @@ func (r *RawReader) Close() error {
 	// This matches the datagram package approach and prevents "send on closed channel" panics.
 
 	logger.Debug("Successfully closed RawReader")
-	return nil
 }
 
 // receiveLoop continuously receives incoming raw datagrams in a separate goroutine.
