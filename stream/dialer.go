@@ -110,7 +110,7 @@ func (d *StreamDialer) setupTimeout(ctx context.Context) (context.Context, conte
 // performAsyncDial executes the dial operation asynchronously with proper cancellation support.
 func (d *StreamDialer) performAsyncDial(ctx context.Context, sam *common.SAM, addr i2pkeys.I2PAddr) (*StreamConn, error) {
 	connChan, errChan, doneChan := d.setupDialChannels()
-	
+
 	go d.executeDialInBackground(ctx, sam, addr, connChan, errChan, doneChan)
 
 	return d.handleDialResultWithCoordination(ctx, sam, connChan, errChan, doneChan)
@@ -127,13 +127,13 @@ func (d *StreamDialer) setupDialChannels() (chan *StreamConn, chan error, chan s
 // executeDialInBackground performs the actual dial operation in a separate goroutine.
 func (d *StreamDialer) executeDialInBackground(ctx context.Context, sam *common.SAM, addr i2pkeys.I2PAddr, connChan chan *StreamConn, errChan chan error, doneChan chan struct{}) {
 	defer close(doneChan)
-	
+
 	conn, err := d.performDial(sam, addr)
 	if err != nil {
 		d.sendDialError(ctx, err, errChan)
 		return
 	}
-	
+
 	d.sendDialSuccess(ctx, conn, connChan)
 }
 

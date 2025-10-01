@@ -118,40 +118,61 @@ func (sam *SAM) readSessionResponse() (string, error) {
 
 // parseSessionResponse parses the SAM response and returns the appropriate session or error.
 func (sam *SAM) parseSessionResponse(response, id string, keys i2pkeys.I2PKeys) (Session, error) {
-	conn := sam.Conn
-
 	if strings.HasPrefix(response, SESSION_OK) {
-		if keys.String() != response[len(SESSION_OK):len(response)-1] {
-			log.Error("SAM created a tunnel with different keys than requested")
-			conn.Close()
-			return nil, oops.Errorf("SAMv3 created a tunnel with keys other than the ones we asked it for")
-		}
-		log.Debug("Successfully created new session")
-		return &BaseSession{
-			id:   id,
-			conn: conn,
-			keys: keys,
-			SAM:  *sam,
-		}, nil
-	} else if response == SESSION_DUPLICATE_ID {
-		log.Error("Duplicate tunnel name")
-		conn.Close()
-		return nil, oops.Errorf("Duplicate tunnel name")
-	} else if response == SESSION_DUPLICATE_DEST {
-		log.Error("Duplicate destination")
-		conn.Close()
-		return nil, oops.Errorf("Duplicate destination")
-	} else if response == SESSION_INVALID_KEY {
-		log.Error("Invalid key for SAM session")
-		conn.Close()
-		return nil, oops.Errorf("Invalid key - SAM session")
-	} else if strings.HasPrefix(response, SESSION_I2P_ERROR) {
-		log.WithField("error", response[len(SESSION_I2P_ERROR):]).Error("I2P error")
-		conn.Close()
-		return nil, oops.Errorf("I2P error %v", response[len(SESSION_I2P_ERROR):])
-	} else {
-		log.WithField("reply", response).Error("Unable to parse SAMv3 reply")
-		conn.Close()
-		return nil, oops.Errorf("Unable to parse SAMv3 reply: %v", response)
+		return sam.handleSuccessResponse(response, id, keys)
 	}
+
+	return nil, sam.handleErrorResponse(response)
+}
+
+// handleSuccessResponse validates and creates a session from a successful SAM response.
+func (sam *SAM) handleSuccessResponse(response, id string, keys i2pkeys.I2PKeys) (Session, error) {
+	expectedKeys := response[len(SESSION_OK) : len(response)-1]
+	if keys.String() != expectedKeys {
+		log.Error("SAM created a tunnel with different keys than requested")
+		sam.Conn.Close()
+		return nil, oops.Errorf("SAMv3 created a tunnel with keys other than the ones we asked it for")
+	}
+
+	log.Debug("Successfully created new session")
+	return &BaseSession{
+		id:   id,
+		conn: sam.Conn,
+		keys: keys,
+		SAM:  *sam,
+	}, nil
+}
+
+// handleErrorResponse processes different SAM error responses and returns appropriate errors.
+func (sam *SAM) handleErrorResponse(response string) error {
+	sam.Conn.Close()
+
+	switch {
+	case response == SESSION_DUPLICATE_ID:
+		log.Error("Duplicate tunnel name")
+		return oops.Errorf("Duplicate tunnel name")
+	case response == SESSION_DUPLICATE_DEST:
+		log.Error("Duplicate destination")
+		return oops.Errorf("Duplicate destination")
+	case response == SESSION_INVALID_KEY:
+		log.Error("Invalid key for SAM session")
+		return oops.Errorf("Invalid key - SAM session")
+	case strings.HasPrefix(response, SESSION_I2P_ERROR):
+		return sam.handleI2PError(response)
+	default:
+		return sam.handleUnknownResponse(response)
+	}
+}
+
+// handleI2PError processes I2P-specific error responses.
+func (sam *SAM) handleI2PError(response string) error {
+	errorDetail := response[len(SESSION_I2P_ERROR):]
+	log.WithField("error", errorDetail).Error("I2P error")
+	return oops.Errorf("I2P error %v", errorDetail)
+}
+
+// handleUnknownResponse processes unrecognized SAM responses.
+func (sam *SAM) handleUnknownResponse(response string) error {
+	log.WithField("reply", response).Error("Unable to parse SAMv3 reply")
+	return oops.Errorf("Unable to parse SAMv3 reply: %v", response)
 }
