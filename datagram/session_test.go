@@ -1,7 +1,10 @@
 package datagram
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
@@ -26,6 +29,15 @@ func setupTestSAM(t *testing.T) (*common.SAM, i2pkeys.I2PKeys) {
 	return sam, keys
 }
 
+// generateUniqueSessionID creates a unique session ID to prevent conflicts during concurrent test execution.
+// This ensures test isolation when multiple tests run simultaneously (e.g., during race detection).
+func generateUniqueSessionID(testName string) string {
+	// Use timestamp (nanoseconds) and random number to ensure uniqueness across concurrent executions
+	timestamp := time.Now().UnixNano()
+	random := rand.Intn(99999)
+	return fmt.Sprintf("%s_%d_%05d", testName, timestamp, random)
+}
+
 func TestNewDatagramSession(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -33,25 +45,25 @@ func TestNewDatagramSession(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		id      string
+		idBase  string
 		options []string
 		wantErr bool
 	}{
 		{
 			name:    "basic session creation",
-			id:      "test_datagram_session",
+			idBase:  "test_datagram_session",
 			options: nil,
 			wantErr: false,
 		},
 		{
 			name:    "session with options",
-			id:      "test_datagram_with_opts",
+			idBase:  "test_datagram_with_opts",
 			options: []string{"inbound.length=1", "outbound.length=1"},
 			wantErr: false,
 		},
 		{
-			name: "session with small tunnel config",
-			id:   "test_datagram_small",
+			name:   "session with small tunnel config",
+			idBase: "test_datagram_small",
 			options: []string{
 				"inbound.length=0",
 				"outbound.length=0",
@@ -69,7 +81,10 @@ func TestNewDatagramSession(t *testing.T) {
 			sam, keys := setupTestSAM(t)
 			defer sam.Close()
 
-			session, err := NewDatagramSession(sam, tt.id, keys, tt.options)
+			// Generate unique session ID to prevent conflicts during concurrent test execution
+			sessionID := generateUniqueSessionID(tt.idBase)
+
+			session, err := NewDatagramSession(sam, sessionID, keys, tt.options)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewDatagramSession() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -77,8 +92,8 @@ func TestNewDatagramSession(t *testing.T) {
 
 			if err == nil {
 				// Verify session properties
-				if session.ID() != tt.id {
-					t.Errorf("Session ID = %v, want %v", session.ID(), tt.id)
+				if session.ID() != sessionID {
+					t.Errorf("Session ID = %v, want %v", session.ID(), sessionID)
 				}
 
 				if session.Keys().Addr().Base32() != keys.Addr().Base32() {
@@ -107,7 +122,10 @@ func TestDatagramSession_Close(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_close", keys, nil)
+	// Generate unique session ID to prevent conflicts during concurrent test execution
+	sessionID := generateUniqueSessionID("test_close")
+
+	session, err := NewDatagramSession(sam, sessionID, keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -133,7 +151,10 @@ func TestDatagramSession_Addr(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_addr", keys, nil)
+	// Generate unique session ID to prevent conflicts during concurrent test execution
+	sessionID := generateUniqueSessionID("test_addr")
+
+	session, err := NewDatagramSession(sam, sessionID, keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -155,7 +176,10 @@ func TestDatagramSession_NewReader(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_reader", keys, nil)
+	// Generate unique session ID to prevent conflicts during concurrent test execution
+	sessionID := generateUniqueSessionID("test_reader")
+
+	session, err := NewDatagramSession(sam, sessionID, keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -190,7 +214,10 @@ func TestDatagramSession_NewWriter(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_writer", keys, nil)
+	// Generate unique session ID to prevent conflicts during concurrent test execution
+	sessionID := generateUniqueSessionID("test_writer")
+
+	session, err := NewDatagramSession(sam, sessionID, keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -218,7 +245,10 @@ func TestDatagramSession_PacketConn(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_packetconn", keys, nil)
+	// Generate unique session ID to prevent conflicts during concurrent test execution
+	sessionID := generateUniqueSessionID("test_packetconn")
+
+	session, err := NewDatagramSession(sam, sessionID, keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
