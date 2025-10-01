@@ -63,7 +63,7 @@ Available session types:
 
 ### Sub-packages
 
-#### `primary` Package
+#### `primary` Package(Planned not implemented)
 Core session management functionality:
 ```go
 primary, err := sam.NewPrimarySession("mainSession", keys, options)
@@ -94,14 +94,14 @@ raw, err := session.NewRawSession("raw", keys, options, 0)
 n, err := raw.WriteTo(data, dest)
 ```
 
-#### `datagram2` Package
+#### `datagram2` Package(Planned not implemented)
 Authenticated repliable datagrams:
 ```go
 dgram2, err := session.NewDatagram2Session("udp", keys, options, 0)
 n, err := dgram.WriteTo(data, dest)
 ```
 
-#### `datagram3` Package
+#### `datagram3` Package(Planned not implemented)
 Authenticated repliable datagrams:
 ```go
 dgram3, err := session.NewDatagram3Session("udp", keys, options, 0)
