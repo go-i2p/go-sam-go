@@ -133,33 +133,63 @@ func (rs *RawSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Duration
 // allowing for proper resource cleanup and operation cancellation through the provided context.
 // DialI2PContext establishes a raw connection to an I2P address with context support
 func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (net.PacketConn, error) {
+	if err := rs.validateI2PDialContext(ctx); err != nil {
+		return nil, err
+	}
+
+	if err := rs.validateI2PSessionState(); err != nil {
+		return nil, err
+	}
+
+	logger := rs.createI2PDialLogger(addr)
+	conn := rs.createI2PRawConnection()
+	rs.initializeI2PConnection(conn, logger)
+
+	return conn, nil
+}
+
+// validateI2PDialContext checks if the context is still valid before dialing.
+func (rs *RawSession) validateI2PDialContext(ctx context.Context) error {
 	// Check if context is cancelled before starting
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	default:
+		return nil
 	}
+}
 
-	// Validate session state first
+// validateI2PSessionState ensures the session is open and ready for dialing.
+func (rs *RawSession) validateI2PSessionState() error {
 	rs.mu.RLock()
-	if rs.closed {
-		rs.mu.RUnlock()
-		return nil, oops.Errorf("session is closed")
-	}
-	rs.mu.RUnlock()
+	defer rs.mu.RUnlock()
 
+	if rs.closed {
+		return oops.Errorf("session is closed")
+	}
+	return nil
+}
+
+// createI2PDialLogger sets up logging context for I2P dialing operation.
+func (rs *RawSession) createI2PDialLogger(addr i2pkeys.I2PAddr) *logger.Entry {
 	logger := log.WithFields(logrus.Fields{
 		"destination": addr.Base32(),
 	})
 	logger.Debug("Dialing I2P raw destination")
+	return logger
+}
 
-	// Create a raw connection
-	conn := &RawConn{
+// createI2PRawConnection creates a new raw connection with reader and writer.
+func (rs *RawSession) createI2PRawConnection() *RawConn {
+	return &RawConn{
 		session: rs,
 		reader:  rs.NewReader(),
 		writer:  rs.NewWriter(),
 	}
+}
 
+// initializeI2PConnection starts the connection and sets up cleanup.
+func (rs *RawSession) initializeI2PConnection(conn *RawConn, logger *logger.Entry) {
 	// Start the reader loop once for this connection
 	if conn.reader != nil {
 		go conn.reader.receiveLoop()
@@ -169,5 +199,4 @@ func (rs *RawSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) 
 	conn.addCleanup()
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created I2P raw connection")
-	return conn, nil
 }
