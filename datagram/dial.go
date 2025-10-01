@@ -145,35 +145,65 @@ func (ds *DatagramSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Dur
 // It validates the session state and creates a connection with integrated reader and writer.
 // Example usage: conn, err := session.DialI2PContext(ctx, i2pAddress)
 func (ds *DatagramSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (net.PacketConn, error) {
+	if err := ds.validateDatagramI2PDialContext(ctx); err != nil {
+		return nil, err
+	}
+
+	if err := ds.validateDatagramI2PSessionState(); err != nil {
+		return nil, err
+	}
+
+	logger := ds.createDatagramI2PDialLogger(addr)
+	conn := ds.createDatagramI2PConnection()
+	ds.initializeDatagramI2PConnection(conn, logger)
+
+	return conn, nil
+}
+
+// validateDatagramI2PDialContext checks if the context is still valid before dialing.
+func (ds *DatagramSession) validateDatagramI2PDialContext(ctx context.Context) error {
 	// Check if the context is already cancelled before starting
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	default:
+		return nil
 	}
+}
 
-	// Validate that the session is not closed before attempting connection
+// validateDatagramI2PSessionState ensures the session is open and ready for dialing.
+func (ds *DatagramSession) validateDatagramI2PSessionState() error {
 	ds.mu.RLock()
-	if ds.closed {
-		ds.mu.RUnlock()
-		return nil, oops.Errorf("session is closed")
-	}
-	ds.mu.RUnlock()
+	defer ds.mu.RUnlock()
 
+	if ds.closed {
+		return oops.Errorf("session is closed")
+	}
+	return nil
+}
+
+// createDatagramI2PDialLogger sets up logging context for I2P dialing operation.
+func (ds *DatagramSession) createDatagramI2PDialLogger(addr i2pkeys.I2PAddr) *logger.Entry {
 	// Create logging context for debugging I2P connection establishment
 	logger := log.WithFields(logrus.Fields{
 		"destination": addr.Base32(),
 		"session_id":  ds.ID(),
 	})
 	logger.Debug("Dialing I2P datagram destination")
+	return logger
+}
 
-	// Create a datagram connection with integrated reader and writer
-	conn := &DatagramConn{
+// createDatagramI2PConnection creates a new datagram connection with reader and writer.
+func (ds *DatagramSession) createDatagramI2PConnection() *DatagramConn {
+	return &DatagramConn{
 		session: ds,
 		reader:  ds.NewReader(),
 		writer:  ds.NewWriter(),
 	}
+}
 
+// initializeDatagramI2PConnection starts the connection and sets up cleanup.
+func (ds *DatagramSession) initializeDatagramI2PConnection(conn *DatagramConn, logger *logger.Entry) {
 	// Start the reader's receive loop for continuous datagram processing
 	if conn.reader != nil {
 		go conn.reader.receiveLoop()
@@ -183,5 +213,4 @@ func (ds *DatagramSession) DialI2PContext(ctx context.Context, addr i2pkeys.I2PA
 	conn.addCleanup()
 
 	logger.Debug("Successfully created I2P datagram connection")
-	return conn, nil
 }
