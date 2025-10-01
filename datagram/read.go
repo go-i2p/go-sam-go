@@ -287,29 +287,57 @@ func (r *DatagramReader) readFromConnection() (string, error) {
 
 // parseDatagramResponse parses the DATAGRAM RECEIVED response to extract source and data.
 func (r *DatagramReader) parseDatagramResponse(response string) (string, string, error) {
+	scanner := r.createDatagramResponseScanner(response)
+	source, data := r.extractDatagramSourceAndData(scanner)
+	return r.validateDatagramParsedData(source, data)
+}
+
+// createDatagramResponseScanner sets up a word-based scanner for the DATAGRAM response.
+func (r *DatagramReader) createDatagramResponseScanner(response string) *bufio.Scanner {
 	scanner := bufio.NewScanner(strings.NewReader(response))
 	scanner.Split(bufio.ScanWords)
+	return scanner
+}
 
-	var source, data string
+// extractDatagramSourceAndData parses tokens from the scanner to extract source and data.
+func (r *DatagramReader) extractDatagramSourceAndData(scanner *bufio.Scanner) (source, data string) {
 	for scanner.Scan() {
 		word := scanner.Text()
-		switch {
-		case word == "DATAGRAM" || word == "RECEIVED":
-			continue
-		case strings.HasPrefix(word, "DESTINATION="):
-			source = word[12:]
-		case strings.HasPrefix(word, "SIZE="):
-			continue // We'll get the actual data size from the payload
-		default:
-			// Remaining data is the base64-encoded payload
-			if data == "" {
-				data = word
-			} else {
-				data += " " + word
-			}
-		}
+		source, data = r.processDatagramToken(word, source, data)
 	}
+	return source, data
+}
 
+// processDatagramToken processes a single token and updates source/data accordingly.
+func (r *DatagramReader) processDatagramToken(word, source, data string) (string, string) {
+	switch {
+	case r.isDatagramProtocolToken(word):
+		return source, data
+	case strings.HasPrefix(word, "DESTINATION="):
+		return word[12:], data
+	case strings.HasPrefix(word, "SIZE="):
+		return source, data // We'll get the actual data size from the payload
+	default:
+		// Remaining data is the base64-encoded payload
+		return source, r.accumulateDatagramData(data, word)
+	}
+}
+
+// isDatagramProtocolToken checks if the token is a DATAGRAM protocol keyword to ignore.
+func (r *DatagramReader) isDatagramProtocolToken(word string) bool {
+	return word == "DATAGRAM" || word == "RECEIVED"
+}
+
+// accumulateDatagramData appends token to data string with proper spacing.
+func (r *DatagramReader) accumulateDatagramData(data, word string) string {
+	if data == "" {
+		return word
+	}
+	return data + " " + word
+}
+
+// validateDatagramParsedData ensures both source and data were extracted successfully.
+func (r *DatagramReader) validateDatagramParsedData(source, data string) (string, string, error) {
 	if source == "" {
 		return "", "", oops.Errorf("no source in datagram")
 	}
