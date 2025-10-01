@@ -253,32 +253,58 @@ func (r *RawReader) readRawResponse() (string, error) {
 
 // parseRawResponse parses the RAW RECEIVED response to extract source and data.
 func (r *RawReader) parseRawResponse(response string) (source, data string, err error) {
+	scanner := r.createRawResponseScanner(response)
+	source, data = r.extractRawSourceAndData(scanner)
+	return r.validateRawParsedData(source, data)
+}
+
+// createRawResponseScanner sets up a word-based scanner for the RAW response.
+func (r *RawReader) createRawResponseScanner(response string) *bufio.Scanner {
 	scanner := bufio.NewScanner(strings.NewReader(response))
 	scanner.Split(bufio.ScanWords)
+	return scanner
+}
 
+// extractRawSourceAndData parses tokens from the scanner to extract source and data.
+func (r *RawReader) extractRawSourceAndData(scanner *bufio.Scanner) (source, data string) {
 	for scanner.Scan() {
 		word := scanner.Text()
-		switch {
-		case word == "RAW":
-			continue
-		case word == "RECEIVED":
-			continue
-		case strings.HasPrefix(word, "DESTINATION="):
-			// Extract source destination from the response
-			source = word[12:]
-		case strings.HasPrefix(word, "SIZE="):
-			continue // We'll get the actual data size from the payload
-		default:
-			// Remaining data is the base64-encoded payload
-			if data == "" {
-				data = word
-			} else {
-				data += " " + word
-			}
-		}
+		source, data = r.processRawToken(word, source, data)
 	}
+	return source, data
+}
 
-	// Validate that we have both source and data
+// processRawToken processes a single token and updates source/data accordingly.
+func (r *RawReader) processRawToken(word, source, data string) (string, string) {
+	switch {
+	case r.isRawProtocolToken(word):
+		return source, data
+	case strings.HasPrefix(word, "DESTINATION="):
+		// Extract source destination from the response
+		return word[12:], data
+	case strings.HasPrefix(word, "SIZE="):
+		return source, data // We'll get the actual data size from the payload
+	default:
+		// Remaining data is the base64-encoded payload
+		return source, r.accumulateRawData(data, word)
+	}
+}
+
+// isRawProtocolToken checks if the token is a RAW protocol keyword to ignore.
+func (r *RawReader) isRawProtocolToken(word string) bool {
+	return word == "RAW" || word == "RECEIVED"
+}
+
+// accumulateRawData appends token to data string with proper spacing.
+func (r *RawReader) accumulateRawData(data, word string) string {
+	if data == "" {
+		return word
+	}
+	return data + " " + word
+}
+
+// validateRawParsedData ensures both source and data were extracted successfully.
+func (r *RawReader) validateRawParsedData(source, data string) (string, string, error) {
 	if source == "" {
 		return "", "", oops.Errorf("no source in raw datagram")
 	}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
@@ -38,38 +39,61 @@ func (rs *RawSession) DialTimeout(destination string, timeout time.Duration) (ne
 // allowing for proper resource cleanup and operation cancellation through the provided context.
 // DialContext establishes a raw connection with context support
 func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error) {
+	if err := rs.validateRawDialContext(ctx, destination); err != nil {
+		return nil, err
+	}
+
+	logger := rs.createRawDialLogger(destination)
+	conn := rs.createRawConnection()
+	rs.initializeRawConnection(conn, logger)
+
+	return conn, nil
+}
+
+// validateRawDialContext performs initial validation checks for the raw dial operation.
+func (rs *RawSession) validateRawDialContext(ctx context.Context, destination string) error {
 	// Check if context is cancelled before starting
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	default:
 	}
 
 	// Validate session state first
 	rs.mu.RLock()
+	defer rs.mu.RUnlock()
 	if rs.closed {
-		rs.mu.RUnlock()
-		return nil, oops.Errorf("session is closed")
+		return oops.Errorf("session is closed")
 	}
-	rs.mu.RUnlock()
 
 	// Validate destination
 	if destination == "" {
-		return nil, oops.Errorf("destination cannot be empty")
+		return oops.Errorf("destination cannot be empty")
 	}
 
+	return nil
+}
+
+// createRawDialLogger sets up logging context for debugging raw connection establishment.
+func (rs *RawSession) createRawDialLogger(destination string) *logger.Entry {
 	logger := log.WithFields(logrus.Fields{
 		"destination": destination,
 	})
 	logger.Debug("Dialing raw destination")
+	return logger
+}
 
-	// Create a raw connection
-	conn := &RawConn{
+// createRawConnection creates a new raw connection with integrated reader and writer.
+func (rs *RawSession) createRawConnection() *RawConn {
+	return &RawConn{
 		session: rs,
 		reader:  rs.NewReader(),
 		writer:  rs.NewWriter(),
 	}
+}
 
+// initializeRawConnection starts the connection's receive loop and sets up cleanup.
+func (rs *RawSession) initializeRawConnection(conn *RawConn, logger *logger.Entry) {
 	// Start the reader loop once for this connection
 	if conn.reader != nil {
 		go conn.reader.receiveLoop()
@@ -79,7 +103,6 @@ func (rs *RawSession) DialContext(ctx context.Context, destination string) (net.
 	conn.addCleanup()
 
 	logger.WithField("session_id", rs.ID()).Debug("Successfully created raw connection")
-	return conn, nil
 }
 
 // DialI2P establishes a raw connection to an I2P address using native I2P addressing.

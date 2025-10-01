@@ -49,52 +49,78 @@ func (r *DatagramReader) Close() error {
 	// Use sync.Once to ensure cleanup only happens once
 	// This prevents double-close panics and ensures thread safety
 	r.closeOnce.Do(func() {
-		r.mu.Lock()
-		defer r.mu.Unlock()
-
-		if r.closed {
-			return
-		}
-
-		// Log reader closure for debugging and monitoring
-		sessionID := "unknown"
-		if r.session != nil && r.session.BaseSession != nil {
-			sessionID = r.session.ID()
-		}
-		logger := log.WithField("session_id", sessionID)
-		logger.Debug("Closing DatagramReader")
-
-		r.closed = true
-
-		// Signal the receive loop to terminate
-		// This prevents the background goroutine from continuing to run
-		close(r.closeChan)
-
-		// Only wait for the receive loop if it was actually started
-		if r.loopStarted {
-			// Wait for the receive loop to confirm termination
-			// This ensures proper cleanup before returning
-			select {
-			case <-r.doneChan:
-				// Receive loop has confirmed it stopped
-				logger.Debug("Receive loop stopped")
-			case <-time.After(5 * time.Second):
-				// Timeout protection to prevent indefinite blocking
-				logger.Warn("Timeout waiting for receive loop to stop")
-			}
-		} else {
-			logger.Debug("Receive loop was never started, skipping wait")
-		}
-
-		// Clean up channels to prevent resource leaks
-		// Note: We don't close r.recvChan and r.errorChan here because the receive loop
-		// might still be sending on them. These channels will be garbage collected when
-		// all references are dropped. Only the receive loop should close send-channels.
-
-		logger.Debug("Successfully closed DatagramReader")
+		r.performCloseOperation()
 	})
 
 	return nil
+}
+
+// performCloseOperation executes the complete close sequence with proper synchronization.
+func (r *DatagramReader) performCloseOperation() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.closed {
+		return
+	}
+
+	logger := r.initializeCloseLogger()
+	r.signalReaderClosure(logger)
+	r.waitForReceiveLoopTermination(logger)
+	r.finalizeReaderClosure(logger)
+}
+
+// initializeCloseLogger sets up logging context for the close operation.
+func (r *DatagramReader) initializeCloseLogger() *logger.Entry {
+	sessionID := "unknown"
+	if r.session != nil && r.session.BaseSession != nil {
+		sessionID = r.session.ID()
+	}
+	logger := log.WithField("session_id", sessionID)
+	logger.Debug("Closing DatagramReader")
+	return logger
+}
+
+// signalReaderClosure marks the reader as closed and signals termination.
+func (r *DatagramReader) signalReaderClosure(logger *logger.Entry) {
+	r.closed = true
+	// Signal the receive loop to terminate
+	// This prevents the background goroutine from continuing to run
+	close(r.closeChan)
+}
+
+// waitForReceiveLoopTermination waits for the receive loop to stop with timeout protection.
+func (r *DatagramReader) waitForReceiveLoopTermination(logger *logger.Entry) {
+	// Only wait for the receive loop if it was actually started
+	if r.loopStarted {
+		r.waitForLoopWithTimeout(logger)
+	} else {
+		logger.Debug("Receive loop was never started, skipping wait")
+	}
+}
+
+// waitForLoopWithTimeout waits for receive loop termination with timeout protection.
+func (r *DatagramReader) waitForLoopWithTimeout(logger *logger.Entry) {
+	// Wait for the receive loop to confirm termination
+	// This ensures proper cleanup before returning
+	select {
+	case <-r.doneChan:
+		// Receive loop has confirmed it stopped
+		logger.Debug("Receive loop stopped")
+	case <-time.After(5 * time.Second):
+		// Timeout protection to prevent indefinite blocking
+		logger.Warn("Timeout waiting for receive loop to stop")
+	}
+}
+
+// finalizeReaderClosure performs final cleanup and logging.
+func (r *DatagramReader) finalizeReaderClosure(logger *logger.Entry) {
+	// Clean up channels to prevent resource leaks
+	// Note: We don't close r.recvChan and r.errorChan here because the receive loop
+	// might still be sending on them. These channels will be garbage collected when
+	// all references are dropped. Only the receive loop should close send-channels.
+
+	logger.Debug("Successfully closed DatagramReader")
 }
 
 // receiveLoop continuously receives incoming datagrams in a separate goroutine.

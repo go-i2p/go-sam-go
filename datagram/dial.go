@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
@@ -44,41 +45,62 @@ func (ds *DatagramSession) DialTimeout(destination string, timeout time.Duration
 // It validates the destination and session state before attempting connection establishment.
 // Example usage: conn, err := session.DialContext(ctx, "destination.b32.i2p")
 func (ds *DatagramSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error) {
+	if err := ds.validateDialContext(ctx, destination); err != nil {
+		return nil, err
+	}
+
+	logger := ds.createDialLogger(destination)
+	conn := ds.createDatagramConnection()
+	ds.initializeConnection(conn, logger)
+
+	return conn, nil
+}
+
+// validateDialContext performs initial validation checks for the dial operation.
+func (ds *DatagramSession) validateDialContext(ctx context.Context, destination string) error {
 	// Check if the context is already cancelled before starting
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	default:
 	}
 
 	// Validate that the session is not closed before attempting connection
 	ds.mu.RLock()
+	defer ds.mu.RUnlock()
 	if ds.closed {
-		ds.mu.RUnlock()
-		return nil, oops.Errorf("session is closed")
+		return oops.Errorf("session is closed")
 	}
-	ds.mu.RUnlock()
 
 	// Validate that the destination is not empty
 	if destination == "" {
-		return nil, oops.Errorf("destination cannot be empty")
+		return oops.Errorf("destination cannot be empty")
 	}
 
-	// Create logging context for debugging connection establishment
+	return nil
+}
+
+// createDialLogger sets up logging context for debugging connection establishment.
+func (ds *DatagramSession) createDialLogger(destination string) *logger.Entry {
 	logger := log.WithFields(logrus.Fields{
 		"destination": destination,
 		"session_id":  ds.ID(),
 	})
 	logger.Debug("Dialing datagram destination")
+	return logger
+}
 
-	// Create a datagram connection with integrated reader and writer
-	// This provides the net.PacketConn interface for standard Go networking compatibility
-	conn := &DatagramConn{
+// createDatagramConnection creates a new datagram connection with integrated reader and writer.
+func (ds *DatagramSession) createDatagramConnection() *DatagramConn {
+	return &DatagramConn{
 		session: ds,
 		reader:  ds.NewReader(),
 		writer:  ds.NewWriter(),
 	}
+}
 
+// initializeConnection starts the connection's receive loop and sets up cleanup.
+func (ds *DatagramSession) initializeConnection(conn *DatagramConn, logger *logger.Entry) {
 	// Start the reader's receive loop for continuous datagram processing
 	if conn.reader != nil {
 		go conn.reader.receiveLoop()
@@ -88,7 +110,6 @@ func (ds *DatagramSession) DialContext(ctx context.Context, destination string) 
 	conn.addCleanup()
 
 	logger.Debug("Successfully created datagram connection")
-	return conn, nil
 }
 
 // DialI2P establishes a datagram connection to an I2P address using native addressing.

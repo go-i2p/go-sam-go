@@ -183,26 +183,69 @@ func (sam *SAM) readKeyGenerationResponse() ([]byte, error) {
 // parseKeyResponse parses the SAM response to extract public and private keys.
 // It scans the response tokens and extracts the PUB and PRIV key values.
 func (sam *SAM) parseKeyResponse(response []byte) (string, string, error) {
-	s := bufio.NewScanner(bytes.NewReader(response))
-	s.Split(bufio.ScanWords)
+	scanner := sam.createResponseScanner(response)
 
-	var pub, priv string
-	for s.Scan() {
-		text := s.Text()
-		if text == "DEST" {
-			continue
-		} else if text == "REPLY" {
-			continue
-		} else if strings.HasPrefix(text, "PUB=") {
-			pub = text[4:]
-		} else if strings.HasPrefix(text, "PRIV=") {
-			priv = text[5:]
-		} else {
-			log.Error("Failed to parse keys from SAM response")
-			return "", "", oops.Errorf("Failed to parse keys.")
-		}
+	pub, priv, err := sam.extractKeysFromResponse(scanner)
+	if err != nil {
+		return "", "", err
 	}
+
 	return pub, priv, nil
+}
+
+// createResponseScanner creates a word-based scanner for the SAM response.
+func (sam *SAM) createResponseScanner(response []byte) *bufio.Scanner {
+	scanner := bufio.NewScanner(bytes.NewReader(response))
+	scanner.Split(bufio.ScanWords)
+	return scanner
+}
+
+// extractKeysFromResponse scans tokens and extracts public and private key values.
+func (sam *SAM) extractKeysFromResponse(scanner *bufio.Scanner) (string, string, error) {
+	var pub, priv string
+
+	for scanner.Scan() {
+		token := scanner.Text()
+
+		if sam.isIgnorableToken(token) {
+			continue
+		}
+
+		if sam.isPublicKeyToken(token) {
+			pub = token[4:]
+			continue
+		}
+
+		if sam.isPrivateKeyToken(token) {
+			priv = token[5:]
+			continue
+		}
+
+		return "", "", sam.handleUnexpectedToken(token)
+	}
+
+	return pub, priv, nil
+}
+
+// isIgnorableToken checks if the token should be ignored during parsing.
+func (sam *SAM) isIgnorableToken(token string) bool {
+	return token == "DEST" || token == "REPLY"
+}
+
+// isPublicKeyToken checks if the token contains a public key.
+func (sam *SAM) isPublicKeyToken(token string) bool {
+	return strings.HasPrefix(token, "PUB=")
+}
+
+// isPrivateKeyToken checks if the token contains a private key.
+func (sam *SAM) isPrivateKeyToken(token string) bool {
+	return strings.HasPrefix(token, "PRIV=")
+}
+
+// handleUnexpectedToken processes unrecognized tokens and returns an appropriate error.
+func (sam *SAM) handleUnexpectedToken(token string) error {
+	log.Error("Failed to parse keys from SAM response")
+	return oops.Errorf("Failed to parse keys.")
 }
 
 // Performs a lookup, probably this order: 1) routers known addresses, cached
