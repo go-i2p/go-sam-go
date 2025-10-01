@@ -109,34 +109,53 @@ func (d *StreamDialer) setupTimeout(ctx context.Context) (context.Context, conte
 
 // performAsyncDial executes the dial operation asynchronously with proper cancellation support.
 func (d *StreamDialer) performAsyncDial(ctx context.Context, sam *common.SAM, addr i2pkeys.I2PAddr) (*StreamConn, error) {
+	connChan, errChan, doneChan := d.setupDialChannels()
+	
+	go d.executeDialInBackground(ctx, sam, addr, connChan, errChan, doneChan)
+
+	return d.handleDialResultWithCoordination(ctx, sam, connChan, errChan, doneChan)
+}
+
+// setupDialChannels creates the communication channels for async dialing coordination.
+func (d *StreamDialer) setupDialChannels() (chan *StreamConn, chan error, chan struct{}) {
 	connChan := make(chan *StreamConn, 1)
 	errChan := make(chan error, 1)
 	doneChan := make(chan struct{})
+	return connChan, errChan, doneChan
+}
 
-	go func() {
-		defer close(doneChan)
-		conn, err := d.performDial(sam, addr)
-		if err != nil {
-			select {
-			case errChan <- err:
-			case <-ctx.Done():
-				// Context cancelled, clean up and exit
-				return
-			}
-			return
-		}
-		select {
-		case connChan <- conn:
-		case <-ctx.Done():
-			// Context cancelled, close connection and exit
-			if conn != nil {
-				conn.Close()
-			}
-			return
-		}
-	}()
+// executeDialInBackground performs the actual dial operation in a separate goroutine.
+func (d *StreamDialer) executeDialInBackground(ctx context.Context, sam *common.SAM, addr i2pkeys.I2PAddr, connChan chan *StreamConn, errChan chan error, doneChan chan struct{}) {
+	defer close(doneChan)
+	
+	conn, err := d.performDial(sam, addr)
+	if err != nil {
+		d.sendDialError(ctx, err, errChan)
+		return
+	}
+	
+	d.sendDialSuccess(ctx, conn, connChan)
+}
 
-	return d.handleDialResultWithCoordination(ctx, sam, connChan, errChan, doneChan)
+// sendDialError safely sends error result checking for context cancellation.
+func (d *StreamDialer) sendDialError(ctx context.Context, err error, errChan chan error) {
+	select {
+	case errChan <- err:
+	case <-ctx.Done():
+		// Context cancelled, clean up and exit
+	}
+}
+
+// sendDialSuccess safely sends successful connection checking for context cancellation.
+func (d *StreamDialer) sendDialSuccess(ctx context.Context, conn *StreamConn, connChan chan *StreamConn) {
+	select {
+	case connChan <- conn:
+	case <-ctx.Done():
+		// Context cancelled, close connection and exit
+		if conn != nil {
+			conn.Close()
+		}
+	}
 }
 
 // handleDialResult manages the result of the dial operation with timeout and cancellation support.
