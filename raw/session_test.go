@@ -2,6 +2,7 @@ package raw
 
 import (
 	"testing"
+	"time"
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
@@ -12,10 +13,27 @@ const testSAMAddr = "127.0.0.1:7656"
 func setupTestSAM(t *testing.T) (*common.SAM, i2pkeys.I2PKeys) {
 	t.Helper()
 
-	sam, err := common.NewSAM(testSAMAddr)
-	if err != nil {
-		t.Fatalf("Failed to create SAM connection: %v", err)
+	// Add retry mechanism for resource exhaustion
+	var sam *common.SAM
+	var err error
+	for attempts := 0; attempts < 3; attempts++ {
+		sam, err = common.NewSAM(testSAMAddr)
+		if err == nil {
+			break
+		}
+		// Wait a bit before retrying in case of resource exhaustion
+		time.Sleep(time.Duration(attempts+1) * 500 * time.Millisecond)
 	}
+	if err != nil {
+		t.Fatalf("Failed to create SAM connection after retries: %v", err)
+	}
+
+	// Ensure SAM connection is closed when test completes
+	t.Cleanup(func() {
+		if sam != nil {
+			sam.Close()
+		}
+	})
 
 	keys, err := sam.NewKeys()
 	if err != nil {
@@ -49,8 +67,8 @@ func TestNewRawSession(t *testing.T) {
 			name: "session with small tunnel config",
 			id:   "test_raw_small",
 			options: []string{
-				"inbound.length=0",
-				"outbound.length=0",
+				"inbound.length=1",
+				"outbound.length=1",
 				"inbound.lengthVariance=0",
 				"outbound.lengthVariance=0",
 				"inbound.quantity=1",

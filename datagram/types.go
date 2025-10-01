@@ -28,14 +28,15 @@ type DatagramSession struct {
 // message processing and provides thread-safe access to received datagrams.
 // Example usage: reader := session.NewReader(); datagram, err := reader.ReceiveDatagram()
 type DatagramReader struct {
-	session   *DatagramSession
-	recvChan  chan *Datagram
-	errorChan chan error
-	closeChan chan struct{}
-	doneChan  chan struct{}
-	closed    bool
-	mu        sync.RWMutex
-	closeOnce sync.Once
+	session     *DatagramSession
+	recvChan    chan *Datagram
+	errorChan   chan error
+	closeChan   chan struct{}
+	doneChan    chan struct{}
+	closed      bool
+	loopStarted bool
+	mu          sync.RWMutex
+	closeOnce   sync.Once
 }
 
 // DatagramWriter handles outgoing datagram transmission to I2P destinations.

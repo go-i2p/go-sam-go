@@ -58,14 +58,15 @@ func (s *DatagramSession) NewReader() *DatagramReader {
 	// Create reader with buffered channels for non-blocking operation
 	// The buffer size of 10 prevents blocking when multiple datagrams arrive rapidly
 	return &DatagramReader{
-		session:   s,
-		recvChan:  make(chan *Datagram, 10), // Buffer for incoming datagrams
-		errorChan: make(chan error, 1),
-		closeChan: make(chan struct{}),
-		doneChan:  make(chan struct{}, 1),
-		closed:    false,
-		mu:        sync.RWMutex{},
-		closeOnce: sync.Once{},
+		session:     s,
+		recvChan:    make(chan *Datagram, 10), // Buffer for incoming datagrams
+		errorChan:   make(chan error, 1),
+		closeChan:   make(chan struct{}),
+		doneChan:    make(chan struct{}, 1),
+		closed:      false,
+		loopStarted: false,
+		mu:          sync.RWMutex{},
+		closeOnce:   sync.Once{},
 	}
 }
 

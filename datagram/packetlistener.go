@@ -138,6 +138,11 @@ func (l *DatagramListener) dispatchPacketConnection(conn net.Conn) bool {
 	case <-l.closeChan:
 		conn.Close()
 		return false
+	default:
+		// Non-blocking: if acceptChan is full, drop the connection to prevent deadlock
+		logger.Warn("Accept channel full, dropping connection to prevent deadlock")
+		conn.Close()
+		return true
 	}
 }
 

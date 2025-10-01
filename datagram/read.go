@@ -70,15 +70,20 @@ func (r *DatagramReader) Close() error {
 		// This prevents the background goroutine from continuing to run
 		close(r.closeChan)
 
-		// Wait for the receive loop to confirm termination
-		// This ensures proper cleanup before returning
-		select {
-		case <-r.doneChan:
-			// Receive loop has confirmed it stopped
-			logger.Debug("Receive loop stopped")
-		case <-time.After(5 * time.Second):
-			// Timeout protection to prevent indefinite blocking
-			logger.Warn("Timeout waiting for receive loop to stop")
+		// Only wait for the receive loop if it was actually started
+		if r.loopStarted {
+			// Wait for the receive loop to confirm termination
+			// This ensures proper cleanup before returning
+			select {
+			case <-r.doneChan:
+				// Receive loop has confirmed it stopped
+				logger.Debug("Receive loop stopped")
+			case <-time.After(5 * time.Second):
+				// Timeout protection to prevent indefinite blocking
+				logger.Warn("Timeout waiting for receive loop to stop")
+			}
+		} else {
+			logger.Debug("Receive loop was never started, skipping wait")
 		}
 
 		// Clean up channels to prevent resource leaks
@@ -97,6 +102,11 @@ func (r *DatagramReader) Close() error {
 // DATAGRAM RECEIVED responses and forwarding datagrams to the appropriate channels.
 // It runs until the reader is closed and provides error handling for network issues.
 func (r *DatagramReader) receiveLoop() {
+	// Mark that the receive loop has started to handle proper cleanup
+	r.mu.Lock()
+	r.loopStarted = true
+	r.mu.Unlock()
+
 	logger := r.initializeReceiveLoop()
 	defer r.signalReceiveLoopCompletion()
 
