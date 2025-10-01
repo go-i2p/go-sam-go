@@ -15,7 +15,7 @@ import (
 func TestTypeAliases_Compilation(t *testing.T) {
 	// This test ensures that type aliases are properly defined and
 	// can be used interchangeably with their underlying types
-	
+
 	// Test that we can create instances of aliased types
 	var sam *SAM
 	var resolver *SAMResolver
@@ -121,7 +121,7 @@ func TestTypeAliases_Identity(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.aliasType != tt.sourceType {
-				t.Errorf("Type alias %s does not match source type %s", 
+				t.Errorf("Type alias %s does not match source type %s",
 					tt.aliasType, tt.sourceType)
 			}
 		})
@@ -300,7 +300,7 @@ func TestTypeAliases_MemoryLayout(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.aliasSize != tt.sourceSize {
-				t.Errorf("Memory layout differs: alias=%d, source=%d", 
+				t.Errorf("Memory layout differs: alias=%d, source=%d",
 					tt.aliasSize, tt.sourceSize)
 			}
 		})
@@ -356,7 +356,7 @@ func TestTypeAliases_APICompatibility(t *testing.T) {
 		// Verify that SAMConn properly aliases stream.StreamConn
 		samConnType := reflect.TypeOf((*SAMConn)(nil))
 		streamConnType := reflect.TypeOf((*stream.StreamConn)(nil))
-		
+
 		if samConnType != streamConnType {
 			t.Error("SAMConn should be an alias for stream.StreamConn")
 		}

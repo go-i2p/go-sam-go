@@ -88,13 +88,13 @@ type StreamListener = stream.StreamListener
 type PrimarySession struct {
 	// sam holds the underlying SAM connection for session management
 	sam *SAM
-	
+
 	// id uniquely identifies this primary session within the SAM bridge
 	id string
-	
+
 	// options contains the configuration parameters for this session
 	options []string
-	
+
 	// TODO: Add sub-session management when primary package is implemented
 	// This will include methods for creating stream, datagram, and raw sub-sessions
 	// with proper lifecycle management and resource cleanup capabilities.
