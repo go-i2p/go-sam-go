@@ -349,14 +349,14 @@ func TestTunnelConfiguration_Consistency(t *testing.T) {
 	// Test that Options_Default provides sensible defaults
 	defaultOpts := Options_Default
 	expectedDefaults := map[string]string{
-		"inbound.length":         "3",
-		"outbound.length":        "3",
-		"inbound.lengthVariance": "0",
+		"inbound.length":          "3",
+		"outbound.length":         "3",
+		"inbound.lengthVariance":  "0",
 		"outbound.lengthVariance": "0",
-		"inbound.backupQuantity": "1",
+		"inbound.backupQuantity":  "1",
 		"outbound.backupQuantity": "1",
-		"inbound.quantity":       "1",
-		"outbound.quantity":      "1",
+		"inbound.quantity":        "1",
+		"outbound.quantity":       "1",
 	}
 
 	for key, expectedValue := range expectedDefaults {
