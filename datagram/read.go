@@ -187,41 +187,61 @@ func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
 }
 
 // receiveDatagram performs the actual datagram reception from the SAM bridge.
+// receiveDatagram performs the actual datagram reception from the SAM bridge.
 // This method handles the low-level SAM protocol communication, parsing DATAGRAM RECEIVED
 // responses and extracting the datagram data and addressing information. It provides
 // the core functionality for the receive loop and handles protocol-specific details.
-// receiveDatagram performs the actual datagram reception from the SAM bridge
 func (r *DatagramReader) receiveDatagram() (*Datagram, error) {
-	// Check if reader is closed before attempting expensive I/O operation
+	if err := r.validateReaderState(); err != nil {
+		return nil, err
+	}
+
+	response, err := r.readFromConnection()
+	if err != nil {
+		return nil, err
+	}
+
+	source, data, err := r.parseDatagramResponse(response)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.createDatagram(source, data)
+}
+
+// validateReaderState checks if reader is closed before attempting expensive I/O operation.
+func (r *DatagramReader) validateReaderState() error {
 	r.mu.RLock()
 	isClosed := r.closed
 	r.mu.RUnlock()
 
 	if isClosed {
-		return nil, oops.Errorf("reader is closing")
+		return oops.Errorf("reader is closing")
 	}
+	return nil
+}
 
-	// Read data from the SAM connection
-	// This blocks until data is available or an error occurs
+// readFromConnection reads data from the SAM connection and validates response format.
+func (r *DatagramReader) readFromConnection() (string, error) {
 	conn := r.session.Conn()
 	buffer := make([]byte, 4096)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		return nil, oops.Errorf("failed to read from SAM connection: %w", err)
+		return "", oops.Errorf("failed to read from SAM connection: %w", err)
 	}
 
-	// Parse the received data as a SAM protocol message
-	// The message format follows SAMv3 specifications for datagram reception
 	response := string(buffer[:n])
 	log.WithField("response", response).Debug("Received SAM response")
 
-	// Parse the response to extract datagram information
-	// This involves parsing the SAM protocol format and extracting the payload
 	if !strings.Contains(response, "DATAGRAM RECEIVED") {
-		return nil, oops.Errorf("unexpected response format: %s", response)
+		return "", oops.Errorf("unexpected response format: %s", response)
 	}
 
-	// Parse the DATAGRAM RECEIVED response
+	return response, nil
+}
+
+// parseDatagramResponse parses the DATAGRAM RECEIVED response to extract source and data.
+func (r *DatagramReader) parseDatagramResponse(response string) (string, string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(response))
 	scanner.Split(bufio.ScanWords)
 
@@ -229,9 +249,7 @@ func (r *DatagramReader) receiveDatagram() (*Datagram, error) {
 	for scanner.Scan() {
 		word := scanner.Text()
 		switch {
-		case word == "DATAGRAM":
-			continue
-		case word == "RECEIVED":
+		case word == "DATAGRAM" || word == "RECEIVED":
 			continue
 		case strings.HasPrefix(word, "DESTINATION="):
 			source = word[12:]
@@ -248,26 +266,28 @@ func (r *DatagramReader) receiveDatagram() (*Datagram, error) {
 	}
 
 	if source == "" {
-		return nil, oops.Errorf("no source in datagram")
+		return "", "", oops.Errorf("no source in datagram")
 	}
 
 	if data == "" {
-		return nil, oops.Errorf("no data in datagram")
+		return "", "", oops.Errorf("no data in datagram")
 	}
 
-	// Parse the source destination
+	return source, data, nil
+}
+
+// createDatagram constructs the final Datagram from parsed source and data.
+func (r *DatagramReader) createDatagram(source, data string) (*Datagram, error) {
 	sourceAddr, err := i2pkeys.NewI2PAddrFromString(source)
 	if err != nil {
 		return nil, oops.Errorf("failed to parse source address: %w", err)
 	}
 
-	// Decode the base64 data
 	decodedData, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return nil, oops.Errorf("failed to decode datagram data: %w", err)
 	}
 
-	// Create the datagram
 	datagram := &Datagram{
 		Data:   decodedData,
 		Source: sourceAddr,
