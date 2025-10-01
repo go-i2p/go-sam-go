@@ -164,36 +164,45 @@ func (r *DatagramReader) runReceiveLoop(logger *logger.Entry) {
 
 // processIncomingDatagram receives and forwards a single datagram, returning false if the loop should terminate.
 func (r *DatagramReader) processIncomingDatagram(logger *logger.Entry) bool {
-	// Check closed state with consistent mutex protection
-	r.mu.RLock()
-	isClosed := r.closed
-	r.mu.RUnlock()
-
-	if isClosed {
+	if !r.checkReaderActiveState() {
 		return false
 	}
 
 	datagram, err := r.receiveDatagram()
 	if err != nil {
-		logger.WithError(err).Debug("Error receiving datagram")
-		select {
-		case r.errorChan <- err:
-		case <-r.closeChan:
-			return false
-		}
-		return true
+		return r.handleDatagramError(err, logger)
 	}
 
-	// Use select statement to atomically check for closure and send datagram
-	// This prevents race condition between atomic flag check and channel send
+	return r.forwardDatagramToChannel(datagram)
+}
+
+// checkReaderActiveState verifies the reader is not closed before processing.
+func (r *DatagramReader) checkReaderActiveState() bool {
+	r.mu.RLock()
+	isClosed := r.closed
+	r.mu.RUnlock()
+	return !isClosed
+}
+
+// handleDatagramError processes errors during datagram reception and reports them.
+func (r *DatagramReader) handleDatagramError(err error, logger *logger.Entry) bool {
+	logger.WithError(err).Debug("Error receiving datagram")
 	select {
-	case r.recvChan <- datagram:
-		// Successfully forwarded the datagram
+	case r.errorChan <- err:
+		return true
 	case <-r.closeChan:
-		// Reader was closed while attempting to send
 		return false
 	}
-	return true
+}
+
+// forwardDatagramToChannel sends the received datagram to the receive channel atomically.
+func (r *DatagramReader) forwardDatagramToChannel(datagram *Datagram) bool {
+	select {
+	case r.recvChan <- datagram:
+		return true
+	case <-r.closeChan:
+		return false
+	}
 }
 
 // receiveDatagram performs the actual datagram reception from the SAM bridge.
