@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 117 commits
+        📝 137 commits
         
       </div>
     </div>
@@ -23,6 +23,8 @@
       
       
         <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="../docs/SAMv3.html" >SAM V3</a></li>
         
           <li><a href="../docs/common/DOC.html" >common</a></li>
         
@@ -73,14 +75,24 @@
 }
 </code></pre>
 
-<p>SAM wraps common.SAM to provide stream-specific functionality</p>
+<p>SAM wraps common.SAM to provide stream-specific functionality and convenience
+methods. It extends the base SAM connection with streaming-specific session
+creation methods, providing a more convenient API for creating streaming
+sessions without requiring direct interaction with the generic session creation
+methods. Example usage: sam := &amp;SAM{SAM: commonSAM}; session, err :=
+sam.NewStreamSession(&ldquo;id&rdquo;, keys, options)</p>
 
 <h4 id="func-sam-newstreamsession">func (*SAM) NewStreamSession</h4>
 
 <pre><code class="language-go">func (s *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
 </code></pre>
 
-<p>NewStreamSession creates a new streaming session with the SAM bridge</p>
+<p>NewStreamSession creates a new streaming session with the SAM bridge using
+default signature. This is a convenience method that wraps the generic session
+creation with streaming-specific parameters. It uses the default Ed25519
+signature type and provides a simpler API for creating streaming sessions
+without requiring explicit signature type specification. Example usage: session,
+err := sam.NewStreamSession(&ldquo;my-session&rdquo;, keys, options)</p>
 
 <h4 id="func-sam-newstreamsessionwithports">func (*SAM) NewStreamSessionWithPorts</h4>
 
@@ -96,7 +108,12 @@ specifications</p>
 </code></pre>
 
 <p>NewStreamSessionWithSignature creates a new streaming session with custom
-signature type</p>
+signature type. This method provides advanced control over the cryptographic
+signature type used for the I2P destination. It supports various signature
+algorithms like Ed25519, ECDSA, and DSA, allowing applications to choose the
+most appropriate signature type for their needs. Example usage: session, err :=
+sam.NewStreamSessionWithSignature(&ldquo;my-session&rdquo;, keys, options,
+&ldquo;EdDSA_SHA512_Ed25519&rdquo;)</p>
 
 <h4 id="type-streamconn">type StreamConn</h4>
 
@@ -104,63 +121,100 @@ signature type</p>
 }
 </code></pre>
 
-<p>StreamConn implements net.Conn for I2P streaming connections</p>
+<p>StreamConn implements net.Conn for I2P streaming connections. It provides a
+standard Go networking interface for TCP-like reliable communication over I2P
+networks. The connection supports standard read/write operations with proper
+timeout handling and address information for both local and remote endpoints.
+Example usage: conn, err := session.Dial(&ldquo;destination.b32.i2p&rdquo;); data, err :=
+conn.Read(buffer)</p>
 
 <h4 id="func-streamconn-close">func (*StreamConn) Close</h4>
 
 <pre><code class="language-go">func (c *StreamConn) Close() error
 </code></pre>
 
-<p>Close closes the connection</p>
+<p>Close closes the connection and releases all associated resources. This method
+implements the net.Conn interface and is safe to call multiple times. It
+properly handles concurrent access and ensures clean shutdown of the underlying
+I2P streaming connection with appropriate error handling. Example usage: defer
+conn.Close()</p>
 
 <h4 id="func-streamconn-localaddr">func (*StreamConn) LocalAddr</h4>
 
 <pre><code class="language-go">func (c *StreamConn) LocalAddr() net.Addr
 </code></pre>
 
-<p>LocalAddr returns the local network address</p>
+<p>LocalAddr returns the local network address of the connection. This method
+implements the net.Conn interface and provides the I2P address of the local
+endpoint. The returned address implements the net.Addr interface and can be used
+for logging or connection management. Example usage: localAddr :=
+conn.LocalAddr()</p>
 
 <h4 id="func-streamconn-read">func (*StreamConn) Read</h4>
 
 <pre><code class="language-go">func (c *StreamConn) Read(b []byte) (int, error)
 </code></pre>
 
-<p>Read reads data from the connection</p>
+<p>Read reads data from the connection into the provided buffer. This method
+implements the net.Conn interface and provides thread-safe reading from the
+underlying I2P streaming connection. It handles connection state checking and
+proper error reporting for closed connections. Example usage: n, err :=
+conn.Read(buffer)</p>
 
 <h4 id="func-streamconn-remoteaddr">func (*StreamConn) RemoteAddr</h4>
 
 <pre><code class="language-go">func (c *StreamConn) RemoteAddr() net.Addr
 </code></pre>
 
-<p>RemoteAddr returns the remote network address</p>
+<p>RemoteAddr returns the remote network address of the connection. This method
+implements the net.Conn interface and provides the I2P address of the remote
+endpoint. The returned address implements the net.Addr interface and can be used
+for logging, authentication, or connection management. Example usage: remoteAddr
+:= conn.RemoteAddr()</p>
 
 <h4 id="func-streamconn-setdeadline">func (*StreamConn) SetDeadline</h4>
 
 <pre><code class="language-go">func (c *StreamConn) SetDeadline(t time.Time) error
 </code></pre>
 
-<p>SetDeadline sets the read and write deadlines</p>
+<p>SetDeadline sets the read and write deadlines for the connection. This method
+implements the net.Conn interface and sets both read and write deadlines to the
+same time. It provides a convenient way to set overall connection timeouts for
+both read and write operations. Example usage:
+conn.SetDeadline(time.Now().Add(30*time.Second))</p>
 
 <h4 id="func-streamconn-setreaddeadline">func (*StreamConn) SetReadDeadline</h4>
 
 <pre><code class="language-go">func (c *StreamConn) SetReadDeadline(t time.Time) error
 </code></pre>
 
-<p>SetReadDeadline sets the deadline for future Read calls</p>
+<p>SetReadDeadline sets the deadline for future Read calls on the connection. This
+method implements the net.Conn interface and allows setting read-specific
+timeouts. A zero time value disables the deadline, and the deadline applies to
+all future and pending Read calls. Example usage:
+conn.SetReadDeadline(time.Now().Add(30*time.Second))</p>
 
 <h4 id="func-streamconn-setwritedeadline">func (*StreamConn) SetWriteDeadline</h4>
 
 <pre><code class="language-go">func (c *StreamConn) SetWriteDeadline(t time.Time) error
 </code></pre>
 
-<p>SetWriteDeadline sets the deadline for future Write calls</p>
+<p>SetWriteDeadline sets the deadline for future Write calls on the connection.
+This method implements the net.Conn interface and allows setting write-specific
+timeouts. A zero time value disables the deadline, and the deadline applies to
+all future and pending Write calls. Example usage:
+conn.SetWriteDeadline(time.Now().Add(30*time.Second))</p>
 
 <h4 id="func-streamconn-write">func (*StreamConn) Write</h4>
 
 <pre><code class="language-go">func (c *StreamConn) Write(b []byte) (int, error)
 </code></pre>
 
-<p>Write writes data to the connection</p>
+<p>Write writes data to the connection from the provided buffer. This method
+implements the net.Conn interface and provides thread-safe writing to the
+underlying I2P streaming connection. It handles connection state checking and
+proper error reporting for closed connections. Example usage: n, err :=
+conn.Write(data)</p>
 
 <h4 id="type-streamdialer">type StreamDialer</h4>
 
@@ -168,42 +222,68 @@ signature type</p>
 }
 </code></pre>
 
-<p>StreamDialer handles client-side connection establishment</p>
+<p>StreamDialer handles client-side connection establishment for I2P streaming. It
+provides methods for dialing I2P destinations with configurable timeout support
+and context-based cancellation. The dialer can be configured with custom
+timeouts and supports both string destinations and native I2P addresses. Example
+usage: dialer := session.NewDialer().SetTimeout(60*time.Second); conn, err :=
+dialer.Dial(&ldquo;dest.b32.i2p&rdquo;)</p>
 
 <h4 id="func-streamdialer-dial">func (*StreamDialer) Dial</h4>
 
 <pre><code class="language-go">func (d *StreamDialer) Dial(destination string) (*StreamConn, error)
 </code></pre>
 
-<p>Dial establishes a connection to the specified destination</p>
+<p>Dial establishes a connection to the specified destination using the default
+context. This method resolves the destination string and establishes a streaming
+connection using the dialer&rsquo;s configured timeout. It provides a simple interface
+for connection establishment without requiring explicit context management.
+Example usage: conn, err := dialer.Dial(&ldquo;destination.b32.i2p&rdquo;)</p>
 
 <h4 id="func-streamdialer-dialcontext">func (*StreamDialer) DialContext</h4>
 
 <pre><code class="language-go">func (d *StreamDialer) DialContext(ctx context.Context, destination string) (*StreamConn, error)
 </code></pre>
 
-<p>DialContext establishes a connection with context support</p>
+<p>DialContext establishes a connection with context support for cancellation and
+timeout. This method resolves the destination string and establishes a streaming
+connection with context-based cancellation support. The context can override the
+dialer&rsquo;s default timeout and provides fine-grained control over connection
+establishment. Example usage: conn, err := dialer.DialContext(ctx,
+&ldquo;destination.b32.i2p&rdquo;)</p>
 
 <h4 id="func-streamdialer-diali2p">func (*StreamDialer) DialI2P</h4>
 
 <pre><code class="language-go">func (d *StreamDialer) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error)
 </code></pre>
 
-<p>DialI2P establishes a connection to the specified I2P address</p>
+<p>DialI2P establishes a connection to the specified I2P address using native
+addressing. This method accepts an i2pkeys.I2PAddr directly, bypassing the need
+for destination resolution. It uses the dialer&rsquo;s configured timeout and provides
+efficient connection establishment for known I2P addresses. Example usage: conn,
+err := dialer.DialI2P(addr)</p>
 
 <h4 id="func-streamdialer-diali2pcontext">func (*StreamDialer) DialI2PContext</h4>
 
 <pre><code class="language-go">func (d *StreamDialer) DialI2PContext(ctx context.Context, addr i2pkeys.I2PAddr) (*StreamConn, error)
 </code></pre>
 
-<p>DialI2PContext establishes a connection to an I2P address with context support</p>
+<p>DialI2PContext establishes a connection to an I2P address with context support.
+This method provides the core dialing functionality with context-based
+cancellation and timeout support. It handles SAM protocol communication,
+connection establishment, and proper resource management for streaming
+connections over I2P. Example usage: conn, err := dialer.DialI2PContext(ctx,
+addr)</p>
 
 <h4 id="func-streamdialer-settimeout">func (*StreamDialer) SetTimeout</h4>
 
 <pre><code class="language-go">func (d *StreamDialer) SetTimeout(timeout time.Duration) *StreamDialer
 </code></pre>
 
-<p>SetTimeout sets the default timeout for new dialers</p>
+<p>SetTimeout sets the default timeout duration for dial operations. This method
+allows customization of the connection timeout and returns the dialer for method
+chaining. The timeout applies to all subsequent dial operations. Example usage:
+dialer.SetTimeout(60*time.Second)</p>
 
 <h4 id="type-streamlistener">type StreamListener</h4>
 
@@ -211,35 +291,56 @@ signature type</p>
 }
 </code></pre>
 
-<p>StreamListener implements net.Listener for I2P streaming connections</p>
+<p>StreamListener implements net.Listener for I2P streaming connections. It manages
+incoming connection acceptance and provides thread-safe operations for accepting
+connections from remote I2P destinations. The listener runs an internal accept
+loop to handle incoming connections asynchronously. A finalizer is attached to
+the listener to ensure that the accept loop is cleaned up if the listener is
+garbage collected without being closed. Example usage: listener, err :=
+session.Listen(); conn, err := listener.Accept()</p>
 
 <h4 id="func-streamlistener-accept">func (*StreamListener) Accept</h4>
 
 <pre><code class="language-go">func (l *StreamListener) Accept() (net.Conn, error)
 </code></pre>
 
-<p>Accept waits for and returns the next connection to the listener</p>
+<p>Accept waits for and returns the next connection to the listener. This method
+implements the net.Listener interface and provides compatibility with standard
+Go networking patterns. It returns a net.Conn interface that can be used with
+any Go networking code expecting standard connections. Example usage: conn, err
+:= listener.Accept()</p>
 
 <h4 id="func-streamlistener-acceptstream">func (*StreamListener) AcceptStream</h4>
 
 <pre><code class="language-go">func (l *StreamListener) AcceptStream() (*StreamConn, error)
 </code></pre>
 
-<p>AcceptStream waits for and returns the next I2P streaming connection</p>
+<p>AcceptStream waits for and returns the next I2P streaming connection. This
+method provides I2P-specific connection acceptance, returning a StreamConn
+directly rather than the generic net.Conn interface. It offers more type safety
+and I2P-specific functionality compared to the generic Accept method. Example
+usage: conn, err := listener.AcceptStream()</p>
 
 <h4 id="func-streamlistener-addr">func (*StreamListener) Addr</h4>
 
 <pre><code class="language-go">func (l *StreamListener) Addr() net.Addr
 </code></pre>
 
-<p>Addr returns the listener&rsquo;s network address</p>
+<p>Addr returns the listener&rsquo;s network address. This method implements the
+net.Listener interface and provides the I2P address that the listener is bound
+to. The returned address implements the net.Addr interface and can be used for
+logging or connection management. Example usage: addr := listener.Addr()</p>
 
 <h4 id="func-streamlistener-close">func (*StreamListener) Close</h4>
 
 <pre><code class="language-go">func (l *StreamListener) Close() error
 </code></pre>
 
-<p>Close closes the listener</p>
+<p>Close closes the listener and stops accepting new connections. This method
+implements the net.Listener interface and is safe to call multiple times. It
+properly handles concurrent access and ensures clean shutdown of the accept loop
+with appropriate resource cleanup and error handling. Example usage: defer
+listener.Close()</p>
 
 <h4 id="type-streamsession">type StreamSession</h4>
 
@@ -249,69 +350,109 @@ signature type</p>
 </code></pre>
 
 <p>StreamSession represents a streaming session that can create listeners and
-dialers</p>
+dialers. It provides TCP-like reliable connection capabilities over the I2P
+network, supporting both client and server operations. The session manages the
+underlying I2P connection and provides methods for creating listeners and
+dialers for stream-based communication. Example usage: session, err :=
+NewStreamSession(sam, &ldquo;my-session&rdquo;, keys, options)</p>
 
 <h4 id="func-newstreamsession">func  NewStreamSession</h4>
 
 <pre><code class="language-go">func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
 </code></pre>
 
-<p>NewStreamSession creates a new streaming session</p>
+<p>NewStreamSession creates a new streaming session for TCP-like I2P connections.
+It initializes the session with the provided SAM connection, session ID,
+cryptographic keys, and configuration options. The session provides both client
+and server capabilities for establishing reliable streaming connections over the
+I2P network. Example usage: session, err := NewStreamSession(sam, &ldquo;my-session&rdquo;,
+keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
 
 <h4 id="func-streamsession-addr">func (*StreamSession) Addr</h4>
 
 <pre><code class="language-go">func (s *StreamSession) Addr() i2pkeys.I2PAddr
 </code></pre>
 
-<p>Addr returns the I2P address of this session</p>
+<p>Addr returns the I2P address of this session for identification purposes. This
+address can be used by other I2P nodes to connect to this session. The address
+is derived from the session&rsquo;s cryptographic keys and remains constant for the
+lifetime of the session. Example usage: addr := session.Addr()</p>
 
 <h4 id="func-streamsession-close">func (*StreamSession) Close</h4>
 
 <pre><code class="language-go">func (s *StreamSession) Close() error
 </code></pre>
 
-<p>Close closes the streaming session and all associated resources</p>
+<p>Close closes the streaming session and all associated resources. This method is
+safe to call multiple times and will only perform cleanup once. All listeners
+and connections created from this session will become invalid after closing. The
+method properly handles concurrent access and resource cleanup. Example usage:
+defer session.Close()</p>
 
 <h4 id="func-streamsession-dial">func (*StreamSession) Dial</h4>
 
 <pre><code class="language-go">func (s *StreamSession) Dial(destination string) (*StreamConn, error)
 </code></pre>
 
-<p>Dial establishes a connection to the specified I2P destination</p>
+<p>Dial establishes a connection to the specified I2P destination using the default
+timeout. This is a convenience method that creates a new dialer and establishes
+a connection to the specified destination string. For custom timeout or multiple
+connections, use NewDialer() for better performance. Example usage: conn, err :=
+session.Dial(&ldquo;destination.b32.i2p&rdquo;)</p>
 
 <h4 id="func-streamsession-dialcontext">func (*StreamSession) DialContext</h4>
 
 <pre><code class="language-go">func (s *StreamSession) DialContext(ctx context.Context, destination string) (*StreamConn, error)
 </code></pre>
 
-<p>DialContext establishes a connection with context support</p>
+<p>DialContext establishes a connection with context support for cancellation and
+timeout. This is a convenience method that creates a new dialer and establishes
+a connection to the specified destination with context-based cancellation
+support. The context can be used to cancel the connection attempt or apply
+custom timeouts. Example usage: conn, err := session.DialContext(ctx,
+&ldquo;destination.b32.i2p&rdquo;)</p>
 
 <h4 id="func-streamsession-diali2p">func (*StreamSession) DialI2P</h4>
 
 <pre><code class="language-go">func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error)
 </code></pre>
 
-<p>DialI2P establishes a connection to the specified I2P address</p>
+<p>DialI2P establishes a connection to the specified I2P address using native
+addressing. This is a convenience method that creates a new dialer and
+establishes a connection to the specified I2P address using the i2pkeys.I2PAddr
+type. The method uses the session&rsquo;s default timeout settings. Example usage:
+conn, err := session.DialI2P(addr)</p>
 
 <h4 id="func-streamsession-listen">func (*StreamSession) Listen</h4>
 
 <pre><code class="language-go">func (s *StreamSession) Listen() (*StreamListener, error)
 </code></pre>
 
-<p>Listen creates a StreamListener that accepts incoming connections</p>
+<p>Listen creates a StreamListener that accepts incoming connections from remote
+I2P destinations. It initializes a listener with buffered channels for
+connection handling and starts an internal accept loop to manage incoming
+connections asynchronously. The listener provides thread-safe operations and
+properly handles session closure and resource cleanup. A finalizer is set on the
+listener to ensure that the accept loop is terminated if the listener is garbage
+collected without being closed. Example usage: listener, err :=
+session.Listen(); conn, err := listener.Accept()</p>
 
 <h4 id="func-streamsession-newdialer">func (*StreamSession) NewDialer</h4>
 
 <pre><code class="language-go">func (s *StreamSession) NewDialer() *StreamDialer
 </code></pre>
 
-<p>NewDialer creates a StreamDialer for establishing outbound connections</p>
+<p>NewDialer creates a StreamDialer for establishing outbound connections to I2P
+destinations. It initializes a dialer with a default timeout of 30 seconds,
+which can be customized using the SetTimeout method. The dialer supports both
+string destinations and native I2P addresses. Example usage: dialer :=
+session.NewDialer().SetTimeout(60*time.Second)</p>
 
       </div>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-02 00:56:19 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-02 01:27:59 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

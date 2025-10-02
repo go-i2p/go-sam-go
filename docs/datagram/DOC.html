@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 117 commits
+        📝 137 commits
         
       </div>
     </div>
@@ -23,6 +23,8 @@
       
       
         <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="../docs/SAMv3.html" >SAM V3</a></li>
         
           <li><a href="../docs/common/DOC.html" >common</a></li>
         
@@ -75,7 +77,12 @@
 }
 </code></pre>
 
-<p>Datagram represents an I2P datagram message</p>
+<p>Datagram represents an I2P datagram message containing data and address
+information. It encapsulates the payload data along with source and destination
+addressing details, providing all necessary information for processing received
+datagrams or preparing outgoing ones. The structure includes both the raw data
+bytes and I2P address information for routing. Example usage: if
+datagram.Source.Base32() == expectedSender { processData(datagram.Data) }</p>
 
 <h4 id="type-datagramaddr">type DatagramAddr</h4>
 
@@ -83,21 +90,32 @@
 }
 </code></pre>
 
-<p>DatagramAddr implements net.Addr for I2P datagram addresses</p>
+<p>DatagramAddr implements net.Addr interface for I2P datagram addresses. This type
+provides standard Go networking address representation for I2P destinations,
+allowing seamless integration with existing Go networking code that expects
+net.Addr. The address wraps an I2P address and provides string representation
+and network type identification. Example usage: addr := &amp;DatagramAddr{addr:
+destination}; fmt.Println(addr.Network(), addr.String())</p>
 
 <h4 id="func-datagramaddr-network">func (*DatagramAddr) Network</h4>
 
 <pre><code class="language-go">func (a *DatagramAddr) Network() string
 </code></pre>
 
-<p>Network returns the network type</p>
+<p>Network returns the network type for this address. This method implements the
+net.Addr interface and always returns &ldquo;i2p-datagram&rdquo; to identify this as an I2P
+datagram address type for networking compatibility. Example usage: network :=
+addr.Network() // returns &ldquo;i2p-datagram&rdquo;</p>
 
 <h4 id="func-datagramaddr-string">func (*DatagramAddr) String</h4>
 
 <pre><code class="language-go">func (a *DatagramAddr) String() string
 </code></pre>
 
-<p>String returns the string representation of the address</p>
+<p>String returns the string representation of the address. This method implements
+the net.Addr interface and returns the Base32 encoded representation of the I2P
+address for human-readable display and logging. Example usage: addrStr :=
+addr.String() // returns &ldquo;abcd1234&hellip;xyz.b32.i2p&rdquo;</p>
 
 <h4 id="type-datagramconn">type DatagramConn</h4>
 
@@ -105,86 +123,113 @@
 }
 </code></pre>
 
-<p>DatagramConn implements net.PacketConn for I2P datagrams</p>
+<p>DatagramConn implements net.PacketConn interface for I2P datagram communication.
+This type provides compatibility with standard Go networking patterns by
+wrapping datagram session functionality in a familiar PacketConn interface. It
+manages internal readers and writers while providing standard connection
+operations. Example usage: conn := session.PacketConn(); n, addr, err :=
+conn.ReadFrom(buffer)</p>
 
 <h4 id="func-datagramconn-close">func (*DatagramConn) Close</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) Close() error
 </code></pre>
 
-<p>Close closes the datagram connection</p>
+<p>Close closes the datagram connection and releases associated resources. This
+method implements the net.Conn interface. It closes the reader and writer but
+does not close the underlying session, which may be shared by other connections.
+Multiple calls to Close are safe and will return nil after the first call.</p>
 
 <h4 id="func-datagramconn-localaddr">func (*DatagramConn) LocalAddr</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) LocalAddr() net.Addr
 </code></pre>
 
-<p>LocalAddr returns the local address</p>
+<p>LocalAddr returns the local network address as a DatagramAddr containing the I2P
+destination address of this connection&rsquo;s session. This method implements the
+net.Conn interface and provides access to the local I2P destination.</p>
 
 <h4 id="func-datagramconn-read">func (*DatagramConn) Read</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) Read(b []byte) (n int, err error)
 </code></pre>
 
-<p>Read implements net.Conn by wrapping ReadFrom. It reads data into the provided
-byte slice and returns the number of bytes read. When reading, it also updates
-the remote address of the connection. Note: This is not a typical use case for
-datagrams, as they are connectionless. However, for compatibility with net.Conn,
-we implement it this way.</p>
+<p>Read implements net.Conn by wrapping ReadFrom for stream-like usage. It reads
+data into the provided byte slice and returns the number of bytes read. When
+reading, it also updates the remote address of the connection for subsequent
+Write calls. Note: This is not typical for datagrams which are connectionless,
+but provides compatibility with the net.Conn interface.</p>
 
 <h4 id="func-datagramconn-readfrom">func (*DatagramConn) ReadFrom</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) ReadFrom(p []byte) (n int, addr net.Addr, err error)
 </code></pre>
 
-<p>ReadFrom reads a datagram from the connection</p>
+<p>ReadFrom reads a datagram from the connection and returns the number of bytes
+read, the source address, and any error encountered. This method implements the
+net.PacketConn interface. It starts the receive loop if not already started and
+blocks until a datagram is received. The data is copied to the provided buffer
+p, and the source address is returned as a DatagramAddr.</p>
 
 <h4 id="func-datagramconn-remoteaddr">func (*DatagramConn) RemoteAddr</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) RemoteAddr() net.Addr
 </code></pre>
 
-<p>RemoteAddr returns the remote address of the connection. For datagram
-connections, this returns nil as there is no single remote address.</p>
+<p>RemoteAddr returns the remote network address of the connection. This method
+implements the net.Conn interface. For datagram connections, this returns the
+address of the last peer that sent data (set by Read), or nil if no data has
+been received yet.</p>
 
 <h4 id="func-datagramconn-setdeadline">func (*DatagramConn) SetDeadline</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) SetDeadline(t time.Time) error
 </code></pre>
 
-<p>SetDeadline sets the read and write deadlines</p>
+<p>SetDeadline sets both read and write deadlines for the connection. This method
+implements the net.Conn interface by calling both SetReadDeadline and
+SetWriteDeadline with the same time value. If either deadline cannot be set, the
+first error encountered is returned.</p>
 
 <h4 id="func-datagramconn-setreaddeadline">func (*DatagramConn) SetReadDeadline</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) SetReadDeadline(t time.Time) error
 </code></pre>
 
-<p>SetReadDeadline sets the deadline for future ReadFrom calls</p>
+<p>SetReadDeadline sets the deadline for future ReadFrom calls. This method
+implements the net.Conn interface. For datagram connections, this is currently a
+placeholder implementation that always returns nil. Timeout handling is managed
+differently for datagram operations.</p>
 
 <h4 id="func-datagramconn-setwritedeadline">func (*DatagramConn) SetWriteDeadline</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) SetWriteDeadline(t time.Time) error
 </code></pre>
 
-<p>SetWriteDeadline sets the deadline for future WriteTo calls</p>
+<p>SetWriteDeadline sets the deadline for future WriteTo calls. This method
+implements the net.Conn interface. If the deadline is not zero, it calculates
+the timeout duration and sets it on the writer for subsequent write operations.</p>
 
 <h4 id="func-datagramconn-write">func (*DatagramConn) Write</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) Write(b []byte) (n int, err error)
 </code></pre>
 
-<p>Write implements net.Conn by wrapping WriteTo. It writes data to the remote
-address and returns the number of bytes written. It uses the remote address set
-by the last Read operation. If no remote address is set, it returns an error.
-Note: This is not a typical use case for datagrams, as they are connectionless.
-However, for compatibility with net.Conn, we implement it this way.</p>
+<p>Write implements net.Conn by wrapping WriteTo for stream-like usage. It writes
+data to the remote address set by the last Read operation and returns the number
+of bytes written. If no remote address has been set, it returns an error. Note:
+This is not typical for datagrams which are connectionless, but provides
+compatibility with the net.Conn interface.</p>
 
 <h4 id="func-datagramconn-writeto">func (*DatagramConn) WriteTo</h4>
 
 <pre><code class="language-go">func (c *DatagramConn) WriteTo(p []byte, addr net.Addr) (n int, err error)
 </code></pre>
 
-<p>WriteTo writes a datagram to the specified address</p>
+<p>WriteTo writes a datagram to the specified address and returns the number of
+bytes written and any error encountered. This method implements the
+net.PacketConn interface. The address must be a DatagramAddr containing a valid
+I2P destination. The entire byte slice p is sent as a single datagram message.</p>
 
 <h4 id="type-datagramlistener">type DatagramListener</h4>
 
@@ -192,28 +237,39 @@ However, for compatibility with net.Conn, we implement it this way.</p>
 }
 </code></pre>
 
-<p>DatagramListener implements net.DatagramListener for I2P datagram connections</p>
+<p>DatagramListener implements net.Listener for I2P datagram connections. It
+provides a way to accept incoming datagram connections in a stream-like manner,
+where each accepted connection represents a new DatagramConn that can be used
+for bidirectional communication with remote I2P destinations.</p>
 
 <h4 id="func-datagramlistener-accept">func (*DatagramListener) Accept</h4>
 
 <pre><code class="language-go">func (l *DatagramListener) Accept() (net.Conn, error)
 </code></pre>
 
-<p>Accept waits for and returns the next packet connection to the listener</p>
+<p>Accept waits for and returns the next datagram connection to the listener. This
+method implements the net.Listener interface. It blocks until a new connection
+is available or an error occurs. Each accepted connection is a new DatagramConn
+that shares the underlying session but has its own reader/writer.</p>
 
 <h4 id="func-datagramlistener-addr">func (*DatagramListener) Addr</h4>
 
 <pre><code class="language-go">func (l *DatagramListener) Addr() net.Addr
 </code></pre>
 
-<p>Addr returns the listener&rsquo;s network address</p>
+<p>Addr returns the listener&rsquo;s network address as a DatagramAddr. This method
+implements the net.Listener interface and provides access to the I2P destination
+address that this listener is bound to.</p>
 
 <h4 id="func-datagramlistener-close">func (*DatagramListener) Close</h4>
 
 <pre><code class="language-go">func (l *DatagramListener) Close() error
 </code></pre>
 
-<p>Close closes the packet listener</p>
+<p>Close closes the datagram listener and releases associated resources. This
+method implements the net.Listener interface. It stops accepting new connections
+and closes the reader. The underlying session is not closed as it may be shared
+by other components. Multiple calls to Close are safe.</p>
 
 <h4 id="type-datagramreader">type DatagramReader</h4>
 
@@ -221,19 +277,33 @@ However, for compatibility with net.Conn, we implement it this way.</p>
 }
 </code></pre>
 
-<p>DatagramReader handles incoming datagram reception</p>
+<p>DatagramReader handles incoming datagram reception from the I2P network. It
+provides asynchronous datagram reception through buffered channels, allowing
+applications to receive datagrams without blocking. The reader manages its own
+goroutine for continuous message processing and provides thread-safe access to
+received datagrams. Example usage: reader := session.NewReader(); datagram, err
+:= reader.ReceiveDatagram()</p>
 
 <h4 id="func-datagramreader-close">func (*DatagramReader) Close</h4>
 
 <pre><code class="language-go">func (r *DatagramReader) Close() error
 </code></pre>
 
+<p>Close closes the DatagramReader and stops its receive loop. This method safely
+terminates the reader, cleans up all associated resources, and signals any
+waiting goroutines to stop. It&rsquo;s safe to call multiple times and will not block
+if the reader is already closed. Example usage: defer reader.Close()</p>
+
 <h4 id="func-datagramreader-receivedatagram">func (*DatagramReader) ReceiveDatagram</h4>
 
 <pre><code class="language-go">func (r *DatagramReader) ReceiveDatagram() (*Datagram, error)
 </code></pre>
 
-<p>ReceiveDatagram receives a datagram from any source</p>
+<p>ReceiveDatagram receives a single datagram from the I2P network. This method
+blocks until a datagram is received or an error occurs, returning the received
+datagram with its data and addressing information. It handles concurrent access
+safely and provides proper error handling for network issues. Example usage:
+datagram, err := reader.ReceiveDatagram()</p>
 
 <h4 id="type-datagramsession">type DatagramSession</h4>
 
@@ -243,49 +313,79 @@ However, for compatibility with net.Conn, we implement it this way.</p>
 </code></pre>
 
 <p>DatagramSession represents a datagram session that can send and receive
-datagrams</p>
+datagrams over I2P. This session type provides UDP-like messaging capabilities
+through the I2P network, allowing applications to send and receive datagrams
+with message reliability and ordering guarantees. The session manages the
+underlying I2P connection and provides methods for creating readers and writers.
+Example usage: session, err := NewDatagramSession(sam, &ldquo;my-session&rdquo;, keys,
+options)</p>
 
 <h4 id="func-newdatagramsession">func  NewDatagramSession</h4>
 
 <pre><code class="language-go">func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
 </code></pre>
 
-<p>NewDatagramSession creates a new datagram session</p>
+<p>NewDatagramSession creates a new datagram session for UDP-like I2P messaging.
+This function establishes a new datagram session with the provided SAM
+connection, session ID, cryptographic keys, and configuration options. It
+returns a DatagramSession instance that can be used for sending and receiving
+datagrams over the I2P network. Example usage: session, err :=
+NewDatagramSession(sam, &ldquo;my-session&rdquo;, keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
 
 <h4 id="func-datagramsession-addr">func (*DatagramSession) Addr</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) Addr() i2pkeys.I2PAddr
 </code></pre>
 
-<p>Addr returns the I2P address of this session</p>
+<p>Addr returns the I2P address of this session. This address represents the
+session&rsquo;s identity on the I2P network and can be used by other nodes to send
+datagrams to this session. The address is derived from the session&rsquo;s
+cryptographic keys. Example usage: myAddr := session.Addr(); fmt.Println(&ldquo;My I2P
+address:&rdquo;, myAddr.Base32())</p>
 
 <h4 id="func-datagramsession-close">func (*DatagramSession) Close</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) Close() error
 </code></pre>
 
-<p>Close closes the datagram session and all associated resources</p>
+<p>Close closes the datagram session and all associated resources. This method
+safely terminates the session, closes the underlying connection, and cleans up
+any background goroutines. It&rsquo;s safe to call multiple times. Example usage:
+defer session.Close()</p>
 
 <h4 id="func-datagramsession-dial">func (*DatagramSession) Dial</h4>
 
 <pre><code class="language-go">func (ds *DatagramSession) Dial(destination string) (net.PacketConn, error)
 </code></pre>
 
-<p>Dial establishes a datagram connection to the specified destination</p>
+<p>Dial establishes a datagram connection to the specified I2P destination. This
+method creates a net.PacketConn interface for sending and receiving datagrams
+with the specified destination. It uses a default timeout of 30 seconds for
+connection establishment and provides UDP-like communication over I2P networks.
+Example usage: conn, err := session.Dial(&ldquo;destination.b32.i2p&rdquo;)</p>
 
 <h4 id="func-datagramsession-dialcontext">func (*DatagramSession) DialContext</h4>
 
 <pre><code class="language-go">func (ds *DatagramSession) DialContext(ctx context.Context, destination string) (net.PacketConn, error)
 </code></pre>
 
-<p>DialContext establishes a datagram connection with context support</p>
+<p>DialContext establishes a datagram connection with context support for
+cancellation. This method provides the core dialing functionality with
+context-based cancellation support, allowing for proper resource cleanup and
+operation cancellation through the provided context. It validates the
+destination and session state before attempting connection establishment.
+Example usage: conn, err := session.DialContext(ctx, &ldquo;destination.b32.i2p&rdquo;)</p>
 
 <h4 id="func-datagramsession-diali2p">func (*DatagramSession) DialI2P</h4>
 
 <pre><code class="language-go">func (ds *DatagramSession) DialI2P(addr i2pkeys.I2PAddr) (net.PacketConn, error)
 </code></pre>
 
-<p>DialI2P establishes a datagram connection to an I2P address</p>
+<p>DialI2P establishes a datagram connection to an I2P address using native
+addressing. This method creates a net.PacketConn interface for communicating
+with the specified I2P address using the native i2pkeys.I2PAddr type. It uses a
+default timeout of 30 seconds and provides type-safe addressing for I2P
+destinations. Example usage: conn, err := session.DialI2P(i2pAddress)</p>
 
 <h4 id="func-datagramsession-diali2pcontext">func (*DatagramSession) DialI2PContext</h4>
 
@@ -293,61 +393,102 @@ datagrams</p>
 </code></pre>
 
 <p>DialI2PContext establishes a datagram connection to an I2P address with context
-support</p>
+support. This method provides the core I2P dialing functionality with
+context-based cancellation, allowing for proper resource cleanup and operation
+cancellation through the provided context. It validates the session state and
+creates a connection with integrated reader and writer. Example usage: conn, err
+:= session.DialI2PContext(ctx, i2pAddress)</p>
 
 <h4 id="func-datagramsession-diali2ptimeout">func (*DatagramSession) DialI2PTimeout</h4>
 
 <pre><code class="language-go">func (ds *DatagramSession) DialI2PTimeout(addr i2pkeys.I2PAddr, timeout time.Duration) (net.PacketConn, error)
 </code></pre>
 
-<p>DialI2PTimeout establishes a datagram connection to an I2P address with timeout</p>
+<p>DialI2PTimeout establishes a datagram connection to an I2P address with timeout.
+This method provides time-bounded connection establishment using native I2P
+addressing. Zero or negative timeout values disable the timeout mechanism. The
+timeout only applies to the initial connection setup, not to subsequent datagram
+operations. Example usage: conn, err := session.DialI2PTimeout(i2pAddress,
+60*time.Second)</p>
 
 <h4 id="func-datagramsession-dialtimeout">func (*DatagramSession) DialTimeout</h4>
 
 <pre><code class="language-go">func (ds *DatagramSession) DialTimeout(destination string, timeout time.Duration) (net.PacketConn, error)
 </code></pre>
 
-<p>DialTimeout establishes a datagram connection with a timeout</p>
+<p>DialTimeout establishes a datagram connection with specified timeout duration.
+This method creates a net.PacketConn interface with timeout support for
+connection establishment. Zero or negative timeout values disable the timeout
+mechanism. The timeout only applies to the initial connection setup, not to
+subsequent operations. Example usage: conn, err :=
+session.DialTimeout(&ldquo;destination.b32.i2p&rdquo;, 60*time.Second)</p>
 
 <h4 id="func-datagramsession-listen">func (*DatagramSession) Listen</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) Listen() (*DatagramListener, error)
 </code></pre>
 
+<p>Listen creates a new DatagramListener for accepting incoming connections. This
+method creates a listener that can accept multiple concurrent datagram
+connections on the same session. Each accepted connection will be a separate
+DatagramConn that shares the underlying session but has its own reader/writer.
+The listener starts an accept loop in a goroutine to handle incoming
+connections.</p>
+
 <h4 id="func-datagramsession-newreader">func (*DatagramSession) NewReader</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) NewReader() *DatagramReader
 </code></pre>
 
-<p>NewReader creates a DatagramReader for receiving datagrams</p>
+<p>NewReader creates a DatagramReader for receiving datagrams from any source. This
+method initializes a new reader with buffered channels for asynchronous datagram
+reception. The reader must be started manually with receiveLoop() for continuous
+operation. Example usage: reader := session.NewReader(); go
+reader.receiveLoop(); datagram, err := reader.ReceiveDatagram()</p>
 
 <h4 id="func-datagramsession-newwriter">func (*DatagramSession) NewWriter</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) NewWriter() *DatagramWriter
 </code></pre>
 
-<p>NewWriter creates a DatagramWriter for sending datagrams</p>
+<p>NewWriter creates a DatagramWriter for sending datagrams to specific
+destinations. This method initializes a new writer with a default timeout of 30
+seconds for send operations. The timeout can be customized using the SetTimeout
+method on the returned writer. Example usage: writer :=
+session.NewWriter().SetTimeout(60*time.Second); err := writer.SendDatagram(data,
+dest)</p>
 
 <h4 id="func-datagramsession-packetconn">func (*DatagramSession) PacketConn</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) PacketConn() net.PacketConn
 </code></pre>
 
-<p>PacketConn returns a net.PacketConn interface for this session</p>
+<p>PacketConn returns a net.PacketConn interface for this session. This method
+provides compatibility with standard Go networking code by wrapping the datagram
+session in a connection that implements the PacketConn interface. Example usage:
+conn := session.PacketConn(); n, addr, err := conn.ReadFrom(buffer)</p>
 
 <h4 id="func-datagramsession-receivedatagram">func (*DatagramSession) ReceiveDatagram</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) ReceiveDatagram() (*Datagram, error)
 </code></pre>
 
-<p>ReceiveDatagram receives a datagram from any source</p>
+<p>ReceiveDatagram receives a single datagram from any source. This is a
+convenience method that creates a temporary reader, starts the receive loop,
+gets one datagram, and cleans up resources automatically. For continuous
+reception, use NewReader() and manage the reader lifecycle manually. Example
+usage: datagram, err := session.ReceiveDatagram()</p>
 
 <h4 id="func-datagramsession-senddatagram">func (*DatagramSession) SendDatagram</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
 </code></pre>
 
-<p>SendDatagram sends a datagram to the specified destination</p>
+<p>SendDatagram sends a datagram to the specified destination address. This is a
+convenience method that creates a temporary writer and sends the datagram
+immediately. For multiple sends, it&rsquo;s more efficient to create a writer once and
+reuse it. Example usage: err := session.SendDatagram([]byte(&ldquo;hello&rdquo;),
+destinationAddr)</p>
 
 <h4 id="type-datagramwriter">type DatagramWriter</h4>
 
@@ -355,21 +496,36 @@ support</p>
 }
 </code></pre>
 
-<p>DatagramWriter handles outgoing datagram transmission</p>
+<p>DatagramWriter handles outgoing datagram transmission to I2P destinations. It
+provides methods for sending datagrams with configurable timeouts and handles
+the underlying SAM protocol communication for message delivery. The writer
+supports method chaining for configuration and provides error handling for send
+operations. Example usage: writer :=
+session.NewWriter().SetTimeout(30*time.Second); err := writer.SendDatagram(data,
+dest)</p>
 
 <h4 id="func-datagramwriter-senddatagram">func (*DatagramWriter) SendDatagram</h4>
 
 <pre><code class="language-go">func (w *DatagramWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
 </code></pre>
 
-<p>SendDatagram sends a datagram to the specified destination</p>
+<p>SendDatagram sends a datagram to the specified I2P destination address. This
+method handles the complete datagram transmission process including data
+encoding, SAM protocol communication, and response validation. It blocks until
+the datagram is sent or an error occurs, respecting the configured timeout
+duration. Example usage: err := writer.SendDatagram([]byte(&ldquo;hello world&rdquo;),
+destinationAddr)</p>
 
 <h4 id="func-datagramwriter-settimeout">func (*DatagramWriter) SetTimeout</h4>
 
 <pre><code class="language-go">func (w *DatagramWriter) SetTimeout(timeout time.Duration) *DatagramWriter
 </code></pre>
 
-<p>SetTimeout sets the timeout for datagram operations</p>
+<p>SetTimeout sets the timeout for datagram write operations. This method
+configures the maximum time to wait for datagram send operations to complete.
+The timeout prevents indefinite blocking during network congestion or connection
+issues. Returns the writer instance for method chaining convenience. Example
+usage: writer.SetTimeout(30*time.Second).SendDatagram(data, destination)</p>
 
 <h4 id="type-sam">type SAM</h4>
 
@@ -378,14 +534,24 @@ support</p>
 }
 </code></pre>
 
-<p>SAM wraps common.SAM to provide datagram-specific functionality</p>
+<p>SAM wraps common.SAM to provide datagram-specific functionality for I2P
+messaging. This type extends the base SAM functionality with methods
+specifically designed for datagram communication, including session creation
+with various configuration options and signature types for enhanced security and
+routing control. Example usage: sam := &amp;SAM{SAM: baseSAM}; session, err :=
+sam.NewDatagramSession(id, keys, options)</p>
 
 <h4 id="func-sam-newdatagramsession">func (*SAM) NewDatagramSession</h4>
 
 <pre><code class="language-go">func (s *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
 </code></pre>
 
-<p>NewDatagramSession creates a new datagram session with the SAM bridge</p>
+<p>NewDatagramSession creates a new datagram session with the SAM bridge using
+default settings. This method establishes a new datagram session for UDP-like
+messaging over I2P with the specified session ID, cryptographic keys, and
+configuration options. It uses default signature settings and provides a simple
+interface for basic datagram communication needs. Example usage: session, err :=
+sam.NewDatagramSession(&ldquo;my-session&rdquo;, keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
 
 <h4 id="func-sam-newdatagramsessionwithports">func (*SAM) NewDatagramSessionWithPorts</h4>
 
@@ -393,7 +559,12 @@ support</p>
 </code></pre>
 
 <p>NewDatagramSessionWithPorts creates a new datagram session with port
-specifications</p>
+specifications. This method allows configuring specific port ranges for the
+session, enabling fine-grained control over network communication ports for
+advanced routing scenarios. Port configuration is useful for applications
+requiring specific port mappings or firewall compatibility. Example usage:
+session, err := sam.NewDatagramSessionWithPorts(id, &ldquo;8080&rdquo;, &ldquo;8081&rdquo;, keys,
+options)</p>
 
 <h4 id="func-sam-newdatagramsessionwithsignature">func (*SAM) NewDatagramSessionWithSignature</h4>
 
@@ -401,13 +572,17 @@ specifications</p>
 </code></pre>
 
 <p>NewDatagramSessionWithSignature creates a new datagram session with custom
-signature type</p>
+signature type. This method allows specifying a custom cryptographic signature
+type for the session, enabling advanced security configurations beyond the
+default signature algorithm. Different signature types provide various security
+levels and compatibility options. Example usage: session, err :=
+sam.NewDatagramSessionWithSignature(id, keys, options, &ldquo;EdDSA_SHA512_Ed25519&rdquo;)</p>
 
       </div>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-02 00:56:19 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-02 01:27:59 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

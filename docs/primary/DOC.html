@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 117 commits
+        📝 137 commits
         
       </div>
     </div>
@@ -23,6 +23,8 @@
       
       
         <div class="nav-section-title">Documentation:</div>
+        
+          <li><a href="../docs/SAMv3.html" >SAM V3</a></li>
         
           <li><a href="../docs/common/DOC.html" >common</a></li>
         
@@ -66,11 +68,571 @@
 
 <h2 id="usage">Usage</h2>
 
+<h4 id="type-datagramsubsession">type DatagramSubSession</h4>
+
+<pre><code class="language-go">type DatagramSubSession struct {
+	*datagram.DatagramSession
+}
+</code></pre>
+
+<p>DatagramSubSession wraps a datagram.DatagramSession to implement the SubSession
+interface. This adapter allows DatagramSession instances to be managed by
+primary sessions while maintaining their full functionality and thread-safe
+operations.</p>
+
+<h4 id="func-newdatagramsubsession">func  NewDatagramSubSession</h4>
+
+<pre><code class="language-go">func NewDatagramSubSession(id string, session *datagram.DatagramSession) *DatagramSubSession
+</code></pre>
+
+<p>NewDatagramSubSession creates a DatagramSubSession wrapper around a
+DatagramSession. This constructor initializes the wrapper with proper
+identification and state management to enable primary session integration.</p>
+
+<h4 id="func-datagramsubsession-active">func (*DatagramSubSession) Active</h4>
+
+<pre><code class="language-go">func (s *DatagramSubSession) Active() bool
+</code></pre>
+
+<p>Active returns whether this datagram sub-session is currently active.</p>
+
+<h4 id="func-datagramsubsession-close">func (*DatagramSubSession) Close</h4>
+
+<pre><code class="language-go">func (s *DatagramSubSession) Close() error
+</code></pre>
+
+<p>Close closes the datagram sub-session and marks it as inactive.</p>
+
+<h4 id="func-datagramsubsession-id">func (*DatagramSubSession) ID</h4>
+
+<pre><code class="language-go">func (s *DatagramSubSession) ID() string
+</code></pre>
+
+<p>ID returns the unique identifier for this datagram sub-session.</p>
+
+<h4 id="func-datagramsubsession-type">func (*DatagramSubSession) Type</h4>
+
+<pre><code class="language-go">func (s *DatagramSubSession) Type() string
+</code></pre>
+
+<p>Type returns the session type identifier for datagram sessions.</p>
+
+<h4 id="type-primarysession">type PrimarySession</h4>
+
+<pre><code class="language-go">type PrimarySession struct {
+	*common.BaseSession
+}
+</code></pre>
+
+<p>PrimarySession provides master session capabilities for managing multiple
+sub-sessions of different types (stream, datagram, raw) within a single I2P
+session context. It enables complex applications with multiple communication
+patterns while sharing the same I2P identity and tunnel infrastructure for
+enhanced efficiency and anonymity.</p>
+
+<p>The primary session manages the lifecycle of all sub-sessions, ensures proper
+cleanup cascading when the primary session is closed, and provides thread-safe
+operations for creating, managing, and terminating sub-sessions across different
+protocols.</p>
+
+<h4 id="func-newprimarysession">func  NewPrimarySession</h4>
+
+<pre><code class="language-go">func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error)
+</code></pre>
+
+<p>NewPrimarySession creates a new primary session with the provided SAM
+connection, session ID, cryptographic keys, and configuration options. The
+primary session acts as a master container that can create and manage multiple
+sub-sessions of different types while sharing the same I2P identity and tunnel
+infrastructure.</p>
+
+<p>The session uses PRIMARY session type in the SAM protocol, which allows multiple
+sub-sessions to be created using the same underlying I2P destination and keys.
+This provides better resource efficiency and maintains consistent identity
+across different communication patterns within the same application.</p>
+
+<p>Example usage:</p>
+
+<pre><code>session, err := NewPrimarySession(sam, &quot;my-primary&quot;, keys, []string{&quot;inbound.length=2&quot;})
+streamSub, err := session.NewStreamSubSession(&quot;stream-1&quot;, streamOptions)
+datagramSub, err := session.NewDatagramSubSession(&quot;datagram-1&quot;, datagramOptions)
+</code></pre>
+
+<h4 id="func-primarysession-addr">func (*PrimarySession) Addr</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) Addr() i2pkeys.I2PAddr
+</code></pre>
+
+<p>Addr returns the I2P address of this primary session. This address represents
+the session&rsquo;s identity on the I2P network and is shared by all sub-sessions
+created from this primary session. The address is derived from the primary
+session&rsquo;s cryptographic keys and remains constant.</p>
+
+<p>Example usage:</p>
+
+<pre><code>addr := primary.Addr()
+fmt.Printf(&quot;Primary session address: %s&quot;, addr.Base32())
+</code></pre>
+
+<h4 id="func-primarysession-close">func (*PrimarySession) Close</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) Close() error
+</code></pre>
+
+<p>Close closes the primary session and all associated sub-sessions. This method
+performs a complete cleanup cascade, ensuring that all resources are properly
+released and all sub-sessions are terminated before closing the primary session
+itself. It&rsquo;s safe to call multiple times.</p>
+
+<p>The method first closes all registered sub-sessions, then closes the primary
+session&rsquo;s registry and base session. This prevents resource leaks and ensures
+proper cleanup of the entire session hierarchy.</p>
+
+<p>Example usage:</p>
+
+<pre><code>defer primary.Close()
+</code></pre>
+
+<h4 id="func-primarysession-closesubsession">func (*PrimarySession) CloseSubSession</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) CloseSubSession(id string) error
+</code></pre>
+
+<p>CloseSubSession closes and unregisters a specific sub-session by its ID. This
+method provides selective termination of sub-sessions without affecting the
+primary session or other sub-sessions. The sub-session is properly cleaned up
+and removed from the registry after closure.</p>
+
+<p>Example usage:</p>
+
+<pre><code>err := primary.CloseSubSession(&quot;stream-1&quot;)
+if err != nil {
+    log.Printf(&quot;Failed to close sub-session: %v&quot;, err)
+}
+</code></pre>
+
+<h4 id="func-primarysession-getsubsession">func (*PrimarySession) GetSubSession</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) GetSubSession(id string) (SubSession, error)
+</code></pre>
+
+<p>GetSubSession retrieves a sub-session by its unique identifier. Returns the
+sub-session instance if found, or an error if the sub-session does not exist or
+the primary session is closed. This method provides safe access to registered
+sub-sessions for management and operation.</p>
+
+<p>Example usage:</p>
+
+<pre><code>subSession, err := primary.GetSubSession(&quot;stream-1&quot;)
+if streamSub, ok := subSession.(*StreamSubSession); ok {
+    conn, err := streamSub.Dial(&quot;destination.b32.i2p&quot;)
+}
+</code></pre>
+
+<h4 id="func-primarysession-listsubsessions">func (*PrimarySession) ListSubSessions</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) ListSubSessions() []SubSession
+</code></pre>
+
+<p>ListSubSessions returns a list of all currently active sub-sessions. This method
+provides a snapshot of all registered sub-sessions that can be safely iterated
+without holding locks. The returned list includes sub-sessions of all types
+(stream, datagram, raw) currently managed by this primary session.</p>
+
+<p>Example usage:</p>
+
+<pre><code>subSessions := primary.ListSubSessions()
+for _, sub := range subSessions {
+    log.Printf(&quot;Sub-session %s (type: %s) is active: %v&quot;, sub.ID(), sub.Type(), sub.Active())
+}
+</code></pre>
+
+<h4 id="func-primarysession-newdatagramsubsession">func (*PrimarySession) NewDatagramSubSession</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*DatagramSubSession, error)
+</code></pre>
+
+<p>NewDatagramSubSession creates a new datagram sub-session within this primary
+session. The sub-session shares the primary session&rsquo;s I2P identity and tunnel
+infrastructure while providing full DatagramSession functionality for UDP-like
+authenticated messaging. Each sub-session must have a unique identifier within
+the primary session scope.</p>
+
+<p>The created sub-session inherits the primary session&rsquo;s keys and base
+configuration but can have additional datagram-specific options for customizing
+behavior such as message timeouts, reliability settings, and other datagram
+parameters.</p>
+
+<p>Example usage:</p>
+
+<pre><code>datagramSub, err := primary.NewDatagramSubSession(&quot;udp-handler&quot;, []string{&quot;receive.timeout=60&quot;})
+writer := datagramSub.NewWriter()
+reader := datagramSub.NewReader()
+</code></pre>
+
+<h4 id="func-primarysession-newrawsubsession">func (*PrimarySession) NewRawSubSession</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubSession, error)
+</code></pre>
+
+<p>NewRawSubSession creates a new raw sub-session within this primary session. The
+sub-session shares the primary session&rsquo;s I2P identity and tunnel infrastructure
+while providing full RawSession functionality for unrepliable datagram
+communication. Each sub-session must have a unique identifier within the primary
+session scope.</p>
+
+<p>The created sub-session inherits the primary session&rsquo;s keys and base
+configuration but can have additional raw-specific options for customizing
+behavior such as transmission parameters and other raw communication settings.</p>
+
+<p>Example usage:</p>
+
+<pre><code>rawSub, err := primary.NewRawSubSession(&quot;raw-sender&quot;, []string{&quot;send.timeout=30&quot;})
+writer := rawSub.NewWriter()
+reader := rawSub.NewReader()
+</code></pre>
+
+<h4 id="func-primarysession-newstreamsubsession">func (*PrimarySession) NewStreamSubSession</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*StreamSubSession, error)
+</code></pre>
+
+<p>NewStreamSubSession creates a new stream sub-session within this primary
+session. The sub-session shares the primary session&rsquo;s I2P identity and tunnel
+infrastructure while providing full StreamSession functionality for TCP-like
+reliable connections. Each sub-session must have a unique identifier within the
+primary session scope.</p>
+
+<p>The created sub-session inherits the primary session&rsquo;s keys and base
+configuration but can have additional stream-specific options for customizing
+behavior such as connection timeouts, buffer sizes, and other streaming
+parameters.</p>
+
+<p>Example usage:</p>
+
+<pre><code>streamSub, err := primary.NewStreamSubSession(&quot;tcp-handler&quot;, []string{&quot;connect.timeout=30&quot;})
+listener, err := streamSub.Listen()
+conn, err := streamSub.Dial(&quot;destination.b32.i2p&quot;)
+</code></pre>
+
+<h4 id="func-primarysession-subsessioncount">func (*PrimarySession) SubSessionCount</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) SubSessionCount() int
+</code></pre>
+
+<p>SubSessionCount returns the number of currently active sub-sessions. This method
+provides a quick way to check how many sub-sessions are currently managed by
+this primary session across all types.</p>
+
+<p>Example usage:</p>
+
+<pre><code>count := primary.SubSessionCount()
+log.Printf(&quot;Primary session managing %d sub-sessions&quot;, count)
+</code></pre>
+
+<h4 id="type-primarysessionerror">type PrimarySessionError</h4>
+
+<pre><code class="language-go">type PrimarySessionError struct {
+	Op  string // The operation that caused the error
+	Err string // The error description
+}
+</code></pre>
+
+<p>PrimarySessionError represents errors specific to primary session operations. It
+provides structured error information with operation context for debugging and
+error handling in primary session management scenarios.</p>
+
+<h4 id="func-primarysessionerror-error">func (*PrimarySessionError) Error</h4>
+
+<pre><code class="language-go">func (e *PrimarySessionError) Error() string
+</code></pre>
+
+<p>Error implements the error interface for PrimarySessionError. It provides a
+formatted error message that includes both the operation context and the
+specific error description for clear error reporting.</p>
+
+<h4 id="type-rawsubsession">type RawSubSession</h4>
+
+<pre><code class="language-go">type RawSubSession struct {
+	*raw.RawSession
+}
+</code></pre>
+
+<p>RawSubSession wraps a raw.RawSession to implement the SubSession interface. This
+adapter allows RawSession instances to be managed by primary sessions while
+maintaining their full functionality and thread-safe operations.</p>
+
+<h4 id="func-newrawsubsession">func  NewRawSubSession</h4>
+
+<pre><code class="language-go">func NewRawSubSession(id string, session *raw.RawSession) *RawSubSession
+</code></pre>
+
+<p>NewRawSubSession creates a RawSubSession wrapper around a RawSession. This
+constructor initializes the wrapper with proper identification and state
+management to enable primary session integration.</p>
+
+<h4 id="func-rawsubsession-active">func (*RawSubSession) Active</h4>
+
+<pre><code class="language-go">func (s *RawSubSession) Active() bool
+</code></pre>
+
+<p>Active returns whether this raw sub-session is currently active.</p>
+
+<h4 id="func-rawsubsession-close">func (*RawSubSession) Close</h4>
+
+<pre><code class="language-go">func (s *RawSubSession) Close() error
+</code></pre>
+
+<p>Close closes the raw sub-session and marks it as inactive.</p>
+
+<h4 id="func-rawsubsession-id">func (*RawSubSession) ID</h4>
+
+<pre><code class="language-go">func (s *RawSubSession) ID() string
+</code></pre>
+
+<p>ID returns the unique identifier for this raw sub-session.</p>
+
+<h4 id="func-rawsubsession-type">func (*RawSubSession) Type</h4>
+
+<pre><code class="language-go">func (s *RawSubSession) Type() string
+</code></pre>
+
+<p>Type returns the session type identifier for raw sessions.</p>
+
+<h4 id="type-sam">type SAM</h4>
+
+<pre><code class="language-go">type SAM struct {
+	*common.SAM
+}
+</code></pre>
+
+<p>SAM wraps common.SAM to provide primary session functionality for creating and
+managing master sessions that can contain multiple sub-sessions of different
+types. This type extends the base SAM functionality with methods specifically
+designed for primary session management, including session creation with various
+configuration options and signature types. Example usage: sam := &amp;SAM{SAM:
+baseSAM}; session, err := sam.NewPrimarySession(id, keys, options)</p>
+
+<h4 id="func-sam-newprimarysession">func (*SAM) NewPrimarySession</h4>
+
+<pre><code class="language-go">func (s *SAM) NewPrimarySession(id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error)
+</code></pre>
+
+<p>NewPrimarySession creates a new primary session with the SAM bridge using
+default settings. This method establishes a new primary session for managing
+multiple sub-sessions over I2P with the specified session ID, cryptographic
+keys, and configuration options. It uses default signature settings and provides
+a simple interface for basic primary session needs.</p>
+
+<p>The primary session acts as a master container that can create and manage
+multiple sub-sessions of different types (stream, datagram, raw) while sharing
+the same I2P identity and tunnel infrastructure for enhanced efficiency and
+consistent anonymity properties.</p>
+
+<p>Example usage:</p>
+
+<pre><code>session, err := sam.NewPrimarySession(&quot;my-primary&quot;, keys, []string{&quot;inbound.length=2&quot;})
+streamSub, err := session.NewStreamSubSession(&quot;stream-1&quot;, streamOptions)
+</code></pre>
+
+<h4 id="func-sam-newprimarysessionwithports">func (*SAM) NewPrimarySessionWithPorts</h4>
+
+<pre><code class="language-go">func (s *SAM) NewPrimarySessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error)
+</code></pre>
+
+<p>NewPrimarySessionWithPorts creates a new primary session with port
+specifications. This method allows configuring specific port ranges for the
+session, enabling fine-grained control over network communication ports for
+advanced routing scenarios. Port configuration is useful for applications
+requiring specific port mappings, firewall compatibility, or integration with
+existing network infrastructure and service discovery mechanisms.</p>
+
+<p>The primary session created with port configuration maintains full multi-session
+management capabilities while using the specified port parameters for network
+communication optimization and compatibility with existing network
+configurations or security requirements.</p>
+
+<p>Example usage:</p>
+
+<pre><code>session, err := sam.NewPrimarySessionWithPorts(id, &quot;8080&quot;, &quot;8081&quot;, keys, options)
+rawSub, err := session.NewRawSubSession(&quot;raw-1&quot;, rawOptions)
+</code></pre>
+
+<h4 id="func-sam-newprimarysessionwithsignature">func (*SAM) NewPrimarySessionWithSignature</h4>
+
+<pre><code class="language-go">func (s *SAM) NewPrimarySessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error)
+</code></pre>
+
+<p>NewPrimarySessionWithSignature creates a new primary session with custom
+signature type. This method allows specifying a custom cryptographic signature
+type for the session, enabling advanced security configurations beyond the
+default signature algorithm. Different signature types provide various security
+levels, compatibility options, and performance characteristics for different I2P
+network requirements.</p>
+
+<p>The primary session created with custom signature maintains the same
+multi-session management capabilities while using the specified cryptographic
+parameters for enhanced security or compatibility with specific I2P network
+configurations.</p>
+
+<p>Example usage:</p>
+
+<pre><code>session, err := sam.NewPrimarySessionWithSignature(id, keys, options, &quot;EdDSA_SHA512_Ed25519&quot;)
+datagramSub, err := session.NewDatagramSubSession(&quot;datagram-1&quot;, datagramOptions)
+</code></pre>
+
+<h4 id="type-streamsubsession">type StreamSubSession</h4>
+
+<pre><code class="language-go">type StreamSubSession struct {
+	*stream.StreamSession
+}
+</code></pre>
+
+<p>StreamSubSession wraps a stream.StreamSession to implement the SubSession
+interface. This adapter allows StreamSession instances to be managed by primary
+sessions while maintaining their full functionality and thread-safe operations.</p>
+
+<h4 id="func-newstreamsubsession">func  NewStreamSubSession</h4>
+
+<pre><code class="language-go">func NewStreamSubSession(id string, session *stream.StreamSession) *StreamSubSession
+</code></pre>
+
+<p>NewStreamSubSession creates a StreamSubSession wrapper around a StreamSession.
+This constructor initializes the wrapper with proper identification and state
+management to enable primary session integration.</p>
+
+<h4 id="func-streamsubsession-active">func (*StreamSubSession) Active</h4>
+
+<pre><code class="language-go">func (s *StreamSubSession) Active() bool
+</code></pre>
+
+<p>Active returns whether this stream sub-session is currently active.</p>
+
+<h4 id="func-streamsubsession-close">func (*StreamSubSession) Close</h4>
+
+<pre><code class="language-go">func (s *StreamSubSession) Close() error
+</code></pre>
+
+<p>Close closes the stream sub-session and marks it as inactive.</p>
+
+<h4 id="func-streamsubsession-id">func (*StreamSubSession) ID</h4>
+
+<pre><code class="language-go">func (s *StreamSubSession) ID() string
+</code></pre>
+
+<p>ID returns the unique identifier for this stream sub-session.</p>
+
+<h4 id="func-streamsubsession-type">func (*StreamSubSession) Type</h4>
+
+<pre><code class="language-go">func (s *StreamSubSession) Type() string
+</code></pre>
+
+<p>Type returns the session type identifier for stream sessions.</p>
+
+<h4 id="type-subsession">type SubSession</h4>
+
+<pre><code class="language-go">type SubSession interface {
+	// ID returns the unique identifier for this sub-session
+	ID() string
+	// Type returns the session type (&quot;STREAM&quot;, &quot;DATAGRAM&quot;, &quot;RAW&quot;)
+	Type() string
+	// Close closes the sub-session and releases its resources
+	Close() error
+	// Active returns whether the sub-session is currently active
+	Active() bool
+}
+</code></pre>
+
+<p>SubSession represents a generic interface for sub-sessions that can be managed
+by a primary session. All sub-session types (stream, datagram, raw) implement
+this interface to provide unified lifecycle management and identification.</p>
+
+<h4 id="type-subsessionregistry">type SubSessionRegistry</h4>
+
+<pre><code class="language-go">type SubSessionRegistry struct {
+}
+</code></pre>
+
+<p>SubSessionRegistry manages a collection of sub-sessions with thread-safe access.
+It maintains mappings between session IDs and their corresponding session
+instances, enabling efficient lookup, registration, and cleanup operations for
+primary sessions.</p>
+
+<h4 id="func-newsubsessionregistry">func  NewSubSessionRegistry</h4>
+
+<pre><code class="language-go">func NewSubSessionRegistry() *SubSessionRegistry
+</code></pre>
+
+<p>NewSubSessionRegistry creates a new registry for managing sub-sessions. It
+initializes the internal data structures needed for thread-safe sub-session
+management and returns a ready-to-use registry instance.</p>
+
+<h4 id="func-subsessionregistry-close">func (*SubSessionRegistry) Close</h4>
+
+<pre><code class="language-go">func (r *SubSessionRegistry) Close() error
+</code></pre>
+
+<p>Close closes the registry and all registered sub-sessions. This method ensures
+proper cleanup of all resources and marks the registry as closed to prevent
+further operations. It&rsquo;s safe to call multiple times.</p>
+
+<h4 id="func-subsessionregistry-count">func (*SubSessionRegistry) Count</h4>
+
+<pre><code class="language-go">func (r *SubSessionRegistry) Count() int
+</code></pre>
+
+<p>Count returns the number of currently registered sub-sessions. This method is
+thread-safe and provides a quick way to check registry size.</p>
+
+<h4 id="func-subsessionregistry-get">func (*SubSessionRegistry) Get</h4>
+
+<pre><code class="language-go">func (r *SubSessionRegistry) Get(id string) (SubSession, bool)
+</code></pre>
+
+<p>Get retrieves a sub-session by ID from the registry. Returns the session
+instance and true if found, or nil and false if not found. This method is
+thread-safe and provides read-only access to registered sessions.</p>
+
+<h4 id="func-subsessionregistry-isclosed">func (*SubSessionRegistry) IsClosed</h4>
+
+<pre><code class="language-go">func (r *SubSessionRegistry) IsClosed() bool
+</code></pre>
+
+<p>IsClosed returns whether the registry has been closed. This method is
+thread-safe and can be used to check registry state.</p>
+
+<h4 id="func-subsessionregistry-list">func (*SubSessionRegistry) List</h4>
+
+<pre><code class="language-go">func (r *SubSessionRegistry) List() []SubSession
+</code></pre>
+
+<p>List returns a copy of all currently registered sub-sessions. This method is
+thread-safe and returns a snapshot of the registry state that can be safely
+iterated without holding locks.</p>
+
+<h4 id="func-subsessionregistry-register">func (*SubSessionRegistry) Register</h4>
+
+<pre><code class="language-go">func (r *SubSessionRegistry) Register(id string, session SubSession) error
+</code></pre>
+
+<p>Register adds a sub-session to the registry with the specified ID. Returns an
+error if the registry is closed or if a session with the same ID already exists.
+This method is thread-safe and can be called concurrently.</p>
+
+<h4 id="func-subsessionregistry-unregister">func (*SubSessionRegistry) Unregister</h4>
+
+<pre><code class="language-go">func (r *SubSessionRegistry) Unregister(id string) error
+</code></pre>
+
+<p>Unregister removes a sub-session from the registry by ID. Returns an error if
+the registry is closed or if no session with the specified ID exists. This
+method is thread-safe and can be called concurrently.</p>
+
       </div>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-02 00:56:19 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-02 01:27:59 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
