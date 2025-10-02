@@ -4,6 +4,7 @@
 package sam
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/go-i2p/go-sam-go/common"
@@ -211,6 +212,9 @@ func SplitHostPort(hostport string) (string, string, error) {
 //	}
 //	addr, err := resolver.Resolve("example.i2p")
 func NewSAMResolver(parent *SAM) (*SAMResolver, error) {
+	if parent == nil {
+		return nil, errors.New("parent SAM instance cannot be nil")
+	}
 	return common.NewSAMResolver(parent.SAM)
 }
 

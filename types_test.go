@@ -49,19 +49,15 @@ func TestTypeAliases_Compilation(t *testing.T) {
 	}
 }
 
-// TestTypeAliases_Identity verifies that type aliases maintain proper type identity
+// TestTypeAliases_Identity verifies that pure type aliases maintain proper type identity
 // and can be used interchangeably with their underlying types from sub-packages.
+// Note: This test excludes wrapper structs like SAM which intentionally have different types.
 func TestTypeAliases_Identity(t *testing.T) {
 	tests := []struct {
 		name       string
 		aliasType  reflect.Type
 		sourceType reflect.Type
 	}{
-		{
-			name:       "SAM alias identity",
-			aliasType:  reflect.TypeOf((*SAM)(nil)),
-			sourceType: reflect.TypeOf((*common.SAM)(nil)),
-		},
 		{
 			name:       "SAMResolver alias identity",
 			aliasType:  reflect.TypeOf((*SAMResolver)(nil)),
@@ -129,6 +125,40 @@ func TestTypeAliases_Identity(t *testing.T) {
 	}
 }
 
+// TestWrapperStructs_Behavior verifies that wrapper structs like SAM work correctly
+// and provide proper access to embedded functionality while maintaining their own type identity.
+func TestWrapperStructs_Behavior(t *testing.T) {
+	t.Run("SAM wrapper struct", func(t *testing.T) {
+		// Verify SAM is a wrapper struct, not a pure alias
+		samType := reflect.TypeOf((*SAM)(nil))
+		commonSAMType := reflect.TypeOf((*common.SAM)(nil))
+		
+		// They should be different types (wrapper vs original)
+		if samType == commonSAMType {
+			t.Error("SAM should be a wrapper struct, not a pure type alias")
+		}
+		
+		// But SAM should embed *common.SAM 
+		samStructType := samType.Elem()
+		if samStructType.Kind() != reflect.Struct {
+			t.Error("SAM should be a struct type")
+		}
+		
+		// Check that it has an embedded *common.SAM field
+		foundEmbedded := false
+		for i := 0; i < samStructType.NumField(); i++ {
+			field := samStructType.Field(i)
+			if field.Anonymous && field.Type == reflect.TypeOf((*common.SAM)(nil)) {
+				foundEmbedded = true
+				break
+			}
+		}
+		if !foundEmbedded {
+			t.Error("SAM should embed *common.SAM")
+		}
+	})
+}
+
 // TestTypeAliases_Convertibility verifies that type aliases can be converted
 // between the root package types and sub-package types seamlessly.
 func TestTypeAliases_Convertibility(t *testing.T) {
@@ -189,27 +219,53 @@ func TestPrimarySession_Structure(t *testing.T) {
 	})
 }
 
-// TestTypeAliases_InterfaceCompatibility verifies that aliased types
+// TestTypeAliases_InterfaceCompatibility verifies that pure type aliases
 // implement the same interfaces as their source types.
+// Note: This excludes wrapper structs like SAM which have different method sets by design.
 func TestTypeAliases_InterfaceCompatibility(t *testing.T) {
-	// This test ensures that type aliases maintain interface compatibility
+	// This test ensures that pure type aliases maintain interface compatibility
 	// Note: We can't test actual interface implementation without instances,
 	// but we can verify type structure compatibility
 
-	t.Run("Type method sets", func(t *testing.T) {
-		// Verify that aliased types have the same method signatures
-		// This is done by comparing reflect.Type method sets
+	t.Run("Pure alias method sets", func(t *testing.T) {
+		// Test SAMResolver (a pure alias)
+		samResolverType := reflect.TypeOf((*SAMResolver)(nil))
+		commonSAMResolverType := reflect.TypeOf((*common.SAMResolver)(nil))
 
-		samType := reflect.TypeOf((*SAM)(nil))
-		commonSAMType := reflect.TypeOf((*common.SAM)(nil))
-
-		if samType != commonSAMType {
-			t.Error("SAM type alias does not match common.SAM")
+		if samResolverType != commonSAMResolverType {
+			t.Error("SAMResolver type alias does not match common.SAMResolver")
 		}
 
-		// Check that method sets are identical for pointer types
-		if samType.Elem().NumMethod() != commonSAMType.Elem().NumMethod() {
-			t.Error("SAM method set differs from common.SAM")
+		// Test Options (a pure alias) 
+		optionsType := reflect.TypeOf((*Options)(nil))
+		commonOptionsType := reflect.TypeOf((*common.Options)(nil))
+
+		if optionsType != commonOptionsType {
+			t.Error("Options type alias does not match common.Options")
+		}
+	})
+
+	t.Run("Wrapper struct compatibility", func(t *testing.T) {
+		// For wrapper structs like SAM, verify they provide access to embedded functionality
+		// without requiring exact method set matching
+		
+		samType := reflect.TypeOf((*SAM)(nil))
+		if samType.Elem().Kind() != reflect.Struct {
+			t.Error("SAM should be a struct type for method extension")
+		}
+		
+		// Verify SAM has embedded *common.SAM field for delegation
+		samStruct := samType.Elem()
+		hasEmbedded := false
+		for i := 0; i < samStruct.NumField(); i++ {
+			field := samStruct.Field(i)
+			if field.Anonymous && field.Type == reflect.TypeOf((*common.SAM)(nil)) {
+				hasEmbedded = true
+				break
+			}
+		}
+		if !hasEmbedded {
+			t.Error("SAM should embed *common.SAM for delegation")
 		}
 	})
 }

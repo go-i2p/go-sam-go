@@ -14,6 +14,9 @@ import (
 // Returns a configured resolver ready for performing I2P address lookups.
 func NewSAMResolver(parent *SAM) (*SAMResolver, error) {
 	log.Debug("Creating new SAMResolver from existing SAM instance")
+	if parent == nil {
+		return nil, errors.New("parent SAM instance cannot be nil")
+	}
 	var s SAMResolver
 	s.SAM = parent
 	return &s, nil
