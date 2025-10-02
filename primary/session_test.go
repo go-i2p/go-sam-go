@@ -387,7 +387,7 @@ func TestConcurrentSubSessionOperations(t *testing.T) {
 	// Create one session of each type to test concurrency without SAM protocol limits
 	sessionTypes := []string{"STREAM", "DATAGRAM", "RAW"}
 	basePort := 8000
-	
+
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {

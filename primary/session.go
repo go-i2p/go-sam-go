@@ -146,7 +146,7 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 	// during concurrent session creation operations in I2P SAM protocol
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	if p.closed {
 		return nil, oops.Errorf("primary session is closed")
 	}
@@ -218,7 +218,7 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 	// during concurrent session creation operations in I2P SAM protocol
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	if p.closed {
 		return nil, oops.Errorf("primary session is closed")
 	}
@@ -289,7 +289,7 @@ func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubS
 	// during concurrent session creation operations in I2P SAM protocol
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	if p.closed {
 		return nil, oops.Errorf("primary session is closed")
 	}
