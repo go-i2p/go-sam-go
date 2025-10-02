@@ -1,7 +1,6 @@
 package sam
 
 import (
-	"github.com/go-i2p/go-sam-go/datagram"
 	"github.com/go-i2p/go-sam-go/primary"
 	"github.com/go-i2p/go-sam-go/raw"
 	"github.com/go-i2p/go-sam-go/stream"
@@ -52,9 +51,7 @@ func (sam *SAM) NewPrimarySession(id string, keys i2pkeys.I2PKeys, options []str
 //	primary, err := sam.NewPrimarySessionWithSignature("secure-primary", keys,
 //		Options_Default, Sig_EdDSA_SHA512_Ed25519)
 func (sam *SAM) NewPrimarySessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error) {
-	// Use the primary package's signature-specific method to avoid duplicate signature parameters
-	primarySAM := &primary.SAM{SAM: sam.SAM}
-	return primarySAM.NewPrimarySessionWithSignature(id, keys, options, sigType)
+	return primary.NewPrimarySessionWithSignature(sam.SAM, id, keys, options, sigType)
 }
 
 // NewStreamSession creates a new stream session for TCP-like reliable connections over I2P.
@@ -99,9 +96,7 @@ func (sam *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []stri
 //	session, err := sam.NewStreamSessionWithSignature("secure-stream", keys,
 //		Options_Large, Sig_EdDSA_SHA512_Ed25519)
 func (sam *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
-	// Create stream wrapper to access signature-aware session creation
-	streamSAM := &stream.SAM{SAM: sam.SAM}
-	return streamSAM.NewStreamSessionWithSignature(id, keys, options, sigType)
+	return stream.NewStreamSessionWithSignature(sam.SAM, id, keys, options, sigType)
 }
 
 // NewStreamSessionWithSignatureAndPorts creates a new stream session with signature type
@@ -126,11 +121,9 @@ func (sam *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, o
 //	keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
 //	session, err := sam.NewStreamSessionWithSignatureAndPorts("http-proxy",
 //		"8080", "80", keys, Options_Default, Sig_ECDSA_SHA256_P256)
-func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
-	// Create stream wrapper to access port-aware session creation
-	streamSAM := &stream.SAM{SAM: sam.SAM}
-	return streamSAM.NewStreamSessionWithPorts(id, from, to, keys, options)
-}
+/*func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
+	return stream.NewStreamSessionWithSignatureAndPorts(sam.SAM, id, from, to, keys, options, sigType)
+}*/
 
 // NewDatagramSession creates a new datagram session for UDP-like authenticated messaging over I2P.
 // Datagram sessions provide connectionless communication with message authentication and
@@ -156,9 +149,9 @@ func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys 
 //	session, err := sam.NewDatagramSession("chat-app", keys, Options_Medium, 0)
 //	writer := session.NewWriter()
 //	reader := session.NewReader()
-func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*DatagramSession, error) {
+/*func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*DatagramSession, error) {
 	return datagram.NewDatagramSession(sam.SAM, id, keys, options)
-}
+}*/
 
 // NewRawSession creates a new raw session for unrepliable datagram communication over I2P.
 // Raw sessions provide the most lightweight form of I2P communication, where messages

@@ -13,30 +13,31 @@ func TestSAMSessionMethods(t *testing.T) {
 		t.Skip("Skipping integration tests in short mode")
 	}
 
-	// Create a real SAM connection
-	sam, err := NewSAM(SAMDefaultAddr(""))
-	if err != nil {
-		t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
-	}
-	defer sam.Close()
-
-	// Generate real I2P keys for testing
-	keys, err := sam.NewKeys()
-	if err != nil {
-		t.Fatalf("Failed to generate I2P keys: %v", err)
-	}
-
 	testCases := []struct {
 		name        string
-		methodTest  func() error
+		methodTest  func(*testing.T)
 		description string
 	}{
 		{
 			name: "NewPrimarySession",
-			methodTest: func() error {
+			methodTest: func(t *testing.T) {
+				// Create a separate SAM connection for this test
+				sam, err := NewSAM(SAMDefaultAddr(""))
+				if err != nil {
+					t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+				}
+				defer sam.Close()
+
+				// Generate real I2P keys for testing
+				keys, err := sam.NewKeys()
+				if err != nil {
+					t.Fatalf("Failed to generate I2P keys: %v", err)
+				}
+
 				session, err := sam.NewPrimarySession("test-primary-"+RandString(), keys, Options_Default)
 				if err != nil {
-					return err
+					t.Errorf("NewPrimarySession failed: %v", err)
+					return
 				}
 				defer session.Close()
 
@@ -44,17 +45,29 @@ func TestSAMSessionMethods(t *testing.T) {
 				if session.SubSessionCount() != 0 {
 					t.Errorf("Expected 0 sub-sessions, got %d", session.SubSessionCount())
 				}
-
-				return nil
 			},
 			description: "Primary session creation and basic operations",
 		},
 		{
 			name: "NewPrimarySessionWithSignature",
-			methodTest: func() error {
+			methodTest: func(t *testing.T) {
+				// Create a separate SAM connection for this test
+				sam, err := NewSAM(SAMDefaultAddr(""))
+				if err != nil {
+					t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+				}
+				defer sam.Close()
+
+				// Generate real I2P keys for testing
+				keys, err := sam.NewKeys()
+				if err != nil {
+					t.Fatalf("Failed to generate I2P keys: %v", err)
+				}
+
 				session, err := sam.NewPrimarySessionWithSignature("test-primary-sig-"+RandString(), keys, Options_Default, Sig_EdDSA_SHA512_Ed25519)
 				if err != nil {
-					return err
+					t.Errorf("NewPrimarySessionWithSignature failed: %v", err)
+					return
 				}
 				defer session.Close()
 
@@ -62,17 +75,29 @@ func TestSAMSessionMethods(t *testing.T) {
 				if session.Addr().String() == "" {
 					t.Error("Expected non-empty session address")
 				}
-
-				return nil
 			},
 			description: "Primary session creation with signature type",
 		},
 		{
 			name: "NewStreamSession",
-			methodTest: func() error {
+			methodTest: func(t *testing.T) {
+				// Create a separate SAM connection for this test
+				sam, err := NewSAM(SAMDefaultAddr(""))
+				if err != nil {
+					t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+				}
+				defer sam.Close()
+
+				// Generate real I2P keys for testing
+				keys, err := sam.NewKeys()
+				if err != nil {
+					t.Fatalf("Failed to generate I2P keys: %v", err)
+				}
+
 				session, err := sam.NewStreamSession("test-stream-"+RandString(), keys, Options_Default)
 				if err != nil {
-					return err
+					t.Errorf("NewStreamSession failed: %v", err)
+					return
 				}
 				defer session.Close()
 
@@ -80,41 +105,66 @@ func TestSAMSessionMethods(t *testing.T) {
 				if session.Addr().String() == "" {
 					t.Error("Expected non-empty stream session address")
 				}
-
-				return nil
 			},
 			description: "Stream session creation",
 		},
 		{
 			name: "NewStreamSessionWithSignature",
-			methodTest: func() error {
+			methodTest: func(t *testing.T) {
+				// Create a separate SAM connection for this test
+				sam, err := NewSAM(SAMDefaultAddr(""))
+				if err != nil {
+					t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+				}
+				defer sam.Close()
+
+				// Generate real I2P keys for testing
+				keys, err := sam.NewKeys()
+				if err != nil {
+					t.Fatalf("Failed to generate I2P keys: %v", err)
+				}
+
 				session, err := sam.NewStreamSessionWithSignature("test-stream-sig-"+RandString(), keys, Options_Default, Sig_EdDSA_SHA512_Ed25519)
 				if err != nil {
-					return err
+					t.Errorf("NewStreamSessionWithSignature failed: %v", err)
+					return
 				}
 				defer session.Close()
 
 				// Test that we can create a listener
 				listener, err := session.Listen()
 				if err != nil {
-					return err
+					t.Errorf("Failed to create listener: %v", err)
+					return
 				}
 				defer listener.Close()
 
 				if listener.Addr().String() == "" {
 					t.Error("Expected non-empty listener address")
 				}
-
-				return nil
 			},
 			description: "Stream session with signature and listener creation",
 		},
 		{
 			name: "NewDatagramSession",
-			methodTest: func() error {
+			methodTest: func(t *testing.T) {
+				// Create a separate SAM connection for this test
+				sam, err := NewSAM(SAMDefaultAddr(""))
+				if err != nil {
+					t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+				}
+				defer sam.Close()
+
+				// Generate real I2P keys for testing
+				keys, err := sam.NewKeys()
+				if err != nil {
+					t.Fatalf("Failed to generate I2P keys: %v", err)
+				}
+
 				session, err := sam.NewDatagramSession("test-datagram-"+RandString(), keys, Options_Default, 0)
 				if err != nil {
-					return err
+					t.Errorf("NewDatagramSession failed: %v", err)
+					return
 				}
 				defer session.Close()
 
@@ -122,17 +172,29 @@ func TestSAMSessionMethods(t *testing.T) {
 				if session.Addr().String() == "" {
 					t.Error("Expected non-empty datagram session address")
 				}
-
-				return nil
 			},
 			description: "Datagram session creation",
 		},
 		{
 			name: "NewRawSession",
-			methodTest: func() error {
+			methodTest: func(t *testing.T) {
+				// Create a separate SAM connection for this test
+				sam, err := NewSAM(SAMDefaultAddr(""))
+				if err != nil {
+					t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+				}
+				defer sam.Close()
+
+				// Generate real I2P keys for testing
+				keys, err := sam.NewKeys()
+				if err != nil {
+					t.Fatalf("Failed to generate I2P keys: %v", err)
+				}
+
 				session, err := sam.NewRawSession("test-raw-"+RandString(), keys, Options_Default, 0)
 				if err != nil {
-					return err
+					t.Errorf("NewRawSession failed: %v", err)
+					return
 				}
 				defer session.Close()
 
@@ -140,8 +202,6 @@ func TestSAMSessionMethods(t *testing.T) {
 				if session.Addr().String() == "" {
 					t.Error("Expected non-empty raw session address")
 				}
-
-				return nil
 			},
 			description: "Raw session creation",
 		},
@@ -151,18 +211,15 @@ func TestSAMSessionMethods(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set I2P-appropriate timeout for session creation
 			// I2P operations can take several minutes due to tunnel building
-			done := make(chan error, 1)
+			done := make(chan bool, 1)
 			go func() {
-				done <- tc.methodTest()
+				tc.methodTest(t)
+				done <- true
 			}()
 
 			select {
-			case err := <-done:
-				if err != nil {
-					t.Errorf("%s failed: %v", tc.name, err)
-				} else {
-					t.Logf("✓ %s: %s", tc.name, tc.description)
-				}
+			case <-done:
+				t.Logf("✓ %s: %s", tc.name, tc.description)
 			case <-time.After(5 * time.Minute):
 				t.Errorf("%s timed out after 5 minutes (I2P tunnel building can be slow)", tc.name)
 			}

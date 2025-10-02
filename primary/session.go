@@ -78,6 +78,55 @@ func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options
 	return ps, nil
 }
 
+// NewPrimarySessionWithSignature creates a new primary session with the specified signature type.
+// This is a package-level function that provides direct access to signature-aware session creation
+// without requiring wrapper types. It delegates to the common package for session creation while
+// maintaining the same primary session functionality and sub-session management capabilities.
+//
+// The signature type allows specifying custom cryptographic parameters for enhanced security
+// or compatibility with specific I2P network configurations. Different signature types provide
+// various security levels, performance characteristics, and compatibility options.
+//
+// Example usage:
+//
+//	session, err := NewPrimarySessionWithSignature(sam, "secure-primary", keys, options, "EdDSA_SHA512_Ed25519")
+//	streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
+func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error) {
+	logger := log.WithFields(logrus.Fields{
+		"id":      id,
+		"options": options,
+		"sigType": sigType,
+	})
+	logger.Debug("Creating new PrimarySession with signature")
+
+	// Create the base session using the common package with custom signature
+	// This enables advanced cryptographic configuration for enhanced security
+	session, err := sam.NewGenericSessionWithSignature("PRIMARY", id, keys, sigType, options)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create generic primary session with signature")
+		return nil, oops.Errorf("failed to create primary session: %w", err)
+	}
+
+	// Ensure the session is of the correct type for primary session operations
+	baseSession, ok := session.(*common.BaseSession)
+	if !ok {
+		logger.Error("Session is not a BaseSession")
+		session.Close()
+		return nil, oops.Errorf("invalid session type")
+	}
+
+	// Initialize the primary session with the base session and configuration
+	ps := &PrimarySession{
+		BaseSession: baseSession,
+		sam:         sam,
+		options:     options,
+		registry:    NewSubSessionRegistry(),
+	}
+
+	logger.Debug("Successfully created PrimarySession with signature")
+	return ps, nil
+}
+
 // NewStreamSubSession creates a new stream sub-session within this primary session.
 // The sub-session shares the primary session's I2P identity and tunnel infrastructure
 // while providing full StreamSession functionality for TCP-like reliable connections.

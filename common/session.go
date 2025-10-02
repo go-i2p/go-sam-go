@@ -88,7 +88,6 @@ func (sam *SAM) transmitSessionMessage(message []byte) error {
 	n, err := conn.Write(message)
 	if err != nil {
 		log.WithError(err).Error("Failed to write to SAM connection")
-		conn.Close()
 		return oops.Errorf("writing to connection failed: %w", err)
 	}
 	if n != len(message) {
@@ -96,7 +95,6 @@ func (sam *SAM) transmitSessionMessage(message []byte) error {
 			"written": n,
 			"total":   len(message),
 		}).Error("Incomplete write to SAM connection")
-		conn.Close()
 		return oops.Errorf("incomplete write to connection: wrote %d bytes, expected %d bytes", n, len(message))
 	}
 	return nil
@@ -108,7 +106,6 @@ func (sam *SAM) readSessionResponse() (string, error) {
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read SAM response")
-		sam.Conn.Close()
 		return "", oops.Errorf("reading from connection failed: %w", err)
 	}
 	response := string(buf[:n])
@@ -130,7 +127,6 @@ func (sam *SAM) handleSuccessResponse(response, id string, keys i2pkeys.I2PKeys)
 	expectedKeys := response[len(SESSION_OK) : len(response)-1]
 	if keys.String() != expectedKeys {
 		log.Error("SAM created a tunnel with different keys than requested")
-		sam.Conn.Close()
 		return nil, oops.Errorf("SAMv3 created a tunnel with keys other than the ones we asked it for")
 	}
 

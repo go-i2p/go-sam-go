@@ -153,28 +153,21 @@ func (bs *BaseSession) Write(b []byte) (int, error) {
 // Close closes the session connection and releases associated resources.
 // Implements the io.Closer interface for proper resource cleanup.
 func (bs *BaseSession) Close() error {
-	// First, close the connection to unblock any pending I/O operations
-	// This is critical to prevent deadlock when goroutines are blocked in Read()
-	// holding RLocks while Close() tries to acquire WLock
-	var conn net.Conn
+	bs.mu.Lock()
+	defer bs.mu.Unlock()
 
-	bs.mu.RLock()
 	if bs.closed {
-		bs.mu.RUnlock()
 		return nil
 	}
-	conn = bs.conn
-	bs.mu.RUnlock()
 
-	// Close the connection first to unblock any pending reads/writes
-	err := conn.Close()
-
-	// Now safely acquire the write lock to mark as closed
-	bs.mu.Lock()
+	// Mark the session as closed
 	bs.closed = true
-	bs.mu.Unlock()
 
-	return err
+	// Note: We do NOT close bs.conn here because it's a shared connection
+	// with the parent SAM instance. Only the SAM instance should close its connection.
+	// Sessions just mark themselves as closed and clean up their own resources.
+
+	return nil
 }
 
 // LocalAddr returns the local network address of the session connection.
