@@ -252,10 +252,10 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 	}
 	defer primary.Close()
 
-	// Test sub-session creation in parallel
+	// Test sub-session creation sequentially to ensure proper session lifecycle
+	// I2P session operations are inherently time-intensive (1-5 minutes each)
+	// so parallel execution provides minimal benefit while introducing race conditions
 	t.Run("StreamSubSession", func(t *testing.T) {
-		t.Parallel()
-
 		done := make(chan error, 1)
 		go func() {
 			streamSub, err := primary.NewStreamSubSession("stream-sub-"+RandString(), Options_Small)
@@ -291,8 +291,6 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 	})
 
 	t.Run("DatagramSubSession", func(t *testing.T) {
-		t.Parallel()
-
 		done := make(chan error, 1)
 		go func() {
 			// DATAGRAM subsessions require a PORT parameter per SAM v3.3 specification
@@ -324,8 +322,6 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 	})
 
 	t.Run("RawSubSession", func(t *testing.T) {
-		t.Parallel()
-
 		done := make(chan error, 1)
 		go func() {
 			// RAW subsessions require a PORT parameter per SAM v3.3 specification
