@@ -295,7 +295,9 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 
 		done := make(chan error, 1)
 		go func() {
-			datagramSub, err := primary.NewDatagramSubSession("datagram-sub-"+RandString(), Options_Small)
+			// DATAGRAM subsessions require a PORT parameter per SAM v3.3 specification
+			options := append(Options_Small, "PORT=8080")
+			datagramSub, err := primary.NewDatagramSubSession("datagram-sub-"+RandString(), options)
 			if err != nil {
 				done <- err
 				return
@@ -326,7 +328,9 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 
 		done := make(chan error, 1)
 		go func() {
-			rawSub, err := primary.NewRawSubSession("raw-sub-"+RandString(), Options_Small)
+			// RAW subsessions require a PORT parameter per SAM v3.3 specification
+			options := append(Options_Small, "PORT=8081")
+			rawSub, err := primary.NewRawSubSession("raw-sub-"+RandString(), options)
 			if err != nil {
 				done <- err
 				return

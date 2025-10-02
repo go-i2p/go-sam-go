@@ -132,13 +132,13 @@ func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2P
 // while providing full StreamSession functionality for TCP-like reliable connections.
 // Each sub-session must have a unique identifier within the primary session scope.
 //
-// The created sub-session inherits the primary session's keys and base configuration
-// but can have additional stream-specific options for customizing behavior such as
-// connection timeouts, buffer sizes, and other streaming parameters.
+// This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+// the subsession with the primary session's SAM connection, ensuring compliance
+// with the I2P SAM protocol specification for PRIMARY session management.
 //
 // Example usage:
 //
-//	streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"connect.timeout=30"})
+//	streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"FROM_PORT=8080"})
 //	listener, err := streamSub.Listen()
 //	conn, err := streamSub.Dial("destination.b32.i2p")
 func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*StreamSubSession, error) {
@@ -156,20 +156,29 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 	})
 	logger.Debug("Creating stream sub-session")
 
-	// Create a new SAM connection for the sub-session
-	// Sub-sessions need their own SAM connections but share keys with primary
+	// Add the subsession to the primary session using SESSION ADD
+	if err := p.sam.AddSubSession("STREAM", id, options); err != nil {
+		logger.WithError(err).Error("Failed to add stream subsession")
+		return nil, oops.Errorf("failed to create stream sub-session: %w", err)
+	}
+
+	// Create a new SAM connection for the sub-session data operations
+	// This connection will be used for STREAM CONNECT, STREAM ACCEPT, etc.
 	subSAM, err := p.createSubSAMConnection()
 	if err != nil {
 		logger.WithError(err).Error("Failed to create sub-SAM connection")
+		// Clean up the subsession registration
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
 	}
 
-	// Create the stream session using the shared keys from the primary session
-	// This ensures the sub-session has the same I2P identity as the primary
-	streamSession, err := stream.NewStreamSession(subSAM, id, p.Keys(), options)
+	// Create the stream session using the new subsession constructor
+	// This avoids creating a duplicate session since it's already registered via SESSION ADD
+	streamSession, err := stream.NewStreamSessionFromSubsession(subSAM, id, p.Keys(), options)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create stream session")
+		logger.WithError(err).Error("Failed to create stream session wrapper")
 		subSAM.Close()
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to create stream sub-session: %w", err)
 	}
 
@@ -180,6 +189,7 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 	if err := p.registry.Register(id, subSession); err != nil {
 		logger.WithError(err).Error("Failed to register stream sub-session")
 		streamSession.Close()
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to register stream sub-session: %w", err)
 	}
 
@@ -192,13 +202,13 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 // while providing full DatagramSession functionality for UDP-like authenticated messaging.
 // Each sub-session must have a unique identifier within the primary session scope.
 //
-// The created sub-session inherits the primary session's keys and base configuration
-// but can have additional datagram-specific options for customizing behavior such as
-// message timeouts, reliability settings, and other datagram parameters.
+// This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+// the subsession with the primary session's SAM connection, ensuring compliance
+// with the I2P SAM protocol specification for PRIMARY session management.
 //
 // Example usage:
 //
-//	datagramSub, err := primary.NewDatagramSubSession("udp-handler", []string{"receive.timeout=60"})
+//	datagramSub, err := primary.NewDatagramSubSession("udp-handler", []string{"FROM_PORT=8080"})
 //	writer := datagramSub.NewWriter()
 //	reader := datagramSub.NewReader()
 func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*DatagramSubSession, error) {
@@ -216,18 +226,28 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 	})
 	logger.Debug("Creating datagram sub-session")
 
-	// Create a new SAM connection for the sub-session
+	// Add the subsession to the primary session using SESSION ADD
+	if err := p.sam.AddSubSession("DATAGRAM", id, options); err != nil {
+		logger.WithError(err).Error("Failed to add datagram subsession")
+		return nil, oops.Errorf("failed to create datagram sub-session: %w", err)
+	}
+
+	// Create a new SAM connection for the sub-session data operations
 	subSAM, err := p.createSubSAMConnection()
 	if err != nil {
 		logger.WithError(err).Error("Failed to create sub-SAM connection")
+		// Clean up the subsession registration
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
 	}
 
-	// Create the datagram session using the shared keys from the primary session
-	datagramSession, err := datagram.NewDatagramSession(subSAM, id, p.Keys(), options)
+	// Create the datagram session using a constructor that doesn't create a new session
+	// since the subsession is already registered via SESSION ADD
+	datagramSession, err := datagram.NewDatagramSessionFromSubsession(subSAM, id, p.Keys(), options)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create datagram session")
+		logger.WithError(err).Error("Failed to create datagram session wrapper")
 		subSAM.Close()
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to create datagram sub-session: %w", err)
 	}
 
@@ -238,6 +258,7 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 	if err := p.registry.Register(id, subSession); err != nil {
 		logger.WithError(err).Error("Failed to register datagram sub-session")
 		datagramSession.Close()
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to register datagram sub-session: %w", err)
 	}
 
@@ -250,13 +271,13 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 // while providing full RawSession functionality for unrepliable datagram communication.
 // Each sub-session must have a unique identifier within the primary session scope.
 //
-// The created sub-session inherits the primary session's keys and base configuration
-// but can have additional raw-specific options for customizing behavior such as
-// transmission parameters and other raw communication settings.
+// This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+// the subsession with the primary session's SAM connection, ensuring compliance
+// with the I2P SAM protocol specification for PRIMARY session management.
 //
 // Example usage:
 //
-//	rawSub, err := primary.NewRawSubSession("raw-sender", []string{"send.timeout=30"})
+//	rawSub, err := primary.NewRawSubSession("raw-sender", []string{"FROM_PORT=8080"})
 //	writer := rawSub.NewWriter()
 //	reader := rawSub.NewReader()
 func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubSession, error) {
@@ -274,18 +295,28 @@ func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubS
 	})
 	logger.Debug("Creating raw sub-session")
 
-	// Create a new SAM connection for the sub-session
+	// Add the subsession to the primary session using SESSION ADD
+	if err := p.sam.AddSubSession("RAW", id, options); err != nil {
+		logger.WithError(err).Error("Failed to add raw subsession")
+		return nil, oops.Errorf("failed to create raw sub-session: %w", err)
+	}
+
+	// Create a new SAM connection for the sub-session data operations
 	subSAM, err := p.createSubSAMConnection()
 	if err != nil {
 		logger.WithError(err).Error("Failed to create sub-SAM connection")
+		// Clean up the subsession registration
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
 	}
 
-	// Create the raw session using the shared keys from the primary session
-	rawSession, err := raw.NewRawSession(subSAM, id, p.Keys(), options)
+	// Create the raw session using a constructor that doesn't create a new session
+	// since the subsession is already registered via SESSION ADD
+	rawSession, err := raw.NewRawSessionFromSubsession(subSAM, id, p.Keys(), options)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create raw session")
+		logger.WithError(err).Error("Failed to create raw session wrapper")
 		subSAM.Close()
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to create raw sub-session: %w", err)
 	}
 
@@ -296,6 +327,7 @@ func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubS
 	if err := p.registry.Register(id, subSession); err != nil {
 		logger.WithError(err).Error("Failed to register raw sub-session")
 		rawSession.Close()
+		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to register raw sub-session: %w", err)
 	}
 

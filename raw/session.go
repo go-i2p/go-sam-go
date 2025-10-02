@@ -45,6 +45,44 @@ func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []s
 	return rs, nil
 }
 
+// NewRawSessionFromSubsession creates a RawSession for a subsession that has already been
+// registered with a PRIMARY session using SESSION ADD. This constructor skips the session
+// creation step since the subsession is already registered with the SAM bridge.
+//
+// This function is specifically designed for use with SAMv3.3 PRIMARY sessions where
+// subsessions are created using SESSION ADD rather than SESSION CREATE commands.
+//
+// Parameters:
+//   - sam: SAM connection for data operations (separate from the primary session's control connection)
+//   - id: The subsession ID that was already registered with SESSION ADD
+//   - keys: The I2P keys from the primary session (shared across all subsessions)
+//   - options: Configuration options for the subsession
+//
+// Returns a RawSession ready for use without attempting to create a new SAM session.
+func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error) {
+	logger := log.WithFields(logrus.Fields{
+		"id":      id,
+		"options": options,
+	})
+	logger.Debug("Creating RawSession from existing subsession")
+
+	// Create a BaseSession manually since the session is already registered
+	baseSession, err := common.NewBaseSessionFromSubsession(sam, id, keys)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create base session from subsession")
+		return nil, oops.Errorf("failed to create raw session from subsession: %w", err)
+	}
+
+	rs := &RawSession{
+		BaseSession: baseSession,
+		sam:         sam,
+		options:     options,
+	}
+
+	logger.Debug("Successfully created RawSession from subsession")
+	return rs, nil
+}
+
 // NewReader creates a RawReader for receiving raw datagrams from any source.
 // It initializes buffered channels for incoming datagrams and errors, returning nil if the session is closed.
 // The caller must start the receive loop manually by calling receiveLoop() in a goroutine.

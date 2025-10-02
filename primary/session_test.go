@@ -3,6 +3,7 @@ package primary
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -174,7 +175,8 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 
 	t.Run("create datagram sub-session", func(t *testing.T) {
 		datagramSubID := "datagram_sub_1"
-		datagramSub, err := session.NewDatagramSubSession(datagramSubID, []string{})
+		// DATAGRAM subsessions require a PORT parameter per SAM v3.3 specification
+		datagramSub, err := session.NewDatagramSubSession(datagramSubID, []string{"PORT=8080"})
 		if err != nil {
 			t.Fatalf("Failed to create datagram sub-session: %v", err)
 		}
@@ -200,7 +202,8 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 
 	t.Run("create raw sub-session", func(t *testing.T) {
 		rawSubID := "raw_sub_1"
-		rawSub, err := session.NewRawSubSession(rawSubID, []string{})
+		// RAW subsessions require a PORT parameter per SAM v3.3 specification
+		rawSub, err := session.NewRawSubSession(rawSubID, []string{"PORT=8081"})
 		if err != nil {
 			t.Fatalf("Failed to create raw sub-session: %v", err)
 		}
@@ -321,12 +324,12 @@ func TestPrimarySessionCascadeClose(t *testing.T) {
 		t.Fatalf("Failed to create stream sub-session: %v", err)
 	}
 
-	datagramSub, err := session.NewDatagramSubSession("datagram_cascade", []string{})
+	datagramSub, err := session.NewDatagramSubSession("datagram_cascade", []string{"PORT=8082"})
 	if err != nil {
 		t.Fatalf("Failed to create datagram sub-session: %v", err)
 	}
 
-	rawSub, err := session.NewRawSubSession("raw_cascade", []string{})
+	rawSub, err := session.NewRawSubSession("raw_cascade", []string{"PORT=8083"})
 	if err != nil {
 		t.Fatalf("Failed to create raw sub-session: %v", err)
 	}
@@ -394,9 +397,9 @@ func TestConcurrentSubSessionOperations(t *testing.T) {
 			case 0:
 				_, err = session.NewStreamSubSession(subSessionID, []string{})
 			case 1:
-				_, err = session.NewDatagramSubSession(subSessionID, []string{})
+				_, err = session.NewDatagramSubSession(subSessionID, []string{"PORT=" + strconv.Itoa(9000+id)})
 			case 2:
-				_, err = session.NewRawSubSession(subSessionID, []string{})
+				_, err = session.NewRawSubSession(subSessionID, []string{"PORT=" + strconv.Itoa(9100+id)})
 			}
 
 			if err != nil {

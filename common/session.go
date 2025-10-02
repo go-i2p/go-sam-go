@@ -172,3 +172,147 @@ func (sam *SAM) handleUnknownResponse(response string) error {
 	log.WithField("reply", response).Error("Unable to parse SAMv3 reply")
 	return oops.Errorf("Unable to parse SAMv3 reply: %v", response)
 }
+
+// AddSubSession adds a subsession to an existing PRIMARY session using the SESSION ADD command.
+// This method implements the SAMv3.3 protocol for creating subsessions that share the same
+// destination and tunnels as the primary session while providing separate protocol handling.
+//
+// Parameters:
+//   - style: Session style ("STREAM", "DATAGRAM", or "RAW")
+//   - id: Unique subsession identifier within the primary session scope
+//   - options: Additional SAM protocol options for the subsession
+//
+// The subsession inherits the destination from the primary session and uses the same
+// tunnel infrastructure for enhanced efficiency. Each subsession must have a unique
+// combination of style and port to enable proper routing of incoming traffic.
+//
+// Example usage:
+//
+//	err := sam.AddSubSession("STREAM", "stream-sub-1", []string{"FROM_PORT=8080"})
+func (sam *SAM) AddSubSession(style, id string, options []string) error {
+	log.WithFields(logrus.Fields{
+		"style":   style,
+		"id":      id,
+		"options": options,
+	}).Debug("Adding subsession to primary session")
+
+	message, err := sam.buildSessionAddMessage(style, id, options)
+	if err != nil {
+		return err
+	}
+
+	if err := sam.transmitSessionMessage(message); err != nil {
+		return err
+	}
+
+	response, err := sam.readSessionResponse()
+	if err != nil {
+		return err
+	}
+
+	return sam.parseSessionAddResponse(response, id)
+}
+
+// RemoveSubSession removes a subsession from the primary session using the SESSION REMOVE command.
+// This method implements the SAMv3.3 protocol for cleanly terminating subsessions while
+// keeping the primary session and other subsessions active.
+//
+// Parameters:
+//   - id: Unique subsession identifier to remove
+//
+// After removal, the subsession is closed and may not be used for sending or receiving data.
+// The primary session and other subsessions remain unaffected by this operation.
+//
+// Example usage:
+//
+//	err := sam.RemoveSubSession("stream-sub-1")
+func (sam *SAM) RemoveSubSession(id string) error {
+	log.WithField("id", id).Debug("Removing subsession from primary session")
+
+	message := []byte("SESSION REMOVE ID=" + id + "\n")
+	log.WithField("message", string(message)).Debug("Sending SESSION REMOVE message")
+
+	if err := sam.transmitSessionMessage(message); err != nil {
+		return err
+	}
+
+	response, err := sam.readSessionResponse()
+	if err != nil {
+		return err
+	}
+
+	return sam.parseSessionRemoveResponse(response, id)
+}
+
+// buildSessionAddMessage constructs the SESSION ADD message with style, ID, and options.
+func (sam *SAM) buildSessionAddMessage(style, id string, options []string) ([]byte, error) {
+	baseMsg := "SESSION ADD STYLE=" + style + " ID=" + id
+
+	extraStr := strings.Join(options, " ")
+	if extraStr != "" {
+		baseMsg += " " + extraStr
+	}
+
+	message := []byte(baseMsg + "\n")
+	log.WithField("message", string(message)).Debug("Built SESSION ADD message")
+	return message, nil
+}
+
+// parseSessionAddResponse parses the SAM response for SESSION ADD and returns appropriate errors.
+func (sam *SAM) parseSessionAddResponse(response, id string) error {
+	if strings.HasPrefix(response, SESSION_ADD_OK) {
+		log.WithField("id", id).Debug("Successfully added subsession")
+		return nil
+	}
+
+	log.WithFields(logrus.Fields{
+		"id":       id,
+		"response": response,
+	}).Error("Failed to add subsession")
+
+	return sam.handleErrorResponse(response)
+}
+
+// parseSessionRemoveResponse parses the SAM response for SESSION REMOVE and returns appropriate errors.
+func (sam *SAM) parseSessionRemoveResponse(response, id string) error {
+	if strings.HasPrefix(response, SESSION_REMOVE_OK) {
+		log.WithField("id", id).Debug("Successfully removed subsession")
+		return nil
+	}
+
+	log.WithFields(logrus.Fields{
+		"id":       id,
+		"response": response,
+	}).Error("Failed to remove subsession")
+
+	return sam.handleErrorResponse(response)
+}
+
+// NewBaseSessionFromSubsession creates a BaseSession for a subsession that has already been
+// registered with a PRIMARY session using SESSION ADD. This constructor is used when the
+// subsession is already registered with the SAM bridge and doesn't need a new session creation.
+//
+// This function is specifically designed for use with SAMv3.3 PRIMARY sessions where
+// subsessions are created using SESSION ADD rather than SESSION CREATE commands.
+//
+// Parameters:
+//   - sam: SAM connection for data operations (separate from the primary session's control connection)
+//   - id: The subsession ID that was already registered with SESSION ADD
+//   - keys: The I2P keys from the primary session (shared across all subsessions)
+//
+// Returns a BaseSession ready for use without attempting to create a new SAM session.
+func NewBaseSessionFromSubsession(sam *SAM, id string, keys i2pkeys.I2PKeys) (*BaseSession, error) {
+	log.WithField("id", id).Debug("Creating BaseSession from existing subsession")
+
+	// Create a BaseSession using the provided connection and shared keys
+	// The session is already registered with the SAM bridge via SESSION ADD
+	baseSession := &BaseSession{
+		id:   id,
+		conn: sam.Conn,
+		keys: keys,
+		SAM:  *sam,
+	}
+
+	log.WithField("id", id).Debug("Successfully created BaseSession from subsession")
+	return baseSession, nil
+}

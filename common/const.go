@@ -40,6 +40,13 @@ const (
 	SIG_DEFAULT = SIG_EdDSA_SHA512_Ed25519
 )
 
+// SESSION_ADD_OK indicates successful subsession addition to primary session.
+// SESSION_REMOVE_OK indicates successful subsession removal from primary session.
+const (
+	SESSION_ADD_OK    = "SESSION STATUS RESULT=OK"
+	SESSION_REMOVE_OK = "SESSION STATUS RESULT=OK"
+)
+
 // SAM_RESULT_OK indicates successful SAM operation completion.
 // SAM_RESULT_INVALID_KEY indicates SAM operation failed due to invalid key format.
 // SAM_RESULT_KEY_NOT_FOUND indicates SAM operation failed due to missing key.
