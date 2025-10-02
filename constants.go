@@ -1,7 +1,7 @@
 // Package sam provides a pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P networks.
 // This is the root package wrapper that provides sam3-compatible API surface while delegating
 // implementation details to specialized sub-packages.
-package sam
+package sam3
 
 import (
 	"os"

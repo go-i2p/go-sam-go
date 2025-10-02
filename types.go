@@ -1,7 +1,7 @@
 // Package sam provides type aliases and wrappers for exposing sub-package types at the root level.
 // This file implements the sam3-compatible API surface by creating type aliases that delegate
 // to the appropriate sub-package implementations while maintaining a clean public interface.
-package sam
+package sam3
 
 import (
 	"github.com/go-i2p/go-sam-go/common"

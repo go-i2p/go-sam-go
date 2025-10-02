@@ -1,7 +1,7 @@
 // Package sam provides a pure-Go implementation of SAMv3.3 for I2P networks.
 // This file implements the main wrapper functions that delegate to sub-package implementations
 // while providing the sam3-compatible API surface at the root package level.
-package sam
+package sam3
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-package sam
+package sam3
 
 import (
 	"errors"
