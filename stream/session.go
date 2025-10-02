@@ -135,6 +135,50 @@ func (s *StreamSession) Listen() (*StreamListener, error) {
 	return listener, nil
 }
 
+// Accept creates a listener and accepts the next incoming connection from remote I2P destinations.
+// This is a convenience method that automatically creates a listener and calls Accept() on it.
+// It provides a simpler API for applications that only need to accept a single connection
+// or want to handle each connection acceptance individually.
+//
+// For applications that need to accept multiple connections or want more control over
+// listener lifecycle, use Listen() to get a StreamListener and call Accept() on it directly.
+//
+// Each call to Accept creates a new internal listener, so applications accepting multiple
+// connections should use Listen() once and then call Accept() multiple times on the listener
+// for better performance and resource management.
+//
+// Returns a StreamConn for the accepted connection, or an error if the acceptance fails.
+// The error may be due to session closure, network issues, or I2P tunnel problems.
+//
+// Example usage: conn, err := session.Accept() // Simple single connection acceptance
+func (s *StreamSession) Accept() (*StreamConn, error) {
+	logger := log.WithField("id", s.ID())
+	logger.Debug("Accepting connection via session")
+
+	// Create a listener for this acceptance
+	listener, err := s.Listen()
+	if err != nil {
+		logger.WithError(err).Error("Failed to create listener for Accept")
+		return nil, oops.Errorf("failed to create listener for session accept: %w", err)
+	}
+
+	// Accept a connection and then close the listener
+	defer func() {
+		if closeErr := listener.Close(); closeErr != nil {
+			logger.WithError(closeErr).Warn("Failed to close listener after Accept")
+		}
+	}()
+
+	conn, err := listener.AcceptStream()
+	if err != nil {
+		logger.WithError(err).Error("Failed to accept connection")
+		return nil, oops.Errorf("failed to accept connection: %w", err)
+	}
+
+	logger.Debug("Successfully accepted connection via session")
+	return conn, nil
+}
+
 // NewDialer creates a StreamDialer for establishing outbound connections to I2P destinations.
 // It initializes a dialer with a default timeout of 30 seconds, which can be customized using
 // the SetTimeout method. The dialer supports both string destinations and native I2P addresses.

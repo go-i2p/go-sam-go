@@ -128,7 +128,7 @@ export DEBUG_I2P=error   # Error level
 
 ## 🔧 Requirements
 
-- Go 1.23.5 or later
+- Go 1.24.2 or later
 - Running I2P router with SAM enabled (default port: 7656)
 
 ## 📝 Development

@@ -1,6 +1,7 @@
 package sam3
 
 import (
+	"github.com/go-i2p/go-sam-go/datagram"
 	"github.com/go-i2p/go-sam-go/primary"
 	"github.com/go-i2p/go-sam-go/raw"
 	"github.com/go-i2p/go-sam-go/stream"
@@ -135,10 +136,6 @@ func (sam *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, o
 // is important. Each message includes cryptographic signatures that allow recipients to
 // verify the sender's identity and detect tampering.
 //
-// The udpPort parameter specifies the local UDP port that the session should use for
-// sending and receiving datagrams. This port is used for the local UDP socket that
-// interfaces with the I2P datagram subsystem.
-//
 // Returns a DatagramSession ready for sending and receiving authenticated datagrams,
 // or an error if the session creation fails.
 //
@@ -146,12 +143,10 @@ func (sam *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, o
 //
 //	sam, err := NewSAM("127.0.0.1:7656")
 //	keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
-//	session, err := sam.NewDatagramSession("chat-app", keys, Options_Medium, 0)
-//	writer := session.NewWriter()
-//	reader := session.NewReader()
-/*func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*DatagramSession, error) {
+//	session, err := sam.NewDatagramSession("chat-app", keys, Options_Medium)
+func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error) {
 	return datagram.NewDatagramSession(sam.SAM, id, keys, options)
-}*/
+}
 
 // NewRawSession creates a new raw session for unrepliable datagram communication over I2P.
 // Raw sessions provide the most lightweight form of I2P communication, where messages
