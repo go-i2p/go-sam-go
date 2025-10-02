@@ -161,7 +161,7 @@ func TestSAMSessionMethods(t *testing.T) {
 					t.Fatalf("Failed to generate I2P keys: %v", err)
 				}
 
-				session, err := sam.NewDatagramSession("test-datagram-"+RandString(), keys, Options_Default, 0)
+				session, err := sam.NewDatagramSession("test-datagram-"+RandString(), keys, Options_Default)
 				if err != nil {
 					t.Errorf("NewDatagramSession failed: %v", err)
 					return
@@ -514,7 +514,7 @@ func TestSessionMethodSignatures(t *testing.T) {
 			t.Fatalf("Failed to generate keys: %v", err)
 		}
 
-		session, err := sam.NewDatagramSession("sig-test-datagram-"+RandString(), keys, Options_Small, 0)
+		session, err := sam.NewDatagramSession("sig-test-datagram-"+RandString(), keys, Options_Small)
 		if err != nil {
 			t.Errorf("NewDatagramSession signature test failed: %v", err)
 		} else {
