@@ -142,12 +142,14 @@ func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2P
 //	listener, err := streamSub.Listen()
 //	conn, err := streamSub.Dial("destination.b32.i2p")
 func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*StreamSubSession, error) {
-	p.mu.RLock()
+	// Use write lock to ensure atomic sub-session creation and prevent race conditions
+	// during concurrent session creation operations in I2P SAM protocol
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	
 	if p.closed {
-		p.mu.RUnlock()
 		return nil, oops.Errorf("primary session is closed")
 	}
-	p.mu.RUnlock()
 
 	logger := log.WithFields(logrus.Fields{
 		"primary_id": p.ID(),
@@ -212,12 +214,14 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 //	writer := datagramSub.NewWriter()
 //	reader := datagramSub.NewReader()
 func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*DatagramSubSession, error) {
-	p.mu.RLock()
+	// Use write lock to ensure atomic sub-session creation and prevent race conditions
+	// during concurrent session creation operations in I2P SAM protocol
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	
 	if p.closed {
-		p.mu.RUnlock()
 		return nil, oops.Errorf("primary session is closed")
 	}
-	p.mu.RUnlock()
 
 	logger := log.WithFields(logrus.Fields{
 		"primary_id": p.ID(),
@@ -281,12 +285,14 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 //	writer := rawSub.NewWriter()
 //	reader := rawSub.NewReader()
 func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubSession, error) {
-	p.mu.RLock()
+	// Use write lock to ensure atomic sub-session creation and prevent race conditions
+	// during concurrent session creation operations in I2P SAM protocol
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	
 	if p.closed {
-		p.mu.RUnlock()
 		return nil, oops.Errorf("primary session is closed")
 	}
-	p.mu.RUnlock()
 
 	logger := log.WithFields(logrus.Fields{
 		"primary_id": p.ID(),

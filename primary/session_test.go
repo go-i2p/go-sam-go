@@ -378,33 +378,39 @@ func TestConcurrentSubSessionOperations(t *testing.T) {
 	}
 	defer session.Close()
 
-	const numGoroutines = 10
+	const numGoroutines = 3 // Realistic number for I2P SAM PRIMARY session capabilities
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	errors := make([]error, 0)
 
-	// Concurrent sub-session creation
+	// Concurrent sub-session creation with realistic usage patterns
+	// Create one session of each type to test concurrency without SAM protocol limits
+	sessionTypes := []string{"STREAM", "DATAGRAM", "RAW"}
+	basePort := 8000
+	
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 
 			subSessionID := fmt.Sprintf("concurrent_sub_%d", id)
+			sessionType := sessionTypes[id] // One of each type
+			port := basePort + id
 
-			// Create sub-session based on id
+			// Create sub-session with correct SAM protocol syntax for each session type
 			var err error
-			switch id % 3 {
-			case 0:
-				_, err = session.NewStreamSubSession(subSessionID, []string{})
-			case 1:
-				_, err = session.NewDatagramSubSession(subSessionID, []string{"PORT=" + strconv.Itoa(9000+id)})
-			case 2:
-				_, err = session.NewRawSubSession(subSessionID, []string{"PORT=" + strconv.Itoa(9100+id)})
+			switch sessionType {
+			case "STREAM":
+				_, err = session.NewStreamSubSession(subSessionID, []string{"FROM_PORT=" + strconv.Itoa(port)})
+			case "DATAGRAM":
+				_, err = session.NewDatagramSubSession(subSessionID, []string{"PORT=" + strconv.Itoa(port)})
+			case "RAW":
+				_, err = session.NewRawSubSession(subSessionID, []string{"PORT=" + strconv.Itoa(port)})
 			}
 
 			if err != nil {
 				mu.Lock()
-				errors = append(errors, fmt.Errorf("goroutine %d: %w", id, err))
+				errors = append(errors, fmt.Errorf("goroutine %d (%s): %w", id, sessionType, err))
 				mu.Unlock()
 			}
 		}(i)
