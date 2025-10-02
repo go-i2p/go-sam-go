@@ -54,6 +54,44 @@ func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options 
 	return ss, nil
 }
 
+// NewStreamSessionWithSignature creates a new streaming session with a custom signature type for TCP-like I2P connections.
+// This is the package-level function version that allows specifying cryptographic signature algorithms.
+// It initializes the session with the provided SAM connection, session ID, cryptographic keys,
+// configuration options, and signature type. The session provides both client and server capabilities for
+// establishing reliable streaming connections over the I2P network with custom cryptographic settings.
+// Example usage: session, err := NewStreamSessionWithSignature(sam, "my-session", keys, []string{"inbound.length=1"}, "EdDSA_SHA512_Ed25519")
+func NewStreamSessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
+	logger := log.WithFields(logrus.Fields{
+		"id":      id,
+		"options": options,
+		"sigType": sigType,
+	})
+	logger.Debug("Creating new StreamSession with signature")
+
+	// Create the base session using the common package with signature
+	session, err := sam.NewGenericSessionWithSignature("STREAM", id, keys, sigType, options)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create generic session with signature")
+		return nil, oops.Errorf("failed to create stream session with signature: %w", err)
+	}
+
+	baseSession, ok := session.(*common.BaseSession)
+	if !ok {
+		logger.Error("Session is not a BaseSession")
+		session.Close()
+		return nil, oops.Errorf("invalid session type")
+	}
+
+	ss := &StreamSession{
+		BaseSession: baseSession,
+		sam:         sam,
+		options:     options,
+	}
+
+	logger.Debug("Successfully created StreamSession with signature")
+	return ss, nil
+}
+
 // Listen creates a StreamListener that accepts incoming connections from remote I2P destinations.
 // It initializes a listener with buffered channels for connection handling and starts an internal
 // accept loop to manage incoming connections asynchronously. The listener provides thread-safe
