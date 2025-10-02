@@ -15,9 +15,11 @@ import (
 // and configuration management that applications use to connect to I2P.
 
 // SAM represents the core SAM bridge connection and provides methods for session creation
-// and I2P address resolution. It delegates to the common.SAM implementation while
+// and I2P address resolution. It embeds common.SAM to enable method extension while
 // exposing the sam3-compatible interface at the root package level.
-type SAM = common.SAM
+type SAM struct {
+	*common.SAM
+}
 
 // SAMResolver provides I2P address resolution services through the SAM protocol.
 // It wraps the common.SAMResolver to provide name-to-address lookup functionality

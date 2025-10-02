@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/go-sam-go/datagram"
+	"github.com/go-i2p/go-sam-go/primary"
 	"github.com/go-i2p/go-sam-go/raw"
 	"github.com/go-i2p/go-sam-go/stream"
 )
@@ -168,40 +169,23 @@ func TestTypeAliases_Convertibility(t *testing.T) {
 	})
 }
 
-// TestPrimarySession_Structure verifies that PrimarySession has the expected
-// structure and can be properly initialized for future implementation.
+// TestPrimarySession_Structure verifies that PrimarySession is properly aliased
+// to the primary package implementation and can be used as expected.
 func TestPrimarySession_Structure(t *testing.T) {
-	t.Run("PrimarySession fields", func(t *testing.T) {
-		ps := &PrimarySession{
-			sam:     nil,
-			id:      "test-session",
-			options: []string{"option1=value1", "option2=value2"},
+	t.Run("PrimarySession alias", func(t *testing.T) {
+		// PrimarySession is now a type alias to primary.PrimarySession
+		// We can't directly instantiate it here since it requires proper initialization
+		// through the primary package, but we can verify the type exists
+		var ps *PrimarySession
+		if ps != nil {
+			t.Error("This should not happen - ps should be nil")
 		}
 
-		if ps.id != "test-session" {
-			t.Errorf("Expected id 'test-session', got %s", ps.id)
-		}
+		// Verify that PrimarySession is the correct type alias
+		var primaryPS *primary.PrimarySession
+		ps = primaryPS // This should compile without error if the alias is correct
 
-		if len(ps.options) != 2 {
-			t.Errorf("Expected 2 options, got %d", len(ps.options))
-		}
-
-		if ps.options[0] != "option1=value1" {
-			t.Errorf("Expected 'option1=value1', got %s", ps.options[0])
-		}
-	})
-
-	t.Run("PrimarySession zero value", func(t *testing.T) {
-		var ps PrimarySession
-		if ps.sam != nil {
-			t.Error("Expected nil sam in zero value")
-		}
-		if ps.id != "" {
-			t.Error("Expected empty id in zero value")
-		}
-		if ps.options != nil {
-			t.Error("Expected nil options in zero value")
-		}
+		t.Log("✓ PrimarySession type alias works correctly")
 	})
 }
 
@@ -416,7 +400,11 @@ func TestTypeAliases_ImportPaths(t *testing.T) {
 
 	t.Run("Common package types", func(t *testing.T) {
 		// Verify common package aliases work
-		var sam *common.SAM = (*SAM)(nil)
+		// Note: SAM is now an embedded struct, not a direct alias
+		var sam *SAM = &SAM{SAM: &common.SAM{}}
+		if sam.SAM == nil {
+			t.Error("SAM embedding failed")
+		}
 		var resolver *common.SAMResolver = (*SAMResolver)(nil)
 		var config *common.I2PConfig = (*I2PConfig)(nil)
 		var emit *common.SAMEmit = (*SAMEmit)(nil)
