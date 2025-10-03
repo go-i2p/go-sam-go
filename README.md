@@ -15,6 +15,13 @@ A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focuse
 go get github.com/go-i2p/go-sam-go
 ```
 
+### Dependencies
+
+- `github.com/go-i2p/i2pkeys` v0.33.92 - I2P cryptographic key management
+- `github.com/go-i2p/crypto` - I2P-specific cryptographic operations
+- `github.com/sirupsen/logrus` v1.9.3 - Structured logging
+- `github.com/samber/oops` v1.19.0 - Enhanced error handling
+
 ## 🚀 Quick Start
 
 ```go
@@ -32,8 +39,9 @@ func main() {
     }
     defer client.Close()
     
-    // Generate keys
-    keys, err := client.NewKeys()
+    // Generate keys (optionally specify signature type)
+    keys, err := client.NewKeys() // Uses default EdDSA_SHA512_Ed25519
+    // Or: keys, err := client.NewKeys(sam3.Sig_ECDSA_SHA256_P256)
     if err != nil {
         panic(err)
     }
