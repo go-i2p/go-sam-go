@@ -54,13 +54,16 @@ func TestSubSessionWrappers(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	// Setup test SAM connection and keys
-	sam, keys := setupTestSAM(t)
-	defer sam.Close()
-
 	t.Run("StreamSubSession wrapper", func(t *testing.T) {
+		// Setup fresh SAM connection and keys for this sub-test to prevent session conflicts
+		sam, keys := setupTestSAM(t)
+		defer sam.Close()
+
+		// Generate unique session ID to prevent SAM protocol conflicts during concurrent testing
+		sessionID := generateUniqueSessionID("test_stream_wrapper")
+
 		// Create a real stream session
-		streamSession, err := stream.NewStreamSession(sam, "test_stream_wrapper", keys, []string{"inbound.length=1"})
+		streamSession, err := stream.NewStreamSession(sam, sessionID, keys, []string{"inbound.length=1"})
 		if err != nil {
 			t.Fatalf("Failed to create stream session: %v", err)
 		}
@@ -100,8 +103,15 @@ func TestSubSessionWrappers(t *testing.T) {
 	})
 
 	t.Run("DatagramSubSession wrapper", func(t *testing.T) {
+		// Setup fresh SAM connection and keys for this sub-test to prevent session conflicts
+		sam, keys := setupTestSAM(t)
+		defer sam.Close()
+
+		// Generate unique session ID to prevent SAM protocol conflicts during concurrent testing
+		sessionID := generateUniqueSessionID("test_datagram_wrapper")
+
 		// Create a real datagram session
-		datagramSession, err := datagram.NewDatagramSession(sam, "test_datagram_wrapper", keys, []string{"inbound.length=1"})
+		datagramSession, err := datagram.NewDatagramSession(sam, sessionID, keys, []string{"inbound.length=1"})
 		if err != nil {
 			t.Fatalf("Failed to create datagram session: %v", err)
 		}
@@ -135,8 +145,15 @@ func TestSubSessionWrappers(t *testing.T) {
 	})
 
 	t.Run("RawSubSession wrapper", func(t *testing.T) {
+		// Setup fresh SAM connection and keys for this sub-test to prevent session conflicts
+		sam, keys := setupTestSAM(t)
+		defer sam.Close()
+
+		// Generate unique session ID to prevent SAM protocol conflicts during concurrent testing
+		sessionID := generateUniqueSessionID("test_raw_wrapper")
+
 		// Create a real raw session
-		rawSession, err := raw.NewRawSession(sam, "test_raw_wrapper", keys, []string{"inbound.length=1"})
+		rawSession, err := raw.NewRawSession(sam, sessionID, keys, []string{"inbound.length=1"})
 		if err != nil {
 			t.Fatalf("Failed to create raw session: %v", err)
 		}
