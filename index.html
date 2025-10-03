@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 152 commits
+        📝 161 commits
         
       </div>
     </div>
@@ -60,12 +60,12 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>152 commits</span>
+          <span>📝</span> <span>161 commits</span>
         </div>
         
         
         <div class="repo-stat">
-          <span>📅</span> <span>Last updated: October 2, 2025</span>
+          <span>📅</span> <span>Last updated: October 3, 2025</span>
         </div>
         
         
@@ -84,7 +84,7 @@
 
 <p>A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focused on maintainability and clean architecture. This project is forked from <code>github.com/go-i2p/sam3</code> with reorganized code structure.</p>
 
-<p><strong>WARNING: This is a new package. Streaming works. Repliable datagrams and Raw datagrams work. Primary Sessions, work but are untested. Authenticated Repliable Datagrams(Datagram2), and Unauthenticated Repliable Datagrams(Datagram3) will be supported by I2P 2.11.0</strong>
+<p><strong>WARNING: This is a new package. Streaming works. Repliable datagrams and Raw datagrams work. Primary Sessions, work but are untested. Authenticated Repliable Datagrams(Datagram2), and Unauthenticated Repliable Datagrams(Datagram3) are NOT YET IMPLEMENTED.</strong>
 <strong>The API should not change much.</strong>
 <strong>It needs more people looking at it.</strong></p>
 
@@ -176,7 +176,7 @@ conn, err := session.DialI2P(remote)
 
 <p>UDP-like message delivery:</p>
 
-<pre><code class="language-go">dgram, err := sam.NewDatagramSession(&quot;udp&quot;, keys, options)
+<pre><code class="language-go">dgram, err := sam.NewDatagramSession(&quot;udp&quot;, keys, options, 0) // 0 = use default UDP port
 n, err := dgram.WriteTo(data, dest)
 </code></pre>
 
@@ -267,7 +267,7 @@ go test ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                150 commits
+                159 commits
               </div>
             </div>
           </div>
@@ -294,7 +294,7 @@ go test ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-03 16:14:36 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-03 16:46:44 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
