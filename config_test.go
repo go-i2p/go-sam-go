@@ -435,7 +435,6 @@ func TestBooleanConfigFunctions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			emit := &SAMEmit{}
 			err := tt.function(tt.input)(emit)
-
 			if err != nil {
 				t.Errorf("%s(%v) unexpected error: %v", tt.name, tt.input, err)
 			}
@@ -469,7 +468,6 @@ func TestStringConfigFunctions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			emit := &SAMEmit{}
 			err := tt.function(tt.input)(emit)
-
 			if err != nil {
 				t.Errorf("%s(%s) unexpected error: %v", tt.name, tt.input, err)
 			}
@@ -630,7 +628,6 @@ func TestAccessListFunctions(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				emit := &SAMEmit{}
 				err := SetAccessList(tt.input)(emit)
-
 				if err != nil {
 					t.Errorf("SetAccessList(%v) unexpected error: %v", tt.input, err)
 				}

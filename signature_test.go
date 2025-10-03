@@ -27,7 +27,7 @@ func TestSAM3SignatureCompatibility(t *testing.T) {
 		// Get the actual SAM type
 		samType := reflect.TypeOf(&SAM{})
 
-		for methodName, _ := range expectedSignatures {
+		for methodName := range expectedSignatures {
 			method, exists := samType.MethodByName(methodName)
 			if !exists {
 				t.Errorf("Method %s not found on SAM type", methodName)

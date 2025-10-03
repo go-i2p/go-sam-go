@@ -25,7 +25,8 @@ func Test_DatagramServerClient(t *testing.T) {
 	}
 	//	fmt.Println("\tServer: My address: " + keys.Addr().Base32())
 	fmt.Println("\tServer: Creating tunnel")
-	ds, err := sam.NewDatagramSession("DGserverTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+	// ds, err := sam.NewDatagramSession("DGserverTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+	ds, err := sam.NewDatagramSession("DGserverTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"})
 	if err != nil {
 		fmt.Println("Server: Failed to create tunnel: " + err.Error())
 		t.Fail()
@@ -45,7 +46,8 @@ func Test_DatagramServerClient(t *testing.T) {
 			return
 		}
 		fmt.Println("\tClient: Creating tunnel")
-		ds2, err := sam2.NewDatagramSession("DGclientTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		// ds2, err := sam2.NewDatagramSession("DGclientTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		ds2, err := sam2.NewDatagramSession("DGclientTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"})
 		if err != nil {
 			c <- false
 			return
@@ -102,7 +104,8 @@ func ExampleDatagramSession() {
 	myself := keys.Addr()
 
 	// See the example Option_* variables.
-	dg, err := sam.NewDatagramSession("DGTUN", keys, Options_Small, 0)
+	// dg, err := sam.NewDatagramSession("DGTUN", keys, Options_Small, 0)
+	dg, err := sam.NewDatagramSession("DGTUN", keys, Options_Small)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -127,5 +130,5 @@ func ExampleDatagramSession() {
 
 	return
 	// Output:
-	//Got message: Hello myself!
+	// Got message: Hello myself!
 }

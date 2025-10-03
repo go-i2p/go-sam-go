@@ -42,7 +42,7 @@ func Test_PrimaryStreamingDial(t *testing.T) {
 	}
 	defer sam.Close()
 	fmt.Println("\tBuilding tunnel")
-	ss, err := sam.NewStreamSubSession("primaryStreamTunnel")
+	ss, err := sam.NewStreamSubSession("primaryStreamTunnel", nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Fail()
@@ -131,7 +131,7 @@ func Test_PrimaryStreamingServerClient(t *testing.T) {
 		*/
 
 		fmt.Println("\tClient: Creating tunnel")
-		ss2, err := sam.NewStreamSubSession("primaryExampleClientTun")
+		ss2, err := sam.NewStreamSubSession("primaryExampleClientTun", nil)
 		if err != nil {
 			c <- false
 			return
@@ -175,8 +175,7 @@ func Test_PrimaryStreamingServerClient(t *testing.T) {
 	fmt.Println("\tServer: received from Client: " + string(buf[:n]))
 }
 
-type exitHandler struct {
-}
+type exitHandler struct{}
 
 func (e *exitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello world!"))

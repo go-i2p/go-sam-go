@@ -32,7 +32,8 @@ func Test_PrimaryDatagramServerClient(t *testing.T) {
 	defer sam.Close()
 	//	fmt.Println("\tServer: My address: " + keys.Addr().Base32())
 	fmt.Println("\tServer: Creating tunnel")
-	ds, err := sam.NewDatagramSubSession("PrimaryTunnel"+RandString(), 0)
+	// ds, err := sam.NewDatagramSubSession("PrimaryTunnel"+RandString(), 0)
+	ds, err := sam.NewDatagramSubSession("PrimaryTunnel"+RandString(), Options_Small)
 	if err != nil {
 		fmt.Println("Server: Failed to create tunnel: " + err.Error())
 		t.Fail()
@@ -53,7 +54,8 @@ func Test_PrimaryDatagramServerClient(t *testing.T) {
 			return
 		}
 		fmt.Println("\tClient: Creating tunnel")
-		ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		// ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"})
 		if err != nil {
 			c <- false
 			return
