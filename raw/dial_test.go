@@ -2,6 +2,8 @@ package raw
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"net"
 	"testing"
 	"time"
@@ -10,7 +12,16 @@ import (
 	"github.com/go-i2p/i2pkeys"
 )
 
-func setupTestSession(t *testing.T) *RawSession {
+// generateUniqueSessionID creates a unique session ID to prevent conflicts during concurrent test execution.
+// This ensures test isolation when multiple tests run simultaneously (e.g., during race detection).
+func generateUniqueSessionID(testName string) string {
+	// Use timestamp (nanoseconds) and random number to ensure uniqueness across concurrent executions
+	timestamp := time.Now().UnixNano()
+	random := rand.Intn(99999)
+	return fmt.Sprintf("%s_%d_%05d", testName, timestamp, random)
+}
+
+func setupTestSession(t *testing.T, testName string) *RawSession {
 	t.Helper()
 
 	// Skip actual I2P connection for unit tests
@@ -26,7 +37,8 @@ func setupTestSession(t *testing.T) *RawSession {
 		t.Fatalf("Failed to generate keys: %v", err)
 	}
 
-	session, err := NewRawSession(sam, "test_dial_session", keys, nil)
+	sessionID := generateUniqueSessionID(testName)
+	session, err := NewRawSession(sam, sessionID, keys, nil)
 	if err != nil {
 		sam.Close()
 		t.Fatalf("Failed to create session: %v", err)
@@ -62,7 +74,7 @@ func TestRawSession_Dial(t *testing.T) {
 				t.Skip("Skipping integration test in short mode")
 			}
 
-			session := setupTestSession(t)
+			session := setupTestSession(t, tt.name)
 			defer session.Close()
 
 			conn, err := session.Dial(tt.destination)
