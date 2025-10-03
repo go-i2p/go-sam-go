@@ -1,6 +1,8 @@
 package sam3
 
 import (
+	"fmt"
+
 	"github.com/go-i2p/go-sam-go/datagram"
 	"github.com/go-i2p/go-sam-go/primary"
 	"github.com/go-i2p/go-sam-go/raw"
@@ -139,13 +141,28 @@ func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys 
 // Returns a DatagramSession ready for sending and receiving authenticated datagrams,
 // or an error if the session creation fails.
 //
+// The udpPort parameter specifies the local UDP port for the session's datagram interface.
+// If set to 0, the I2P router will use the standard SAM UDP port (typically 7655).
+// This port is used for the local UDP socket that communicates with the I2P datagram
+// subsystem for message forwarding and reception.
+//
 // Example usage:
 //
 //	sam, err := NewSAM("127.0.0.1:7656")
 //	keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
-//	session, err := sam.NewDatagramSession("chat-app", keys, Options_Medium)
-func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error) {
-	return datagram.NewDatagramSession(sam.SAM, id, keys, options)
+//	session, err := sam.NewDatagramSession("chat-app", keys, Options_Medium, 0)
+func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*DatagramSession, error) {
+	// Convert udpPort to string for SAM protocol compatibility
+	// Port 0 means use default SAM UDP port, otherwise use specified port
+	portStr := "0"
+	if udpPort != 0 {
+		portStr = fmt.Sprintf("%d", udpPort)
+	}
+
+	// Delegate to port-aware method using fromPort and toPort set to same value
+	// This follows I2P SAM protocol pattern for UDP port configuration
+	datagramSAM := &datagram.SAM{SAM: sam.SAM}
+	return datagramSAM.NewDatagramSessionWithPorts(id, portStr, portStr, keys, options)
 }
 
 // NewRawSession creates a new raw session for unrepliable datagram communication over I2P.
@@ -173,5 +190,15 @@ func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []st
 //	writer := session.NewWriter()
 //	reader := session.NewReader()
 func (sam *SAM) NewRawSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*RawSession, error) {
-	return raw.NewRawSession(sam.SAM, id, keys, options)
+	// Convert udpPort to string for SAM protocol compatibility
+	// Port 0 means use default SAM UDP port, otherwise use specified port
+	portStr := "0"
+	if udpPort != 0 {
+		portStr = fmt.Sprintf("%d", udpPort)
+	}
+
+	// Delegate to port-aware method using fromPort and toPort set to same value
+	// This follows I2P SAM protocol pattern for UDP port configuration
+	rawSAM := &raw.SAM{SAM: sam.SAM}
+	return rawSAM.NewRawSessionWithPorts(id, portStr, portStr, keys, options)
 }
