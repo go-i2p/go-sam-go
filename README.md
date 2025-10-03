@@ -63,7 +63,7 @@ Available session types:
 
 ### Sub-packages
 
-#### `primary` Package(Planned not implemented)
+#### `primary` Package
 Core session management functionality:
 ```go
 primary, err := sam.NewPrimarySession("mainSession", keys, options)
