@@ -122,9 +122,9 @@ func (sam *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, o
 //	keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
 //	session, err := sam.NewStreamSessionWithSignatureAndPorts("http-proxy",
 //		"8080", "80", keys, Options_Default, Sig_ECDSA_SHA256_P256)
-/*func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
+func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
 	return stream.NewStreamSessionWithSignatureAndPorts(sam.SAM, id, from, to, keys, options, sigType)
-}*/
+}
 
 // NewDatagramSession creates a new datagram session for UDP-like authenticated messaging over I2P.
 // Datagram sessions provide connectionless communication with message authentication and

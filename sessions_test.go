@@ -146,6 +146,43 @@ func TestSAMSessionMethods(t *testing.T) {
 			description: "Stream session with signature and listener creation",
 		},
 		{
+			name: "NewStreamSessionWithSignatureAndPorts",
+			methodTest: func(t *testing.T) {
+				// Create a separate SAM connection for this test
+				sam, err := NewSAM(SAMDefaultAddr(""))
+				if err != nil {
+					t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+				}
+				defer sam.Close()
+
+				// Generate real I2P keys for testing
+				keys, err := sam.NewKeys()
+				if err != nil {
+					t.Fatalf("Failed to generate I2P keys: %v", err)
+				}
+
+				session, err := sam.NewStreamSessionWithSignatureAndPorts("test-stream-ports-"+RandString(), "0", "0", keys, Options_Default, Sig_EdDSA_SHA512_Ed25519)
+				if err != nil {
+					t.Errorf("NewStreamSessionWithSignatureAndPorts failed: %v", err)
+					return
+				}
+				defer session.Close()
+
+				// Test that we can create a listener
+				listener, err := session.Listen()
+				if err != nil {
+					t.Errorf("Failed to create listener with ports: %v", err)
+					return
+				}
+				defer listener.Close()
+
+				if listener.Addr().String() == "" {
+					t.Error("Expected non-empty listener address")
+				}
+			},
+			description: "Stream session with signature, ports, and listener creation",
+		},
+		{
 			name: "NewDatagramSession",
 			methodTest: func(t *testing.T) {
 				// Create a separate SAM connection for this test
@@ -498,6 +535,28 @@ func TestSessionMethodSignatures(t *testing.T) {
 		} else {
 			session.Close()
 			t.Log("✓ NewStreamSessionWithSignature signature works correctly")
+		}
+	})
+
+	// NewStreamSessionWithSignatureAndPorts test
+	t.Run("NewStreamSessionWithSignatureAndPorts", func(t *testing.T) {
+		sam, err := NewSAM(SAMDefaultAddr(""))
+		if err != nil {
+			t.Skipf("Cannot connect to I2P SAM bridge: %v", err)
+		}
+		defer sam.Close()
+
+		keys, err := sam.NewKeys()
+		if err != nil {
+			t.Fatalf("Failed to generate keys: %v", err)
+		}
+
+		session, err := sam.NewStreamSessionWithSignatureAndPorts("ports-test-stream-"+RandString(), "0", "0", keys, Options_Small, Sig_EdDSA_SHA512_Ed25519)
+		if err != nil {
+			t.Errorf("NewStreamSessionWithSignatureAndPorts test failed: %v", err)
+		} else {
+			session.Close()
+			t.Log("✓ NewStreamSessionWithSignatureAndPorts works correctly")
 		}
 	})
 

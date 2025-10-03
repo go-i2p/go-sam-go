@@ -131,6 +131,53 @@ func NewStreamSessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PK
 	return ss, nil
 }
 
+// NewStreamSessionWithSignatureAndPorts creates a new stream session with custom signature type and port configuration.
+// This function provides advanced control over both cryptographic parameters and port mapping for stream sessions.
+// The 'from' parameter specifies the local port binding, while 'to' specifies the target port for connections.
+// Port specifications can be single ports ("80") or ranges ("8080-8090") depending on I2P router configuration.
+//
+// This method enables complex port forwarding scenarios and integration with existing network infrastructure
+// that expects specific port mappings. It's particularly useful for applications that need to maintain
+// consistent port assignments or work with legacy systems expecting fixed port numbers.
+//
+// Example usage:
+//
+//	session, err := NewStreamSessionWithSignatureAndPorts(sam, "http-proxy", "8080", "80", keys,
+//	                   []string{"inbound.length=2"}, "EdDSA_SHA512_Ed25519")
+func NewStreamSessionWithSignatureAndPorts(sam *common.SAM, id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
+	logger := log.WithFields(logrus.Fields{
+		"id":      id,
+		"from":    from,
+		"to":      to,
+		"options": options,
+		"sigType": sigType,
+	})
+	logger.Debug("Creating new StreamSession with signature and ports")
+
+	// Create the base session using the common package with signature and port configuration
+	session, err := sam.NewGenericSessionWithSignatureAndPorts("STREAM", id, from, to, keys, sigType, options)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create generic session with signature and ports")
+		return nil, oops.Errorf("failed to create stream session with signature and ports: %w", err)
+	}
+
+	baseSession, ok := session.(*common.BaseSession)
+	if !ok {
+		logger.Error("Session is not a BaseSession")
+		session.Close()
+		return nil, oops.Errorf("invalid session type")
+	}
+
+	ss := &StreamSession{
+		BaseSession: baseSession,
+		sam:         sam,
+		options:     options,
+	}
+
+	logger.Debug("Successfully created StreamSession with signature and ports")
+	return ss, nil
+}
+
 // Listen creates a StreamListener that accepts incoming connections from remote I2P destinations.
 // It initializes a listener with buffered channels for connection handling and starts an internal
 // accept loop to manage incoming connections asynchronously. The listener provides thread-safe
