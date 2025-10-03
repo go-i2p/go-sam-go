@@ -58,7 +58,7 @@ client, err := sam3.NewSAM("127.0.0.1:7656")
 Available session types:
 - `NewStreamSession()` - For reliable TCP-like connections
 - `NewDatagramSession()` - For UDP-like messaging 
-- `NewRawSession()` - For unencrypted raw datagrams
+- `NewRawSession()` - For encrypted but unauthenticated datagrams
 - `NewPrimarySession()` - For creating multiple sub-sessions
 
 ### Sub-packages
@@ -83,29 +83,31 @@ conn, err := session.DialI2P(remote)
 #### `datagram` Package
 UDP-like message delivery:
 ```go
-dgram, err := session.NewDatagramSession("udp", keys, options, 0)
+dgram, err := sam.NewDatagramSession("udp", keys, options)
 n, err := dgram.WriteTo(data, dest)
 ```
 
 #### `raw` Package
 Low-level datagram access:
 ```go
-raw, err := session.NewRawSession("raw", keys, options, 0) 
+raw, err := sam.NewRawSession("raw", keys, options, 0) // 0 = auto-assign UDP port
 n, err := raw.WriteTo(data, dest)
 ```
 
-#### `datagram2` Package(Planned not implemented)
+#### `datagram2` Package (Planned - Not Implemented)
 Authenticated repliable datagrams:
 ```go
-dgram2, err := session.NewDatagram2Session("udp", keys, options, 0)
-n, err := dgram.WriteTo(data, dest)
+// Will be available in future release - currently not implemented
+// dgram2, err := sam.NewDatagram2Session("udp", keys, options, 0)
+// n, err := dgram2.WriteTo(data, dest)
 ```
 
-#### `datagram3` Package(Planned not implemented)
+#### `datagram3` Package (Planned - Not Implemented)
 Unauthenticated repliable datagrams:
 ```go
-dgram3, err := session.NewDatagram3Session("udp", keys, options, 0)
-n, err := dgram.WriteTo(data, dest)
+// Will be available in future release - currently not implemented
+// dgram3, err := sam.NewDatagram3Session("udp", keys, options, 0)
+// n, err := dgram3.WriteTo(data, dest)
 ```
 
 ### Configuration
@@ -128,7 +130,7 @@ export DEBUG_I2P=error   # Error level
 
 ## 🔧 Requirements
 
-- Go 1.24.2 or later
+- Go 1.24.2 or later (toolchain go1.24.4)
 - Running I2P router with SAM enabled (default port: 7656)
 
 ## 📝 Development
