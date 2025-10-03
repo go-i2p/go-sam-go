@@ -1,6 +1,7 @@
 package primary
 
 import (
+	"math/rand"
 	"strconv"
 	"sync"
 
@@ -201,7 +202,9 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 
 // NewUniqueStreamSubSession creates a new unique stream sub-session within this primary session.
 func (p *PrimarySession) NewUniqueStreamSubSession(s string) (*StreamSubSession, error) {
-	return p.NewStreamSubSession("", nil)
+	// random number between 1000 and 9999
+	randomId := s + "-" + strconv.FormatInt(rand.Int63n(8999)+1000, 10)
+	return p.NewStreamSubSession(randomId, nil)
 }
 
 // NewDatagramSubSession creates a new datagram sub-session within this primary session.

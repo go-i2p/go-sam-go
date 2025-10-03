@@ -150,9 +150,9 @@ func isUDPPortAvailable(port string) bool {
 	return true
 }
 
-// generateRandomTunnelName creates a random 12-character tunnel name using lowercase letters.
+// GenerateRandomTunnelName creates a random 12-character tunnel name using lowercase letters.
 // This function is deterministic for testing when a fixed seed is used.
-func (f *I2PConfig) generateRandomTunnelName() string {
+func (f *I2PConfig) GenerateRandomTunnelName() string {
 	const (
 		nameLength = 12
 		letters    = "abcdefghijklmnopqrstuvwxyz"

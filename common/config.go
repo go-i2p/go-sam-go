@@ -69,7 +69,7 @@ func (f *I2PConfig) SetSAMAddress(addr string) {
 func (f *I2PConfig) ID() string {
 	// Ensure tunnel name is set, generating if needed
 	if f.TunName == "" {
-		f.TunName = f.generateRandomTunnelName()
+		f.TunName = f.GenerateRandomTunnelName()
 		log.WithField("TunName", f.TunName).Debug("Generated random tunnel name")
 	}
 
