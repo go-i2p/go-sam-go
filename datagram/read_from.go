@@ -1,6 +1,6 @@
 package datagram
 
-import "github.com/go-i2p/i2pkeys"
+import "net"
 
 // ReadFrom reads a datagram message from the session, storing it in p.
 // It returns the number of bytes read (n), the sender's I2P address (addr),
@@ -17,7 +17,7 @@ import "github.com/go-i2p/i2pkeys"
 //	    // handle error
 //	}
 //	fmt.Printf("Received %d bytes from %s\n", n, addr.Base32())
-func (ds *DatagramSession) ReadFrom(p []byte) (n int, addr i2pkeys.I2PAddr, err error) {
+func (ds *DatagramSession) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	dg, err := ds.ReceiveDatagram()
 	if err != nil {
 		return 0, addr, err
