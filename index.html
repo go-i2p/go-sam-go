@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 147 commits
+        📝 150 commits
         
       </div>
     </div>
@@ -38,9 +38,9 @@
         
           <li><a href="docs/raw/DOC.html">raw</a></li>
         
-          <li><a href="docs/DOC.html">sam3</a></li>
-        
           <li><a href="docs/sigs.html">sam3</a></li>
+        
+          <li><a href="docs/DOC.html">sam3</a></li>
         
           <li><a href="docs/stream/DOC.html">stream</a></li>
         
@@ -60,7 +60,7 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>147 commits</span>
+          <span>📝</span> <span>150 commits</span>
         </div>
         
         
@@ -84,7 +84,7 @@
 
 <p>A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focused on maintainability and clean architecture. This project is forked from <code>github.com/go-i2p/sam3</code> with reorganized code structure.</p>
 
-<p><strong>WARNING: This is a new package. Streaming works. Repliable datagrams work except for some harmless errors. Raw datagrams kind of work. Primary Sessions, Authenticated Datagrams, and Unauthenticated Datagrams will be supported by I2P 2.11.0</strong>
+<p><strong>WARNING: This is a new package. Streaming works. Repliable datagrams and Raw datagrams work. Primary Sessions, work but are untested. Authenticated Repliable Datagrams(Datagram2), and Unauthenticated Repliable Datagrams(Datagram3) will be supported by I2P 2.11.0</strong>
 <strong>The API should not change much.</strong>
 <strong>It needs more people looking at it.</strong></p>
 
@@ -143,7 +143,7 @@ func main() {
 
 <h3 id="sub-packages">Sub-packages</h3>
 
-<h4 id="primary-package-planned-not-implemented"><code>primary</code> Package(Planned not implemented)</h4>
+<h4 id="primary-package"><code>primary</code> Package</h4>
 
 <p>Core session management functionality:</p>
 
@@ -188,7 +188,7 @@ n, err := dgram.WriteTo(data, dest)
 
 <h4 id="datagram3-package-planned-not-implemented"><code>datagram3</code> Package(Planned not implemented)</h4>
 
-<p>Authenticated repliable datagrams:</p>
+<p>Unauthenticated repliable datagrams:</p>
 
 <pre><code class="language-go">dgram3, err := session.NewDatagram3Session(&quot;udp&quot;, keys, options, 0)
 n, err := dgram.WriteTo(data, dest)
@@ -255,7 +255,7 @@ go test ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                145 commits
+                148 commits
               </div>
             </div>
           </div>
@@ -282,7 +282,7 @@ go test ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-03 01:52:56 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-03 02:02:13 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
