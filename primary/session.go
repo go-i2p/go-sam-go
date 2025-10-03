@@ -30,10 +30,6 @@ type PrimarySession struct {
 	closed   bool
 }
 
-func (p *PrimarySession) NewUniqueStreamSubSession(s string) (StreamSubSession, error) {
-	panic("unimplemented")
-}
-
 // NewPrimarySession creates a new primary session with the provided SAM connection,
 // session ID, cryptographic keys, and configuration options. The primary session
 // acts as a master container that can create and manage multiple sub-sessions of
@@ -201,6 +197,11 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 
 	logger.Debug("Successfully created stream sub-session")
 	return subSession, nil
+}
+
+// NewUniqueStreamSubSession creates a new unique stream sub-session within this primary session.
+func (p *PrimarySession) NewUniqueStreamSubSession(s string) (*StreamSubSession, error) {
+	return p.NewStreamSubSession("", nil)
 }
 
 // NewDatagramSubSession creates a new datagram sub-session within this primary session.
