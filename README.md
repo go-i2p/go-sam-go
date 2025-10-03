@@ -102,7 +102,7 @@ n, err := dgram.WriteTo(data, dest)
 ```
 
 #### `datagram3` Package(Planned not implemented)
-Authenticated repliable datagrams:
+Unauthenticated repliable datagrams:
 ```go
 dgram3, err := session.NewDatagram3Session("udp", keys, options, 0)
 n, err := dgram.WriteTo(data, dest)
