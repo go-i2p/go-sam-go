@@ -5,7 +5,7 @@
 
 A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focused on maintainability and clean architecture. This project is forked from `github.com/go-i2p/sam3` with reorganized code structure.
 
-**WARNING: This is a new package. Streaming works. Repliable datagrams and Raw datagrams work. Primary Sessions, work but are untested. Authenticated Repliable Datagrams(Datagram2), and Unauthenticated Repliable Datagrams(Datagram3) will be supported by I2P 2.11.0**
+**WARNING: This is a new package. Streaming works. Repliable datagrams and Raw datagrams work. Primary Sessions, work but are untested. Authenticated Repliable Datagrams(Datagram2), and Unauthenticated Repliable Datagrams(Datagram3) are NOT YET IMPLEMENTED.**
 **The API should not change much.**
 **It needs more people looking at it.**
 
@@ -91,7 +91,7 @@ conn, err := session.DialI2P(remote)
 #### `datagram` Package
 UDP-like message delivery:
 ```go
-dgram, err := sam.NewDatagramSession("udp", keys, options)
+dgram, err := sam.NewDatagramSession("udp", keys, options, 0) // 0 = use default UDP port
 n, err := dgram.WriteTo(data, dest)
 ```
 
