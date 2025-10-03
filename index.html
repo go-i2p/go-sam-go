@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 150 commits
+        📝 152 commits
         
       </div>
     </div>
@@ -60,7 +60,7 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>150 commits</span>
+          <span>📝</span> <span>152 commits</span>
         </div>
         
         
@@ -93,6 +93,15 @@
 <pre><code class="language-bash">go get github.com/go-i2p/go-sam-go
 </code></pre>
 
+<h3 id="dependencies">Dependencies</h3>
+
+<ul>
+<li><code>github.com/go-i2p/i2pkeys</code> v0.33.92 - I2P cryptographic key management</li>
+<li><code>github.com/go-i2p/crypto</code> - I2P-specific cryptographic operations</li>
+<li><code>github.com/sirupsen/logrus</code> v1.9.3 - Structured logging</li>
+<li><code>github.com/samber/oops</code> v1.19.0 - Enhanced error handling</li>
+</ul>
+
 <h2 id="quick-start">🚀 Quick Start</h2>
 
 <pre><code class="language-go">package main
@@ -109,8 +118,9 @@ func main() {
     }
     defer client.Close()
     
-    // Generate keys
-    keys, err := client.NewKeys()
+    // Generate keys (optionally specify signature type)
+    keys, err := client.NewKeys() // Uses default EdDSA_SHA512_Ed25519
+    // Or: keys, err := client.NewKeys(sam3.Sig_ECDSA_SHA256_P256)
     if err != nil {
         panic(err)
     }
@@ -137,7 +147,7 @@ func main() {
 <ul>
 <li><code>NewStreamSession()</code> - For reliable TCP-like connections</li>
 <li><code>NewDatagramSession()</code> - For UDP-like messaging</li>
-<li><code>NewRawSession()</code> - For unencrypted raw datagrams</li>
+<li><code>NewRawSession()</code> - For encrypted but unauthenticated datagrams</li>
 <li><code>NewPrimarySession()</code> - For creating multiple sub-sessions</li>
 </ul>
 
@@ -166,7 +176,7 @@ conn, err := session.DialI2P(remote)
 
 <p>UDP-like message delivery:</p>
 
-<pre><code class="language-go">dgram, err := session.NewDatagramSession(&quot;udp&quot;, keys, options, 0)
+<pre><code class="language-go">dgram, err := sam.NewDatagramSession(&quot;udp&quot;, keys, options)
 n, err := dgram.WriteTo(data, dest)
 </code></pre>
 
@@ -174,24 +184,26 @@ n, err := dgram.WriteTo(data, dest)
 
 <p>Low-level datagram access:</p>
 
-<pre><code class="language-go">raw, err := session.NewRawSession(&quot;raw&quot;, keys, options, 0) 
+<pre><code class="language-go">raw, err := sam.NewRawSession(&quot;raw&quot;, keys, options, 0) // 0 = auto-assign UDP port
 n, err := raw.WriteTo(data, dest)
 </code></pre>
 
-<h4 id="datagram2-package-planned-not-implemented"><code>datagram2</code> Package(Planned not implemented)</h4>
+<h4 id="datagram2-package-planned-not-implemented"><code>datagram2</code> Package (Planned - Not Implemented)</h4>
 
 <p>Authenticated repliable datagrams:</p>
 
-<pre><code class="language-go">dgram2, err := session.NewDatagram2Session(&quot;udp&quot;, keys, options, 0)
-n, err := dgram.WriteTo(data, dest)
+<pre><code class="language-go">// Will be available in future release - currently not implemented
+// dgram2, err := sam.NewDatagram2Session(&quot;udp&quot;, keys, options, 0)
+// n, err := dgram2.WriteTo(data, dest)
 </code></pre>
 
-<h4 id="datagram3-package-planned-not-implemented"><code>datagram3</code> Package(Planned not implemented)</h4>
+<h4 id="datagram3-package-planned-not-implemented"><code>datagram3</code> Package (Planned - Not Implemented)</h4>
 
 <p>Unauthenticated repliable datagrams:</p>
 
-<pre><code class="language-go">dgram3, err := session.NewDatagram3Session(&quot;udp&quot;, keys, options, 0)
-n, err := dgram.WriteTo(data, dest)
+<pre><code class="language-go">// Will be available in future release - currently not implemented
+// dgram3, err := sam.NewDatagram3Session(&quot;udp&quot;, keys, options, 0)
+// n, err := dgram3.WriteTo(data, dest)
 </code></pre>
 
 <h3 id="configuration">Configuration</h3>
@@ -215,7 +227,7 @@ export DEBUG_I2P=error   # Error level
 <h2 id="requirements">🔧 Requirements</h2>
 
 <ul>
-<li>Go 1.24.2 or later</li>
+<li>Go 1.24.2 or later (toolchain go1.24.4)</li>
 <li>Running I2P router with SAM enabled (default port: 7656)</li>
 </ul>
 
@@ -255,7 +267,7 @@ go test ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                148 commits
+                150 commits
               </div>
             </div>
           </div>
@@ -282,7 +294,7 @@ go test ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-03 02:17:28 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-03 02:56:51 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
