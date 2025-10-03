@@ -55,7 +55,7 @@ func Test_PrimaryDatagramServerClient(t *testing.T) {
 		}
 		fmt.Println("\tClient: Creating tunnel")
 		// ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
-		ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"})
+		ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
 		if err != nil {
 			c <- false
 			return

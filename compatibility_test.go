@@ -398,7 +398,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 			{
 				name: "DatagramSessionPattern",
 				test: func(t *testing.T) {
-					session, err := sam.NewDatagramSession("compat-datagram-"+RandString(), keys, Options_Small)
+					session, err := sam.NewDatagramSession("compat-datagram-"+RandString(), keys, Options_Small, 0)
 					if err != nil {
 						t.Errorf("Datagram session creation failed: %v", err)
 						return

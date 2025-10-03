@@ -119,7 +119,7 @@ func ExampleSAM_NewDatagramSession() {
 	}
 
 	// Create a datagram session for authenticated messaging
-	session, err := sam.NewDatagramSession("udp-app", keys, sam3.Options_Small)
+	session, err := sam.NewDatagramSession("udp-app", keys, sam3.Options_Small, 0)
 	if err != nil {
 		log.Printf("Failed to create datagram session: %v", err)
 		return
