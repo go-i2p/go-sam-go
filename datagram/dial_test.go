@@ -122,13 +122,13 @@ func TestDatagramSession_DialContext_Timeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Microsecond)
 	defer cancel()
 
-	addr, err := session.sam.Lookup("idk.i2p")
-	if err != nil {
-		t.Fatalf("Failed to lookup address: %v", err)
-	}
+	// Create a test destination address instead of using external site
+	testSAM2, testKeys2 := setupTestSAM(t)
+	defer testSAM2.Close()
+	testAddr := testKeys2.Addr()
 
 	// Try to dial with short timeout
-	conn, err := session.DialContext(ctx, addr.Base64())
+	conn, err := session.DialContext(ctx, testAddr.Base64())
 
 	// Should get context deadline exceeded error
 	if err == nil {

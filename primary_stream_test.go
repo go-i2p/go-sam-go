@@ -23,6 +23,11 @@ func Test_PrimaryStreamingDial(t *testing.T) {
 		return
 	}
 	fmt.Println("Test_PrimaryStreamingDial")
+
+	// Set up a local test listener instead of using external site
+	testListener := SetupTestListenerWithHTTP(t, generateUniqueSessionID("primary_streaming_dial_listener"))
+	defer testListener.Close()
+
 	earlysam, err := NewSAM(SAMDefaultAddr(""))
 	if err != nil {
 		t.Fail()
@@ -49,16 +54,9 @@ func Test_PrimaryStreamingDial(t *testing.T) {
 		return
 	}
 	defer ss.Close()
-	fmt.Println("\tNotice: This may fail if your I2P node is not well integrated in the I2P network.")
-	fmt.Println("\tLooking up i2p-projekt.i2p")
-	forumAddr, err := earlysam.Lookup("i2p-projekt.i2p")
-	if err != nil {
-		fmt.Println(err.Error())
-		t.Fail()
-		return
-	}
-	fmt.Println("\tDialing i2p-projekt.i2p(", forumAddr.Base32(), forumAddr.DestHash().Hash(), ")")
-	conn, err := ss.DialI2P(forumAddr)
+	fmt.Println("\tNotice: Using local test listener instead of external I2P site for improved test stability.")
+	fmt.Printf("\tDialing test listener (%s)\n", testListener.AddrString())
+	conn, err := ss.DialI2P(testListener.Addr())
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Fail()
@@ -74,9 +72,9 @@ func Test_PrimaryStreamingDial(t *testing.T) {
 	buf := make([]byte, 4096)
 	n, err := conn.Read(buf)
 	if !strings.Contains(strings.ToLower(string(buf[:n])), "http") && !strings.Contains(strings.ToLower(string(buf[:n])), "html") {
-		fmt.Printf("\tProbably failed to StreamSession.DialI2P(i2p-projekt.i2p)? It replied %d bytes, but nothing that looked like http/html", n)
+		fmt.Printf("\tProbably failed to StreamSession.DialI2P(test listener)? It replied %d bytes, but nothing that looked like http/html", n)
 	} else {
-		fmt.Println("\tRead HTTP/HTML from i2p-projekt.i2p")
+		fmt.Println("\tRead HTTP/HTML from test listener")
 	}
 }
 
