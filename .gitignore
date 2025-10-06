@@ -47,5 +47,5 @@ review.md
 SAMv3.md
 testplan.md
 err
-/*.log
+*.log
 *.test

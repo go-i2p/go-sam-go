@@ -338,14 +338,19 @@ func (s *StreamSession) Close() error {
 	// which needs the write lock, while BaseSession.Close() can block on network I/O
 	s.mu.Unlock()
 
-	// Close the base session first to unblock any pending reads
-	if err := s.BaseSession.Close(); err != nil {
-		logger.WithError(err).Error("Failed to close base session")
-		// Continue with listener cleanup even if base session close fails
-	}
-
+	// CRITICAL FIX: Close listeners BEFORE closing the base session
+	// This ensures SetReadDeadline() in closeWithoutUnregister() unblocks any
+	// pending reads in accept loops before BaseSession.Close() marks session as closed
 	for _, listener := range listeners {
 		listener.closeWithoutUnregister()
+	}
+
+	// Brief delay to allow read deadlines to take effect and unblock pending reads
+	time.Sleep(150 * time.Millisecond)
+
+	// Close the base session after listeners are shut down
+	if err := s.BaseSession.Close(); err != nil {
+		logger.WithError(err).Error("Failed to close base session")
 	}
 
 	logger.Debug("Successfully closed StreamSession")
