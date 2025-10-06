@@ -9,7 +9,7 @@ import (
 
 // Example demonstrates basic usage of the sam3 library for I2P connectivity.
 // This example shows how to establish a SAM connection, generate keys, and create sessions.
-// 
+//
 // Requirements: This example requires a running I2P router with SAM bridge enabled.
 func Example() {
 	// Connect to the local I2P SAM bridge
@@ -40,7 +40,7 @@ func Example() {
 }
 
 // ExampleNewSAM demonstrates how to establish a connection to the I2P SAM bridge.
-// 
+//
 // Requirements: This example requires a running I2P router with SAM bridge enabled.
 func ExampleNewSAM() {
 	// Connect to the default I2P SAM bridge address
@@ -55,7 +55,7 @@ func ExampleNewSAM() {
 }
 
 // ExampleSAM_NewStreamSession demonstrates creating a stream session for reliable connections.
-// 
+//
 // Requirements: This example requires a running I2P router with SAM bridge enabled.
 func ExampleSAM_NewStreamSession() {
 	sam, err := sam3.NewSAM("127.0.0.1:7656")
@@ -83,7 +83,7 @@ func ExampleSAM_NewStreamSession() {
 }
 
 // ExampleSAM_NewPrimarySession demonstrates creating a primary session for managing sub-sessions.
-// 
+//
 // Requirements: This example requires a running I2P router with SAM bridge enabled.
 func ExampleSAM_NewPrimarySession() {
 	sam, err := sam3.NewSAM("127.0.0.1:7656")
@@ -112,7 +112,7 @@ func ExampleSAM_NewPrimarySession() {
 }
 
 // ExampleSAM_NewDatagramSession demonstrates creating a datagram session for UDP-like messaging.
-// 
+//
 // Requirements: This example requires a running I2P router with SAM bridge enabled.
 func ExampleSAM_NewDatagramSession() {
 	sam, err := sam3.NewSAM("127.0.0.1:7656")
