@@ -2,11 +2,11 @@ package datagram
 
 import (
 	"bufio"
-	"encoding/base64"
 	"net"
 	"strings"
 	"sync"
 
+	"github.com/go-i2p/common/base64"
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
@@ -161,6 +161,7 @@ func (s *DatagramSession) ReceiveDatagram() (*Datagram, error) {
 
 // readSingleDatagram performs a direct read from the SAM connection for one-shot datagram operations.
 // This method bypasses the reader infrastructure to avoid deadlocks when only one datagram is needed.
+// It handles SAM protocol PING messages by responding with PONG and continuing to read.
 func (s *DatagramSession) readSingleDatagram() (*Datagram, error) {
 	// Use the session's direct connection for immediate read
 	conn := s.Conn()
@@ -168,28 +169,44 @@ func (s *DatagramSession) readSingleDatagram() (*Datagram, error) {
 		return nil, oops.Errorf("session connection is not available")
 	}
 
-	// Read directly from SAM connection
-	buffer := make([]byte, 4096)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		return nil, oops.Errorf("failed to read from SAM connection: %w", err)
+	// Loop to handle PING messages and continue reading until we get a datagram
+	for {
+		// Read directly from SAM connection
+		buffer := make([]byte, 4096)
+		n, err := conn.Read(buffer)
+		if err != nil {
+			return nil, oops.Errorf("failed to read from SAM connection: %w", err)
+		}
+
+		response := string(buffer[:n])
+		log.WithField("response", response).Debug("Received SAM response")
+
+		// Handle SAM protocol PING messages
+		if strings.HasPrefix(strings.TrimSpace(response), "PING ") {
+			log.Debug("Received PING in readSingleDatagram, responding with PONG")
+			// Respond to PING with PONG to keep connection alive
+			pong := "PONG " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(response), "PING")) + "\n"
+			_, err := conn.Write([]byte(pong))
+			if err != nil {
+				return nil, oops.Errorf("failed to send PONG response: %w", err)
+			}
+			// Continue reading to get the actual datagram
+			continue
+		}
+
+		// Validate response format
+		if !strings.Contains(response, "DATAGRAM RECEIVED") {
+			return nil, oops.Errorf("unexpected response format: %s", response)
+		}
+
+		// Parse the response using the same logic as DatagramReader
+		source, data, err := s.parseDatagramResponse(response)
+		if err != nil {
+			return nil, err
+		}
+
+		return s.createDatagram(source, data)
 	}
-
-	response := string(buffer[:n])
-	log.WithField("response", response).Debug("Received SAM response")
-
-	// Validate response format
-	if !strings.Contains(response, "DATAGRAM RECEIVED") {
-		return nil, oops.Errorf("unexpected response format: %s", response)
-	}
-
-	// Parse the response using the same logic as DatagramReader
-	source, data, err := s.parseDatagramResponse(response)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.createDatagram(source, data)
 }
 
 // parseDatagramResponse parses the DATAGRAM RECEIVED response to extract source and data.
@@ -236,7 +253,7 @@ func (s *DatagramSession) createDatagram(source, data string) (*Datagram, error)
 		return nil, oops.Errorf("failed to parse source address: %w", err)
 	}
 
-	decodedData, err := base64.StdEncoding.DecodeString(data)
+	decodedData, err := base64.I2PEncoding.DecodeString(data)
 	if err != nil {
 		return nil, oops.Errorf("failed to decode datagram data: %w", err)
 	}

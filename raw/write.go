@@ -1,12 +1,14 @@
 package raw
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/go-i2p/common/base64"
+
 	"github.com/go-i2p/i2pkeys"
+
 	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
@@ -40,7 +42,7 @@ func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 	logger.Debug("Sending raw datagram")
 
 	// Encode the data as base64 for SAM protocol transmission
-	encodedData := base64.StdEncoding.EncodeToString(data)
+	encodedData := base64.I2PEncoding.EncodeToString(data)
 
 	// Create the RAW SEND command following SAMv3 protocol format
 	// The command includes session ID, destination, size, and base64-encoded data

@@ -2,9 +2,10 @@ package raw
 
 import (
 	"bufio"
-	"encoding/base64"
 	"strings"
 	"time"
+
+	"github.com/go-i2p/common/base64"
 
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
@@ -348,7 +349,7 @@ func (r *RawReader) createRawDatagram(source, data string) (*RawDatagram, error)
 	}
 
 	// Decode the base64 data into bytes
-	decodedData, err := base64.StdEncoding.DecodeString(data)
+	decodedData, err := base64.I2PEncoding.DecodeString(data)
 	if err != nil {
 		return nil, oops.Errorf("failed to decode raw datagram data: %w", err)
 	}

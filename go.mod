@@ -5,6 +5,7 @@ go 1.24.2
 toolchain go1.24.4
 
 require (
+	github.com/go-i2p/common v0.0.0-20250819203334-e5459df35789
 	github.com/go-i2p/crypto v0.0.0-20250822224541-85015740db11
 	github.com/go-i2p/i2pkeys v0.33.92
 	github.com/go-i2p/logger v0.0.0-20241123010126-3050657e5d0c
