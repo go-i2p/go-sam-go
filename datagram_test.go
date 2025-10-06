@@ -92,6 +92,11 @@ func ExampleDatagramSession() {
 	// and attempting to receive them through the I2P network.
 	//
 	// Requirements: This example requires a running I2P router with SAM bridge enabled.
+	//
+	// I2P Timing Considerations:
+	//   - Tunnel establishment: 30-120 seconds
+	//   - Datagram round-trip through tunnels: 10-60 seconds
+	//   - Total expected time: 60-180 seconds for self-communication
 
 	const samBridge = "127.0.0.1:7656"
 
@@ -117,29 +122,41 @@ func ExampleDatagramSession() {
 		return
 	}
 
+	// Allow time for I2P tunnels to establish before sending
+	// Tunnel building typically takes 30-120 seconds
+	time.Sleep(15 * time.Second)
+
 	// For this example, we'll send messages to ourselves to demonstrate functionality
 	fmt.Println("Sending datagrams...")
 
-	// Send a message to ourselves (this should work if I2P tunnels are established)
-	_, err = dg.WriteTo([]byte("Hello myself!"), myself)
-	if err != nil {
-		dg.Close()
-		sam.Close()
-		fmt.Printf("Failed to send datagram: %v\n", err)
-		return
+	// Send multiple times with retry logic to ensure delivery through I2P tunnels
+	// I2P datagrams may be delayed or require multiple attempts
+	for attempt := 0; attempt < 3; attempt++ {
+		_, err = dg.WriteTo([]byte("Hello myself!"), myself)
+		if err != nil {
+			dg.Close()
+			sam.Close()
+			fmt.Printf("Failed to send datagram: %v\n", err)
+			return
+		}
+		time.Sleep(5 * time.Second) // Space out sends for I2P network timing
 	}
 
 	fmt.Println("Attempting to receive datagram...")
 
-	// Set a reasonable deadline for the receive operation (I2P operations need time)
-	dg.SetReadDeadline(time.Now().Add(60 * time.Second))
+	// Set I2P-appropriate deadline for receive operation
+	// I2P datagram round-trips require 60-180 seconds to account for:
+	//   - Tunnel establishment delays
+	//   - Multi-hop routing through I2P network
+	//   - Message queueing and processing
+	dg.SetReadDeadline(time.Now().Add(180 * time.Second))
 
 	buf := make([]byte, 31*1024)
 	n, addr, err := dg.ReadFrom(buf)
 	if err != nil {
 		dg.Close()
 		sam.Close()
-		fmt.Printf("Failed to receive datagram within 60 seconds: %v\n", err)
+		fmt.Printf("Failed to receive datagram within 180 seconds: %v\n", err)
 		return
 	}
 

@@ -174,6 +174,7 @@ func TestStreamSession_DialI2P(t *testing.T) {
 }
 
 func TestStreamSession_DialContext(t *testing.T) {
+
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
@@ -182,6 +183,40 @@ func TestStreamSession_DialContext(t *testing.T) {
 		t.Fatalf("Failed to create session: %v", err)
 	}
 	defer session.Close()
+
+	// Create a local test listener instead of using external site
+	testSAM2, testKeys2 := setupTestSAM(t)
+	defer testSAM2.Close()
+
+	listenerSession, err := NewStreamSession(testSAM2, generateUniqueSessionID("test_dial_i2p_listener"), testKeys2, []string{
+		"inbound.length=1", "outbound.length=1",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create listener session: %v", err)
+	}
+	defer listenerSession.Close()
+
+	listener, err := listenerSession.Listen()
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	defer listener.Close()
+
+	// Start a simple echo server in background
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return // Listener closed
+			}
+			go func(c net.Conn) {
+				defer c.Close()
+				buf := make([]byte, 1024)
+				c.Read(buf) // Read the request
+				c.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body>Test response</body></html>"))
+			}(conn)
+		}
+	}()
 
 	t.Run("dial with context timeout", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -199,7 +234,7 @@ func TestStreamSession_DialContext(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
-		_, err := session.DialContext(ctx, "test.i2p")
+		_, err := session.DialContext(ctx, listener.Addr().String())
 		if err == nil {
 			t.Error("Expected dial to fail with cancelled context")
 		}
