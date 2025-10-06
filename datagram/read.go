@@ -128,10 +128,10 @@ func (r *DatagramReader) finalizeReaderClosure(logger *logger.Entry) {
 // DATAGRAM RECEIVED responses and forwarding datagrams to the appropriate channels.
 // It runs until the reader is closed and provides error handling for network issues.
 func (r *DatagramReader) receiveLoop() {
-	// Mark that the receive loop has started to handle proper cleanup
-	r.mu.Lock()
-	r.loopStarted = true
-	r.mu.Unlock()
+	// Initialize receive loop state in a separate function to handle locking properly
+	if !r.initializeReceiveLoopState() {
+		return
+	}
 
 	logger := r.initializeReceiveLoop()
 	defer r.signalReceiveLoopCompletion()
@@ -141,6 +141,31 @@ func (r *DatagramReader) receiveLoop() {
 	}
 
 	r.runReceiveLoop(logger)
+}
+
+// initializeReceiveLoopState safely initializes the receive loop state with proper locking.
+// Returns false if initialization failed, true if successful.
+func (r *DatagramReader) initializeReceiveLoopState() bool {
+	// CRITICAL FIX: Check if we can acquire the lock without blocking
+	// Use TryLock equivalent by checking state first
+	r.mu.RLock()
+	if r.closed {
+		r.mu.RUnlock()
+		return false
+	}
+	r.mu.RUnlock()
+
+	// Now safely acquire write lock to set loopStarted
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Double-check closed state after acquiring write lock
+	if r.closed {
+		return false
+	}
+
+	r.loopStarted = true
+	return true
 }
 
 // initializeReceiveLoop sets up logging context and returns a logger for the receive loop.

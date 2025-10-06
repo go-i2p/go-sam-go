@@ -1,7 +1,10 @@
 package datagram
 
 import (
+	"bufio"
+	"encoding/base64"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/go-i2p/go-sam-go/common"
@@ -145,17 +148,106 @@ func (s *DatagramSession) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error 
 	return s.NewWriter().SendDatagram(data, dest)
 }
 
-// ReceiveDatagram receives a single datagram from any source.
-// This is a convenience method that creates a temporary reader, starts the receive loop,
-// gets one datagram, and cleans up resources automatically. For continuous reception,
+// ReceiveDatagram receives a single datagram from the I2P network.
+// This method is a convenience wrapper that performs a direct single read operation
+// without starting a continuous receive loop. For continuous reception,
 // use NewReader() and manage the reader lifecycle manually.
 // Example usage: datagram, err := session.ReceiveDatagram()
 func (s *DatagramSession) ReceiveDatagram() (*Datagram, error) {
-	// Create temporary reader for one-time receive operations
-	reader := s.NewReader()
-	// Start the receive loop for datagram processing
-	go reader.receiveLoop()
-	return reader.ReceiveDatagram()
+	// ARCHITECTURAL FIX: Perform direct read for one-shot operations instead of
+	// creating a reader with receive loop, which causes deadlocks due to RWMutex contention
+	return s.readSingleDatagram()
+}
+
+// readSingleDatagram performs a direct read from the SAM connection for one-shot datagram operations.
+// This method bypasses the reader infrastructure to avoid deadlocks when only one datagram is needed.
+func (s *DatagramSession) readSingleDatagram() (*Datagram, error) {
+	// Use the session's direct connection for immediate read
+	conn := s.Conn()
+	if conn == nil {
+		return nil, oops.Errorf("session connection is not available")
+	}
+
+	// Read directly from SAM connection
+	buffer := make([]byte, 4096)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		return nil, oops.Errorf("failed to read from SAM connection: %w", err)
+	}
+
+	response := string(buffer[:n])
+	log.WithField("response", response).Debug("Received SAM response")
+
+	// Validate response format
+	if !strings.Contains(response, "DATAGRAM RECEIVED") {
+		return nil, oops.Errorf("unexpected response format: %s", response)
+	}
+
+	// Parse the response using the same logic as DatagramReader
+	source, data, err := s.parseDatagramResponse(response)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.createDatagram(source, data)
+}
+
+// parseDatagramResponse parses the DATAGRAM RECEIVED response to extract source and data.
+func (s *DatagramSession) parseDatagramResponse(response string) (string, string, error) {
+	scanner := bufio.NewScanner(strings.NewReader(response))
+	scanner.Split(bufio.ScanWords)
+
+	var source, data string
+	for scanner.Scan() {
+		word := scanner.Text()
+		switch {
+		case word == "DATAGRAM" || word == "RECEIVED":
+			// Skip protocol tokens
+			continue
+		case strings.HasPrefix(word, "DESTINATION="):
+			source = word[12:]
+		case strings.HasPrefix(word, "SIZE="):
+			// Skip size, we'll get actual data size from payload
+			continue
+		default:
+			// Remaining data is the base64-encoded payload
+			if data == "" {
+				data = word
+			} else {
+				data = data + " " + word
+			}
+		}
+	}
+
+	if source == "" {
+		return "", "", oops.Errorf("no source in datagram")
+	}
+	if data == "" {
+		return "", "", oops.Errorf("no data in datagram")
+	}
+
+	return source, data, nil
+}
+
+// createDatagram constructs the final Datagram from parsed source and data.
+func (s *DatagramSession) createDatagram(source, data string) (*Datagram, error) {
+	sourceAddr, err := i2pkeys.NewI2PAddrFromString(source)
+	if err != nil {
+		return nil, oops.Errorf("failed to parse source address: %w", err)
+	}
+
+	decodedData, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return nil, oops.Errorf("failed to decode datagram data: %w", err)
+	}
+
+	datagram := &Datagram{
+		Data:   decodedData,
+		Source: sourceAddr,
+		Local:  s.Addr(),
+	}
+
+	return datagram, nil
 }
 
 // Close closes the datagram session and all associated resources.
