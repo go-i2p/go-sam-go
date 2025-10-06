@@ -24,7 +24,7 @@ func Test_PrimaryDatagramServerClient(t *testing.T) {
 		return
 	}
 
-	sam, err := earlysam.NewPrimarySession("PrimaryTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"})
+	sam, err := earlysam.NewPrimarySession("PrimaryTunnel", keys, []string{"inbound.length=1", "outbound.length=1", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"})
 	if err != nil {
 		t.Fail()
 		return
@@ -54,8 +54,8 @@ func Test_PrimaryDatagramServerClient(t *testing.T) {
 			return
 		}
 		fmt.Println("\tClient: Creating tunnel")
-		// ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
-		ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		// ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=1", "outbound.length=1", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		ds2, err := sam2.NewDatagramSession("PRIMARYClientTunnel", keys, []string{"inbound.length=1", "outbound.length=1", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
 		if err != nil {
 			c <- false
 			return

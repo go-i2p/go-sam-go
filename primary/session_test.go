@@ -67,8 +67,8 @@ func TestNewPrimarySession(t *testing.T) {
 			name:   "primary session with small tunnel config",
 			idBase: "test_primary_small",
 			options: []string{
-				"inbound.length=0",
-				"outbound.length=0",
+				"inbound.length=1",
+				"outbound.length=1",
 				"inbound.quantity=1",
 				"outbound.quantity=1",
 			},

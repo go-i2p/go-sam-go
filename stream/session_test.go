@@ -49,8 +49,8 @@ func TestNewStreamSession(t *testing.T) {
 			name: "session with small tunnel config",
 			id:   "test_stream_small",
 			options: []string{
-				"inbound.length=0",
-				"outbound.length=0",
+				"inbound.length=1",
+				"outbound.length=1",
 				"inbound.lengthVariance=0",
 				"outbound.lengthVariance=0",
 				"inbound.quantity=1",

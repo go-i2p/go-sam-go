@@ -9,7 +9,7 @@ func TestDatagramSession_Listen(t *testing.T) {
 	defer sam.Close()
 
 	session, err := NewDatagramSession(sam, "test_listen", keys, []string{
-		"inbound.length=0", "outbound.length=0",
+		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)

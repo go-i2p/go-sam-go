@@ -17,7 +17,7 @@ func TestDatagramSession_Dial(t *testing.T) {
 
 	// Create listener session
 	listenerSession, err := NewDatagramSession(sam1, "test_dial_listener", keys1, []string{
-		"inbound.length=0", "outbound.length=0",
+		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
 		t.Fatalf("Failed to create listener session: %v", err)
@@ -32,7 +32,7 @@ func TestDatagramSession_Dial(t *testing.T) {
 
 	// Create dialer session
 	dialerSession, err := NewDatagramSession(sam2, "test_dial_dialer", keys2, []string{
-		"inbound.length=0", "outbound.length=0",
+		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
 		t.Fatalf("Failed to create dialer session: %v", err)

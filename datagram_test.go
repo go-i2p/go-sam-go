@@ -25,8 +25,8 @@ func Test_DatagramServerClient(t *testing.T) {
 	}
 	//	fmt.Println("\tServer: My address: " + keys.Addr().Base32())
 	fmt.Println("\tServer: Creating tunnel")
-	// ds, err := sam.NewDatagramSession("DGserverTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
-	ds, err := sam.NewDatagramSession("DGserverTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+	// ds, err := sam.NewDatagramSession("DGserverTun", keys, []string{"inbound.length=1", "outbound.length=1", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+	ds, err := sam.NewDatagramSession("DGserverTun", keys, []string{"inbound.length=1", "outbound.length=1", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
 	if err != nil {
 		fmt.Println("Server: Failed to create tunnel: " + err.Error())
 		t.Fail()
@@ -46,8 +46,8 @@ func Test_DatagramServerClient(t *testing.T) {
 			return
 		}
 		fmt.Println("\tClient: Creating tunnel")
-		// ds2, err := sam2.NewDatagramSession("DGclientTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
-		ds2, err := sam2.NewDatagramSession("DGclientTun", keys, []string{"inbound.length=0", "outbound.length=0", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		// ds2, err := sam2.NewDatagramSession("DGclientTun", keys, []string{"inbound.length=1", "outbound.length=1", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
+		ds2, err := sam2.NewDatagramSession("DGclientTun", keys, []string{"inbound.length=1", "outbound.length=1", "inbound.lengthVariance=0", "outbound.lengthVariance=0", "inbound.quantity=1", "outbound.quantity=1"}, 0)
 		if err != nil {
 			c <- false
 			return
