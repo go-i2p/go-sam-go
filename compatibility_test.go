@@ -342,11 +342,6 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 		}
 		defer sam.Close()
 
-		keys, err := sam.NewKeys()
-		if err != nil {
-			t.Fatalf("Failed to generate keys: %v", err)
-		}
-
 		// Test the typical sam3 usage pattern for each session type
 		sessionTests := []struct {
 			name string
@@ -355,6 +350,11 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 			{
 				name: "PrimarySessionPattern",
 				test: func(t *testing.T) {
+					// Generate unique keys for each session to avoid conflicts
+					keys, err := sam.NewKeys()
+					if err != nil {
+						t.Fatalf("Failed to generate keys for primary session: %v", err)
+					}
 					session, err := sam.NewPrimarySession("compat-primary-"+RandString(), keys, Options_Default)
 					if err != nil {
 						t.Errorf("Primary session creation failed: %v", err)
@@ -368,12 +368,27 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Primary session creation pattern works")
+					
+					// Explicitly close session to avoid conflicts with subsequent tests
+					session.Close()
 				},
 			},
 			{
 				name: "StreamSessionPattern",
 				test: func(t *testing.T) {
-					session, err := sam.NewStreamSession("compat-stream-"+RandString(), keys, Options_Small)
+					// Create a separate SAM connection for this test to avoid conflicts
+					streamSam, err := NewSAM(SAMDefaultAddr(""))
+					if err != nil {
+						t.Fatalf("Failed to create SAM connection for stream session: %v", err)
+					}
+					defer streamSam.Close()
+					
+					// Generate unique keys for each session to avoid conflicts
+					keys, err := streamSam.NewKeys()
+					if err != nil {
+						t.Fatalf("Failed to generate keys for stream session: %v", err)
+					}
+					session, err := streamSam.NewStreamSession("compat-stream-"+RandString(), keys, Options_Small)
 					if err != nil {
 						t.Errorf("Stream session creation failed: %v", err)
 						return
@@ -393,12 +408,28 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Stream session creation and listener pattern works")
+					
+					// Explicitly close session to avoid conflicts with subsequent tests
+					listener.Close()
+					session.Close()
 				},
 			},
 			{
 				name: "DatagramSessionPattern",
 				test: func(t *testing.T) {
-					session, err := sam.NewDatagramSession("compat-datagram-"+RandString(), keys, Options_Small, 0)
+					// Create a separate SAM connection for this test to avoid conflicts
+					datagramSam, err := NewSAM(SAMDefaultAddr(""))
+					if err != nil {
+						t.Fatalf("Failed to create SAM connection for datagram session: %v", err)
+					}
+					defer datagramSam.Close()
+					
+					// Generate unique keys for each session to avoid conflicts
+					keys, err := datagramSam.NewKeys()
+					if err != nil {
+						t.Fatalf("Failed to generate keys for datagram session: %v", err)
+					}
+					session, err := datagramSam.NewDatagramSession("compat-datagram-"+RandString(), keys, Options_Small, 0)
 					if err != nil {
 						t.Errorf("Datagram session creation failed: %v", err)
 						return
@@ -411,12 +442,27 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Datagram session creation pattern works")
+					
+					// Explicitly close session to avoid conflicts with subsequent tests
+					session.Close()
 				},
 			},
 			{
 				name: "RawSessionPattern",
 				test: func(t *testing.T) {
-					session, err := sam.NewRawSession("compat-raw-"+RandString(), keys, Options_Small, 0)
+					// Create a separate SAM connection for this test to avoid conflicts
+					rawSam, err := NewSAM(SAMDefaultAddr(""))
+					if err != nil {
+						t.Fatalf("Failed to create SAM connection for raw session: %v", err)
+					}
+					defer rawSam.Close()
+					
+					// Generate unique keys for each session to avoid conflicts
+					keys, err := rawSam.NewKeys()
+					if err != nil {
+						t.Fatalf("Failed to generate keys for raw session: %v", err)
+					}
+					session, err := rawSam.NewRawSession("compat-raw-"+RandString(), keys, Options_Small, 0)
 					if err != nil {
 						t.Errorf("Raw session creation failed: %v", err)
 						return
@@ -429,6 +475,9 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Raw session creation pattern works")
+					
+					// Explicitly close session to avoid conflicts with subsequent tests
+					session.Close()
 				},
 			},
 		}
