@@ -2,11 +2,13 @@ package stream
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
@@ -201,90 +203,154 @@ func (l *StreamListener) deliverConnection(conn *StreamConn, logger *logger.Entr
 	}
 }
 
-// acceptConnection handles the low-level connection acceptance
+// acceptConnection handles the low-level connection acceptance using proper SAMv3 STREAM ACCEPT sequence.
+// PROTOCOL: SAMv3 Section "SAM Virtual Streams: ACCEPT"
+// Each STREAM ACCEPT requires a dedicated socket to the SAM bridge.
+// The bridge responds with STREAM STATUS, then sends the destination
+// line when a connection arrives, followed by streaming data on this socket.
 func (l *StreamListener) acceptConnection() (*StreamConn, error) {
 	logger := log.WithField("session_id", l.session.ID())
+	logger.Debug("Starting STREAM ACCEPT sequence")
 
-	response, err := l.readConnectionRequest()
+	// Step 1: Create dedicated socket to SAM bridge for this ACCEPT
+	sam, err := l.createAcceptSocket()
 	if err != nil {
 		return nil, err
 	}
 
-	logger.WithField("response", response).Debug("Received connection request")
+	// Set up cleanup - always close socket on error
+	var streamConn *StreamConn
+	defer func() {
+		if streamConn == nil {
+			sam.Close()
+		}
+	}()
 
-	status, dest, err := l.parseConnectionResponse(response)
+	// Step 2: Send STREAM ACCEPT command
+	if err := l.sendStreamAcceptCommand(sam, logger); err != nil {
+		return nil, err
+	}
+
+	// Step 3: Read STREAM STATUS response
+	if err := l.parseStreamStatusResponse(sam, logger); err != nil {
+		return nil, err
+	}
+
+	// Step 4: Wait for incoming connection - SAM sends destination line
+	dest, err := l.readDestinationLine(sam, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := l.validateConnectionStatus(status); err != nil {
+	// Step 5: Create StreamConn using the ACCEPT socket for data transfer
+	streamConn, err = l.createStreamConnectionWithSocket(dest, sam)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := l.validateDestination(dest); err != nil {
-		return nil, err
-	}
-
-	return l.createStreamConnection(dest)
+	logger.Debug("Successfully accepted connection")
+	return streamConn, nil
 }
 
-// readConnectionRequest reads the incoming connection request from the session.
-func (l *StreamListener) readConnectionRequest() (string, error) {
-	buf := make([]byte, 4096)
-	n, err := l.session.Read(buf)
-	if err != nil {
-		return "", oops.Errorf("failed to read from session: %w", err)
+// createAcceptSocket creates a dedicated SAM connection for this ACCEPT operation.
+// Per SAMv3 spec: "A client waits for an incoming connection request by: opening a new socket with the SAM bridge"
+func (l *StreamListener) createAcceptSocket() (*common.SAM, error) {
+	// Get the SAM address from the session's SAM instance
+	samAddress := l.session.sam.SAMEmit.I2PConfig.SAMAddress()
+	if samAddress == "" {
+		// Fallback to default if not set
+		samAddress = "127.0.0.1:7656"
 	}
-	return string(buf[:n]), nil
+
+	sam, err := common.NewSAM(samAddress)
+	if err != nil {
+		return nil, oops.Errorf("failed to create SAM connection for ACCEPT: %w", err)
+	}
+
+	return sam, nil
 }
 
-// parseConnectionResponse parses the STREAM STATUS response and extracts status and destination.
-func (l *StreamListener) parseConnectionResponse(response string) (status, dest string, err error) {
-	scanner := bufio.NewScanner(strings.NewReader(response))
+// sendStreamAcceptCommand sends the STREAM ACCEPT command to the SAM bridge.
+func (l *StreamListener) sendStreamAcceptCommand(sam *common.SAM, logger *logger.Entry) error {
+	acceptCmd := fmt.Sprintf("STREAM ACCEPT ID=%s SILENT=false\n", l.session.ID())
+	logger.WithField("command", strings.TrimSpace(acceptCmd)).Debug("Sending STREAM ACCEPT")
+
+	if _, err := sam.Write([]byte(acceptCmd)); err != nil {
+		return oops.Errorf("failed to send STREAM ACCEPT: %w", err)
+	}
+
+	return nil
+}
+
+// parseStreamStatusResponse reads and parses the STREAM STATUS RESULT=OK response.
+func (l *StreamListener) parseStreamStatusResponse(sam *common.SAM, logger *logger.Entry) error {
+	statusBuf := make([]byte, 4096)
+	n, err := sam.Read(statusBuf)
+	if err != nil {
+		return oops.Errorf("failed to read STREAM STATUS: %w", err)
+	}
+
+	statusResponse := string(statusBuf[:n])
+	logger.WithField("response", statusResponse).Debug("Received STREAM STATUS")
+
+	// Parse STREAM STATUS RESULT=...
+	scanner := bufio.NewScanner(strings.NewReader(statusResponse))
 	scanner.Split(bufio.ScanWords)
 
+	var result string
 	for scanner.Scan() {
 		word := scanner.Text()
-		switch {
-		case word == "STREAM":
-			continue
-		case word == "STATUS":
-			continue
-		case strings.HasPrefix(word, "RESULT="):
-			status = word[7:]
-		case strings.HasPrefix(word, "DESTINATION="):
-			dest = word[12:]
+		if strings.HasPrefix(word, "RESULT=") {
+			result = word[7:]
+			break
 		}
 	}
-	return status, dest, nil
-}
 
-// validateConnectionStatus checks if the connection status indicates success.
-func (l *StreamListener) validateConnectionStatus(status string) error {
-	if status != "OK" {
-		return oops.Errorf("connection failed with status: %s", status)
+	if result != "OK" {
+		// Extract error message if present
+		if strings.Contains(statusResponse, "RESULT=I2P_ERROR") {
+			return oops.Errorf("STREAM ACCEPT failed: %s", statusResponse)
+		}
+		return oops.Errorf("STREAM ACCEPT failed with status: %s", statusResponse)
 	}
+
 	return nil
 }
 
-// validateDestination ensures that a destination address was provided in the response.
-func (l *StreamListener) validateDestination(dest string) error {
-	if dest == "" {
-		return oops.Errorf("no destination in connection request")
+// readDestinationLine waits for and reads the destination line when a connection arrives.
+// Format: "$destination FROM_PORT=nnn TO_PORT=nnn\n" (SAM 3.2+) or "$destination\n" (SAM 3.0/3.1)
+func (l *StreamListener) readDestinationLine(sam *common.SAM, logger *logger.Entry) (string, error) {
+	destBuf := make([]byte, 4096)
+	n, err := sam.Read(destBuf)
+	if err != nil {
+		return "", oops.Errorf("failed to read destination: %w", err)
 	}
-	return nil
+
+	destLine := string(destBuf[:n])
+	logger.WithField("destLine", destLine).Debug("Received destination")
+
+	// Parse destination line
+	// Format: "$destination FROM_PORT=nnn TO_PORT=nnn\n" (SAM 3.2+)
+	// Or just: "$destination\n" (SAM 3.0/3.1)
+	parts := strings.Fields(destLine)
+	if len(parts) == 0 {
+		return "", oops.Errorf("empty destination line")
+	}
+
+	return parts[0], nil
 }
 
-// createStreamConnection creates a new StreamConn from the parsed destination.
-func (l *StreamListener) createStreamConnection(dest string) (*StreamConn, error) {
+// createStreamConnectionWithSocket creates a new StreamConn using the provided accept socket.
+func (l *StreamListener) createStreamConnectionWithSocket(dest string, sam *common.SAM) (*StreamConn, error) {
 	remoteAddr, err := i2pkeys.NewI2PAddrFromString(dest)
 	if err != nil {
 		return nil, oops.Errorf("failed to parse remote address: %w", err)
 	}
 
+	// Create StreamConn using the accept socket, not the session socket
 	streamConn := &StreamConn{
 		session: l.session,
-		conn:    l.session.BaseSession,
+		conn:    sam, // Use the accept socket as data socket
 		laddr:   l.session.Addr(),
 		raddr:   remoteAddr,
 	}
