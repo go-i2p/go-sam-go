@@ -13,13 +13,13 @@ const testSAMAddr = "127.0.0.1:7656"
 // createSessionWithTimeout creates a RawSession with timeout protection to prevent test hangs
 func createSessionWithTimeout(t *testing.T, sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) *RawSession {
 	t.Helper()
-	
+
 	// Add a small delay to reduce SAM bridge contention between tests
 	time.Sleep(200 * time.Millisecond)
-	
+
 	sessionChan := make(chan *RawSession, 1)
 	errorChan := make(chan error, 1)
-	
+
 	go func() {
 		session, err := NewRawSession(sam, id, keys, options)
 		if err != nil {
@@ -28,7 +28,7 @@ func createSessionWithTimeout(t *testing.T, sam *common.SAM, id string, keys i2p
 			sessionChan <- session
 		}
 	}()
-	
+
 	// Wait for session creation with timeout
 	select {
 	case session := <-sessionChan:
@@ -117,7 +117,7 @@ func TestNewRawSession(t *testing.T) {
 
 			var session *RawSession
 			var err error
-			
+
 			if tt.wantErr {
 				// For error cases, use direct call to avoid timeout protection interfering with error testing
 				session, err = NewRawSession(sam, tt.id, keys, tt.options)
@@ -125,7 +125,7 @@ func TestNewRawSession(t *testing.T) {
 				// For success cases, use timeout protection
 				session = createSessionWithTimeout(t, sam, tt.id, keys, tt.options)
 			}
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewRawSession() error = %v, wantErr %v", err, tt.wantErr)
 				return

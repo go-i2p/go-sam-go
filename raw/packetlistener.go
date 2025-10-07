@@ -165,7 +165,7 @@ func (l *RawListener) acceptRawConnection() (*RawConn, error) {
 		l.mu.Lock()
 		l.activeReaders = append(l.activeReaders, conn.reader)
 		l.mu.Unlock()
-		
+
 		// Start the reader loop once for this connection
 		go conn.reader.receiveLoop()
 	}
