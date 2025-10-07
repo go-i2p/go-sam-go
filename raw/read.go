@@ -1,13 +1,8 @@
 package raw
 
 import (
-	"bufio"
-	"strings"
 	"time"
 
-	"github.com/go-i2p/common/base64"
-
-	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 )
@@ -215,33 +210,24 @@ func (r *RawReader) forwardDatagram(datagram *RawDatagram, logger *logger.Entry)
 	return false
 }
 
-// receiveDatagram handles the low-level protocol parsing for incoming raw datagrams.
-// It reads from the SAM connection, parses the RAW RECEIVED response format,
-// and constructs RawDatagram objects with decoded data and address information.
+// receiveDatagram handles the low-level protocol for incoming raw datagrams using SAMv3 UDP forwarding.
+// V1/V2 TCP control socket reading is no longer supported.
 func (r *RawReader) receiveDatagram() (*RawDatagram, error) {
-	logger := log.WithField("session_id", r.session.ID())
-
 	// Validate session state before processing
 	if err := r.validateSessionState(); err != nil {
 		return nil, err
 	}
 
-	// Read raw response from SAM connection
-	response, err := r.readRawResponse()
-	if err != nil {
-		return nil, err
+	// V3-only: Read from UDP connection
+	r.session.mu.RLock()
+	udpConn := r.session.udpConn
+	r.session.mu.RUnlock()
+
+	if udpConn == nil {
+		return nil, oops.Errorf("UDP connection not available (v3 UDP forwarding required)")
 	}
 
-	logger.WithField("response", response).Debug("Received raw datagram data")
-
-	// Parse the RAW RECEIVED response to extract source and data
-	source, data, err := r.parseRawResponse(response)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create and return the raw datagram
-	return r.createRawDatagram(source, data)
+	return r.session.readRawFromUDP(udpConn)
 }
 
 // validateSessionState checks if the session is valid and ready for use.
@@ -257,109 +243,5 @@ func (r *RawReader) validateSessionState() error {
 		return oops.Errorf("session is not properly initialized")
 	}
 
-	if r.session.BaseSession.Conn() == nil {
-		return oops.Errorf("session connection is not available")
-	}
-
 	return nil
-}
-
-// readRawResponse reads the raw response from the SAM connection.
-func (r *RawReader) readRawResponse() (string, error) {
-	buf := make([]byte, 4096)
-	n, err := r.session.Read(buf)
-	if err != nil {
-		return "", oops.Errorf("failed to read from session: %w", err)
-	}
-
-	return string(buf[:n]), nil
-}
-
-// parseRawResponse parses the RAW RECEIVED response to extract source and data.
-func (r *RawReader) parseRawResponse(response string) (source, data string, err error) {
-	scanner := r.createRawResponseScanner(response)
-	source, data = r.extractRawSourceAndData(scanner)
-	return r.validateRawParsedData(source, data)
-}
-
-// createRawResponseScanner sets up a word-based scanner for the RAW response.
-func (r *RawReader) createRawResponseScanner(response string) *bufio.Scanner {
-	scanner := bufio.NewScanner(strings.NewReader(response))
-	scanner.Split(bufio.ScanWords)
-	return scanner
-}
-
-// extractRawSourceAndData parses tokens from the scanner to extract source and data.
-func (r *RawReader) extractRawSourceAndData(scanner *bufio.Scanner) (source, data string) {
-	for scanner.Scan() {
-		word := scanner.Text()
-		source, data = r.processRawToken(word, source, data)
-	}
-	return source, data
-}
-
-// processRawToken processes a single token and updates source/data accordingly.
-func (r *RawReader) processRawToken(word, source, data string) (string, string) {
-	switch {
-	case r.isRawProtocolToken(word):
-		return source, data
-	case strings.HasPrefix(word, "DESTINATION="):
-		// Extract source destination from the response
-		return word[12:], data
-	case strings.HasPrefix(word, "SIZE="):
-		return source, data // We'll get the actual data size from the payload
-	default:
-		// Remaining data is the base64-encoded payload
-		return source, r.accumulateRawData(data, word)
-	}
-}
-
-// isRawProtocolToken checks if the token is a RAW protocol keyword to ignore.
-func (r *RawReader) isRawProtocolToken(word string) bool {
-	return word == "RAW" || word == "RECEIVED"
-}
-
-// accumulateRawData appends token to data string with proper spacing.
-func (r *RawReader) accumulateRawData(data, word string) string {
-	if data == "" {
-		return word
-	}
-	return data + " " + word
-}
-
-// validateRawParsedData ensures both source and data were extracted successfully.
-func (r *RawReader) validateRawParsedData(source, data string) (string, string, error) {
-	if source == "" {
-		return "", "", oops.Errorf("no source in raw datagram")
-	}
-
-	if data == "" {
-		return "", "", oops.Errorf("no data in raw datagram")
-	}
-
-	return source, data, nil
-}
-
-// createRawDatagram creates a RawDatagram from source and data strings.
-func (r *RawReader) createRawDatagram(source, data string) (*RawDatagram, error) {
-	// Parse the source destination into an I2P address
-	sourceAddr, err := i2pkeys.NewI2PAddrFromString(source)
-	if err != nil {
-		return nil, oops.Errorf("failed to parse source address: %w", err)
-	}
-
-	// Decode the base64 data into bytes
-	decodedData, err := base64.I2PEncoding.DecodeString(data)
-	if err != nil {
-		return nil, oops.Errorf("failed to decode raw datagram data: %w", err)
-	}
-
-	// Create the raw datagram with decoded data and address information
-	datagram := &RawDatagram{
-		Data:   decodedData,
-		Source: sourceAddr,
-		Local:  r.session.Addr(),
-	}
-
-	return datagram, nil
 }

@@ -1,10 +1,8 @@
 package datagram
 
 import (
-	"strings"
 	"time"
 
-	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 )
@@ -254,27 +252,24 @@ func (r *DatagramReader) forwardDatagramToChannel(datagram *Datagram) bool {
 	}
 }
 
-// receiveDatagram performs the actual datagram reception from the SAM bridge.
-// receiveDatagram performs the actual datagram reception from the SAM bridge.
-// This method handles the low-level SAM protocol communication, parsing DATAGRAM RECEIVED
-// responses and extracting the datagram data and addressing information. It provides
-// the core functionality for the receive loop and handles protocol-specific details.
+// receiveDatagram performs the actual datagram reception from the UDP connection.
+// This method handles UDP datagram reception forwarded by the SAM bridge (SAMv3).
+// V1/V2 TCP control socket reading is no longer supported.
 func (r *DatagramReader) receiveDatagram() (*Datagram, error) {
 	if err := r.validateReaderState(); err != nil {
 		return nil, err
 	}
 
-	response, err := r.readFromConnection()
-	if err != nil {
-		return nil, err
+	// V3-only: Read from UDP connection
+	r.session.mu.RLock()
+	udpConn := r.session.udpConn
+	r.session.mu.RUnlock()
+
+	if udpConn == nil {
+		return nil, oops.Errorf("UDP connection not available (v3 UDP forwarding required)")
 	}
 
-	source, data, err := r.parseDatagramResponse(response)
-	if err != nil {
-		return nil, err
-	}
-
-	return r.createDatagram(source, data)
+	return r.session.readDatagramFromUDP(udpConn)
 }
 
 // validateReaderState checks if reader is closed before attempting expensive I/O operation.
@@ -287,100 +282,4 @@ func (r *DatagramReader) validateReaderState() error {
 		return oops.Errorf("reader is closing")
 	}
 	return nil
-}
-
-// readFromConnection reads data from the SAM connection and validates response format.
-// It handles SAM protocol PING messages by responding with PONG and continuing to read.
-func (r *DatagramReader) readFromConnection() (string, error) {
-	conn := r.session.Conn()
-
-	// Loop to handle PING messages and continue reading until we get a datagram
-	for {
-		buffer := make([]byte, 4096)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			return "", oops.Errorf("failed to read from SAM connection: %w", err)
-		}
-
-		response := string(buffer[:n])
-		log.WithField("response", response).Debug("Received SAM response")
-
-		// Handle SAM protocol PING messages
-		if strings.HasPrefix(strings.TrimSpace(response), "PING ") {
-			log.Debug("Received PING, responding with PONG")
-			// Respond to PING with PONG to keep connection alive
-			pong := "PONG " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(response), "PING")) + "\n"
-			_, err := conn.Write([]byte(pong))
-			if err != nil {
-				return "", oops.Errorf("failed to send PONG response: %w", err)
-			}
-			// Continue reading to get the actual datagram
-			continue
-		}
-
-		// Validate this is a datagram response
-		if !strings.Contains(response, "DATAGRAM RECEIVED") {
-			return "", oops.Errorf("unexpected response format: %s", response)
-		}
-
-		return response, nil
-	}
-}
-
-// parseDatagramResponse parses the DATAGRAM RECEIVED response to extract source and data.
-// Actual format is 2 lines:
-//
-//	Line 1: DATAGRAM RECEIVED DESTINATION=$destination SIZE=$numBytes [FROM_PORT=nnn] [TO_PORT=nnn]
-//	Line 2: [raw data - NOT base64 encoded]
-func (r *DatagramReader) parseDatagramResponse(response string) (string, string, error) {
-	lines := strings.Split(response, "\n")
-	if len(lines) < 2 {
-		return "", "", oops.Errorf("invalid datagram response format: expected 2 lines, got %d", len(lines))
-	}
-
-	// Parse first line for headers
-	headerLine := strings.TrimSpace(lines[0])
-	var source string
-
-	// Split header line by spaces and look for DESTINATION=
-	headerParts := strings.Fields(headerLine)
-	for _, part := range headerParts {
-		if strings.HasPrefix(part, "DESTINATION=") {
-			source = part[12:] // Remove "DESTINATION=" prefix
-			break
-		}
-	}
-
-	if source == "" {
-		return "", "", oops.Errorf("no source destination found in datagram response")
-	}
-
-	// Get data from second line (raw data, not base64)
-	data := ""
-	if len(lines) > 1 {
-		data = lines[1] // Raw data, not base64 encoded
-	}
-
-	if data == "" {
-		return "", "", oops.Errorf("empty data in datagram response")
-	}
-
-	return source, data, nil
-}
-
-// createDatagram constructs the final Datagram from parsed source and data.
-func (r *DatagramReader) createDatagram(source, data string) (*Datagram, error) {
-	sourceAddr, err := i2pkeys.NewI2PAddrFromString(source)
-	if err != nil {
-		return nil, oops.Errorf("failed to parse source address: %w", err)
-	}
-
-	// Data is already raw bytes, not base64 encoded
-	datagram := &Datagram{
-		Data:   []byte(data),
-		Source: sourceAddr,
-		Local:  r.session.Addr(),
-	}
-
-	return datagram, nil
 }

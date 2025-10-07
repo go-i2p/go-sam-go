@@ -2,6 +2,7 @@ package datagram
 
 import (
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -11,10 +12,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// NewDatagramSession creates a new datagram session for UDP-like I2P messaging.
+// NewDatagramSession creates a new datagram session for UDP-like I2P messaging using SAMv3 UDP forwarding.
 // This function establishes a new datagram session with the provided SAM connection,
-// session ID, cryptographic keys, and configuration options. It returns a DatagramSession
-// instance that can be used for sending and receiving datagrams over the I2P network.
+// session ID, cryptographic keys, and configuration options. It automatically creates a UDP listener
+// for receiving forwarded datagrams (SAMv3 requirement) and configures the session with PORT/HOST parameters.
+// V1/V2 compatibility (reading from TCP control socket) is no longer supported.
+// Returns a DatagramSession instance that uses UDP forwarding for all datagram reception.
 // Example usage: session, err := NewDatagramSession(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error) {
 	// Log session creation with detailed parameters for debugging
@@ -22,13 +25,34 @@ func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, option
 		"id":      id,
 		"options": options,
 	})
-	logger.Debug("Creating new DatagramSession")
+	logger.Debug("Creating new DatagramSession with SAMv3 UDP forwarding")
+
+	// Create UDP listener for receiving forwarded datagrams (SAMv3 requirement)
+	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		logger.WithError(err).Error("Failed to resolve UDP address")
+		return nil, oops.Errorf("failed to resolve UDP address: %w", err)
+	}
+
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create UDP listener")
+		return nil, oops.Errorf("failed to create UDP listener: %w", err)
+	}
+
+	// Get the actual port assigned by the OS
+	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
+	logger.WithField("udp_port", udpPort).Debug("Created UDP listener for datagram forwarding")
+
+	// Inject UDP forwarding parameters into session options (SAMv3 requirement)
+	options = ensureUDPForwardingParameters(options, udpPort)
 
 	// Create the base session using the common package for session management
 	// This handles the underlying SAM protocol communication and session establishment
 	session, err := sam.NewGenericSession("DATAGRAM", id, keys, options)
 	if err != nil {
 		logger.WithError(err).Error("Failed to create generic session")
+		udpConn.Close() // Clean up UDP listener on error
 		return nil, oops.Errorf("failed to create datagram session: %w", err)
 	}
 
@@ -37,18 +61,54 @@ func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, option
 	if !ok {
 		logger.Error("Session is not a BaseSession")
 		session.Close()
+		udpConn.Close() // Clean up UDP listener on error
 		return nil, oops.Errorf("invalid session type")
 	}
 
-	// Initialize the datagram session with the base session and configuration
+	// Initialize the datagram session with UDP forwarding enabled
 	ds := &DatagramSession{
 		BaseSession: baseSession,
 		sam:         sam,
 		options:     options,
+		udpConn:     udpConn,
+		udpEnabled:  true,
 	}
 
-	logger.Debug("Successfully created DatagramSession")
+	logger.Debug("Successfully created DatagramSession with UDP forwarding")
 	return ds, nil
+}
+
+// ensureUDPForwardingParameters injects UDP forwarding parameters into session options if not already present.
+// This ensures SAMv3 UDP forwarding is configured with PORT and HOST parameters.
+// PORT/HOST specify where the SAM bridge should forward datagrams TO (the client's UDP listener).
+// sam.udp.port/sam.udp.host are NOT set here - they configure the SAM bridge's own UDP port (default 7655).
+// This is required for all datagram sessions in v3-only mode.
+func ensureUDPForwardingParameters(options []string, udpPort int) []string {
+	updatedOptions := make([]string, 0, len(options)+2)
+	
+	hasPort := false
+	hasHost := false
+
+	// Check existing options
+	for _, opt := range options {
+		if strings.HasPrefix(opt, "PORT=") {
+			hasPort = true
+		} else if strings.HasPrefix(opt, "HOST=") {
+			hasHost = true
+		}
+		updatedOptions = append(updatedOptions, opt)
+	}
+
+	// Inject missing UDP forwarding parameters
+	// PORT/HOST tell SAM bridge where to forward datagrams TO (our UDP listener)
+	if !hasHost {
+		updatedOptions = append(updatedOptions, "HOST=127.0.0.1")
+	}
+	if !hasPort {
+		updatedOptions = append(updatedOptions, "PORT="+strconv.Itoa(udpPort))
+	}
+
+	return updatedOptions
 }
 
 // NewDatagramSessionFromSubsession creates a DatagramSession for a subsession that has already been
@@ -58,19 +118,29 @@ func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, option
 // This function is specifically designed for use with SAMv3.3 PRIMARY sessions where
 // subsessions are created using SESSION ADD rather than SESSION CREATE commands.
 //
+// For PRIMARY datagram subsessions, UDP forwarding is mandatory (SAMv3 requirement).
+// The UDP connection must be provided for proper datagram reception via UDP forwarding.
+//
 // Parameters:
 //   - sam: SAM connection for data operations (separate from the primary session's control connection)
 //   - id: The subsession ID that was already registered with SESSION ADD
 //   - keys: The I2P keys from the primary session (shared across all subsessions)
 //   - options: Configuration options for the subsession
+//   - udpConn: UDP connection for receiving forwarded datagrams (required, not nil)
 //
 // Returns a DatagramSession ready for use without attempting to create a new SAM session.
-func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error) {
+func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*DatagramSession, error) {
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
 		"options": options,
+		"udp_enabled": udpConn != nil,
 	})
-	logger.Debug("Creating DatagramSession from existing subsession")
+	logger.Debug("Creating DatagramSession from existing subsession with SAMv3 UDP forwarding")
+
+	if udpConn == nil {
+		logger.Error("UDP connection is required for SAMv3 datagram subsessions")
+		return nil, oops.Errorf("udp connection is required for datagram subsessions (v3 only)")
+	}
 
 	// Create a BaseSession manually since the session is already registered
 	baseSession, err := common.NewBaseSessionFromSubsession(sam, id, keys)
@@ -83,9 +153,11 @@ func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I
 		BaseSession: baseSession,
 		sam:         sam,
 		options:     options,
+		udpConn:     udpConn,
+		udpEnabled:  true,
 	}
 
-	logger.Debug("Successfully created DatagramSession from subsession")
+	logger.Debug("Successfully created DatagramSession from subsession with UDP forwarding")
 	return ds, nil
 }
 
@@ -157,95 +229,74 @@ func (s *DatagramSession) ReceiveDatagram() (*Datagram, error) {
 	return s.readSingleDatagram()
 }
 
-// readSingleDatagram performs a direct read from the SAM connection for one-shot datagram operations.
+// readSingleDatagram performs a direct read from the UDP connection for one-shot datagram operations.
 // This method bypasses the reader infrastructure to avoid deadlocks when only one datagram is needed.
-// It handles SAM protocol PING messages by responding with PONG and continuing to read.
+// SAMv3 UDP forwarding mode only - reads from UDP connection where SAM bridge forwards datagrams.
+// V1/V2 TCP control socket reading is no longer supported.
 func (s *DatagramSession) readSingleDatagram() (*Datagram, error) {
-	// Use the session's direct connection for immediate read
-	conn := s.Conn()
-	if conn == nil {
-		return nil, oops.Errorf("session connection is not available")
+	s.mu.RLock()
+	udpConn := s.udpConn
+	s.mu.RUnlock()
+
+	// V3-only: Always read from UDP connection
+	if udpConn == nil {
+		return nil, oops.Errorf("UDP connection not available (v3 UDP forwarding required)")
 	}
 
-	// Loop to handle PING messages and continue reading until we get a datagram
-	for {
-		// Read directly from SAM connection
-		buffer := make([]byte, 4096)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			return nil, oops.Errorf("failed to read from SAM connection: %w", err)
-		}
-
-		response := string(buffer[:n])
-		log.WithField("response", response).Debug("Received SAM response")
-
-		// Handle SAM protocol PING messages
-		if strings.HasPrefix(strings.TrimSpace(response), "PING ") {
-			log.Debug("Received PING in readSingleDatagram, responding with PONG")
-			// Respond to PING with PONG to keep connection alive
-			pong := "PONG " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(response), "PING")) + "\n"
-			_, err := conn.Write([]byte(pong))
-			if err != nil {
-				return nil, oops.Errorf("failed to send PONG response: %w", err)
-			}
-			// Continue reading to get the actual datagram
-			continue
-		}
-
-		// Validate response format
-		if !strings.Contains(response, "DATAGRAM RECEIVED") {
-			return nil, oops.Errorf("unexpected response format: %s", response)
-		}
-
-		// Parse the response using the same logic as DatagramReader
-		source, data, err := s.parseDatagramResponse(response)
-		if err != nil {
-			return nil, err
-		}
-
-		return s.createDatagram(source, data)
-	}
+	return s.readDatagramFromUDP(udpConn)
 }
 
-// parseDatagramResponse parses the DATAGRAM RECEIVED response to extract source and data.
-// Actual format is 2 lines:
-//
-//	Line 1: DATAGRAM RECEIVED DESTINATION=$destination SIZE=$numBytes [FROM_PORT=nnn] [TO_PORT=nnn]
-//	Line 2: [raw data - NOT base64 encoded]
-func (s *DatagramSession) parseDatagramResponse(response string) (string, string, error) {
-	lines := strings.Split(response, "\n")
-	if len(lines) < 2 {
-		return "", "", oops.Errorf("invalid datagram response format: expected 2 lines, got %d", len(lines))
+// readDatagramFromUDP reads a forwarded datagram from the UDP connection.
+// This is used for PRIMARY subsessions where datagrams are forwarded via UDP by the SAM bridge.
+// Format per SAMv3.md:
+//   Line 1: $destination (base64 I2P destination)
+//   Line 2+: FROM_PORT=nnn TO_PORT=nnn (SAMv3.2+, may be on one or two lines)
+//   Then: \n (empty line separator)
+//   Remaining: $datagram_payload (raw data)
+func (s *DatagramSession) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram, error) {
+	buffer := make([]byte, 65536) // Large buffer for UDP datagrams
+	n, _, err := udpConn.ReadFromUDP(buffer)
+	if err != nil {
+		return nil, oops.Errorf("failed to read from UDP connection: %w", err)
 	}
 
-	// Parse first line for headers
-	headerLine := strings.TrimSpace(lines[0])
-	var source string
+	log.WithField("bytes_read", n).Debug("Received UDP datagram")
 
-	// Split header line by spaces and look for DESTINATION=
-	headerParts := strings.Fields(headerLine)
-	for _, part := range headerParts {
-		if strings.HasPrefix(part, "DESTINATION=") {
-			source = part[12:] // Remove "DESTINATION=" prefix
-			break
-		}
+	// Parse the UDP datagram format per SAMv3.md
+	response := string(buffer[:n])
+	
+	// Find the first newline - that's the end of the header line
+	firstNewline := strings.Index(response, "\n")
+	if firstNewline == -1 {
+		return nil, oops.Errorf("invalid UDP datagram format: no newline found")
 	}
 
-	if source == "" {
-		return "", "", oops.Errorf("no source destination found in datagram response")
+	// Line 1: Source destination (base64) followed by optional FROM_PORT=nnn TO_PORT=nnn
+	headerLine := strings.TrimSpace(response[:firstNewline])
+	
+	if headerLine == "" {
+		return nil, oops.Errorf("empty header line in UDP datagram")
 	}
 
-	// Get data from second line (raw data, not base64)
-	data := ""
-	if len(lines) > 1 {
-		data = lines[1] // Raw data, not base64 encoded
+	// Parse the header line to extract the destination
+	// Format: "$destination FROM_PORT=nnn TO_PORT=nnn"
+	// We need to split on space and take the first part as the destination
+	parts := strings.Fields(headerLine)
+	if len(parts) == 0 {
+		return nil, oops.Errorf("empty header line in UDP datagram")
 	}
+	
+	source := parts[0] // First field is the destination
+	// Remaining parts are FROM_PORT and TO_PORT which we ignore for now
+
+	// Everything after the first newline is the payload
+	data := response[firstNewline+1:]
 
 	if data == "" {
-		return "", "", oops.Errorf("empty data in datagram response")
+		return nil, oops.Errorf("no data in UDP datagram")
 	}
 
-	return source, data, nil
+	return s.createDatagram(source, data)
 }
 
 // createDatagram constructs the final Datagram from parsed source and data.
@@ -266,7 +317,7 @@ func (s *DatagramSession) createDatagram(source, data string) (*Datagram, error)
 }
 
 // Close closes the datagram session and all associated resources.
-// This method safely terminates the session, closes the underlying connection,
+// This method safely terminates the session, closes the UDP listener and underlying connection,
 // and cleans up any background goroutines. It's safe to call multiple times.
 // Example usage: defer session.Close()
 func (s *DatagramSession) Close() error {
@@ -282,6 +333,14 @@ func (s *DatagramSession) Close() error {
 	logger.Debug("Closing DatagramSession")
 
 	s.closed = true
+
+	// Close the UDP listener for v3 forwarding
+	if s.udpConn != nil {
+		if err := s.udpConn.Close(); err != nil {
+			logger.WithError(err).Warn("Failed to close UDP listener")
+			// Continue with base session closure even if UDP close fails
+		}
+	}
 
 	// Close the underlying base session to terminate SAM communication
 	// This ensures proper cleanup of the I2P connection

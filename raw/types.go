@@ -1,6 +1,7 @@
 package raw
 
 import (
+	"net"
 	"runtime"
 	"sync"
 	"time"
@@ -9,13 +10,16 @@ import (
 	"github.com/go-i2p/i2pkeys"
 )
 
-// RawSession represents a raw session that can send and receive raw datagrams
+// RawSession represents a raw session that can send and receive raw datagrams using SAMv3 UDP forwarding.
+// V1/V2 TCP control socket reading is no longer supported.
 type RawSession struct {
 	*common.BaseSession
-	sam     *common.SAM
-	options []string
-	mu      sync.RWMutex
-	closed  bool
+	sam        *common.SAM
+	options    []string
+	mu         sync.RWMutex
+	closed     bool
+	udpConn    *net.UDPConn     // UDP connection for receiving forwarded raw datagrams (SAMv3)
+	udpEnabled bool              // Whether UDP forwarding is enabled (always true in v3-only mode)
 }
 
 // RawReader handles incoming raw datagram reception

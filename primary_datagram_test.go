@@ -61,13 +61,13 @@ func Test_PrimaryDatagramServerClient(t *testing.T) {
 			return
 		}
 		defer ds2.Close()
-		//		fmt.Println("\tClient: Servers address: " + ds.LocalAddr().Base32())
-		//		fmt.Println("\tClient: Clients address: " + ds2.LocalAddr().Base32())
+		//		fmt.Println("\tClient: Servers address: " + ds.Addr().Base32())
+		//		fmt.Println("\tClient: Clients address: " + ds2.Addr().Base32())
 		fmt.Println("\tClient: Tries to send primary to server")
 		for {
 			select {
 			default:
-				_, err = ds2.WriteTo([]byte("Hello primary-world! <3 <3 <3 <3 <3 <3"), ds.LocalAddr())
+				_, err = ds2.WriteTo([]byte("Hello primary-world! <3 <3 <3 <3 <3 <3"), ds.Addr())
 				if err != nil {
 					fmt.Println("\tClient: Failed to send primary: " + err.Error())
 					c <- false

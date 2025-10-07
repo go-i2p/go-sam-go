@@ -8,6 +8,10 @@ import (
 )
 
 func TestDatagramSession_Dial(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
 	// Create two sessions - one for listener, one for dialer
 	sam1, keys1 := setupTestSAM(t)
 	defer sam1.Close()
@@ -15,8 +19,8 @@ func TestDatagramSession_Dial(t *testing.T) {
 	sam2, keys2 := setupTestSAM(t)
 	defer sam2.Close()
 
-	// Create listener session
-	listenerSession, err := NewDatagramSession(sam1, "test_dial_listener", keys1, []string{
+	// Create listener session with unique ID to prevent SAM bridge conflicts
+	listenerSession, err := NewDatagramSession(sam1, generateUniqueSessionID("test_dial_listener"), keys1, []string{
 		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
@@ -30,8 +34,8 @@ func TestDatagramSession_Dial(t *testing.T) {
 	}
 	defer listener.Close()
 
-	// Create dialer session
-	dialerSession, err := NewDatagramSession(sam2, "test_dial_dialer", keys2, []string{
+	// Create dialer session with unique ID to prevent SAM bridge conflicts
+	dialerSession, err := NewDatagramSession(sam2, generateUniqueSessionID("test_dial_dialer"), keys2, []string{
 		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
@@ -62,6 +66,10 @@ func TestDatagramSession_Dial(t *testing.T) {
 }
 
 func TestDatagramSession_DialContext(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
 	// Create two sessions
 	sam1, keys1 := setupTestSAM(t)
 	defer sam1.Close()
@@ -69,8 +77,8 @@ func TestDatagramSession_DialContext(t *testing.T) {
 	sam2, keys2 := setupTestSAM(t)
 	defer sam2.Close()
 
-	// Create listener session
-	listenerSession, err := NewDatagramSession(sam1, "test_dialctx_listener", keys1, nil)
+	// Create listener session with unique ID to prevent SAM bridge conflicts
+	listenerSession, err := NewDatagramSession(sam1, generateUniqueSessionID("test_dialctx_listener"), keys1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create listener session: %v", err)
 	}
@@ -82,8 +90,8 @@ func TestDatagramSession_DialContext(t *testing.T) {
 	}
 	defer listener.Close()
 
-	// Create dialer session
-	dialerSession, err := NewDatagramSession(sam2, "test_dialctx_dialer", keys2, nil)
+	// Create dialer session with unique ID to prevent SAM bridge conflicts
+	dialerSession, err := NewDatagramSession(sam2, generateUniqueSessionID("test_dialctx_dialer"), keys2, nil)
 	if err != nil {
 		t.Fatalf("Failed to create dialer session: %v", err)
 	}
@@ -109,10 +117,15 @@ func TestDatagramSession_DialContext(t *testing.T) {
 }
 
 func TestDatagramSession_DialContext_Timeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_dialctx_timeout", keys, nil)
+	// Create session with unique ID to prevent SAM bridge conflicts
+	session, err := NewDatagramSession(sam, generateUniqueSessionID("test_dialctx_timeout"), keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -149,10 +162,15 @@ func TestDatagramSession_DialContext_Timeout(t *testing.T) {
 }
 
 func TestDatagramSession_Dial_ClosedSession(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_dial_closed", keys, nil)
+	// Create session with unique ID to prevent SAM bridge conflicts
+	session, err := NewDatagramSession(sam, generateUniqueSessionID("test_dial_closed"), keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -175,10 +193,15 @@ func TestDatagramSession_Dial_ClosedSession(t *testing.T) {
 }
 
 func TestDatagramSession_NewDialer(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewDatagramSession(sam, "test_newdialer", keys, nil)
+	// Create session with unique ID to prevent SAM bridge conflicts
+	session, err := NewDatagramSession(sam, generateUniqueSessionID("test_newdialer"), keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}

@@ -1,6 +1,7 @@
 package datagram
 
 import (
+	"net"
 	"runtime"
 	"sync"
 	"time"
@@ -13,13 +14,16 @@ import (
 // This session type provides UDP-like messaging capabilities through the I2P network, allowing
 // applications to send and receive datagrams with message reliability and ordering guarantees.
 // The session manages the underlying I2P connection and provides methods for creating readers and writers.
+// For PRIMARY subsessions, it can use UDP forwarding mode where datagrams are received via UDP socket.
 // Example usage: session, err := NewDatagramSession(sam, "my-session", keys, options)
 type DatagramSession struct {
 	*common.BaseSession
-	sam     *common.SAM
-	options []string
-	mu      sync.RWMutex
-	closed  bool
+	sam        *common.SAM
+	options    []string
+	mu         sync.RWMutex
+	closed     bool
+	udpConn    *net.UDPConn     // UDP connection for receiving forwarded datagrams (PRIMARY subsessions)
+	udpEnabled bool              // Whether UDP forwarding is enabled
 }
 
 // DatagramReader handles incoming datagram reception from the I2P network.

@@ -2,6 +2,8 @@ package raw
 
 import (
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-i2p/go-sam-go/common"
@@ -10,21 +12,76 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// NewRawSession creates a new raw session for sending and receiving raw datagrams.
+// ensureRawUDPForwardingParameters injects UDP forwarding parameters into session options if not already present.
+// This ensures SAMv3 UDP forwarding is configured with PORT, HOST, sam.udp.port, and sam.udp.host parameters.
+// This is required for all raw sessions in v3-only mode.
+func ensureRawUDPForwardingParameters(options []string, udpPort int) []string {
+	updatedOptions := make([]string, 0, len(options)+2)
+	
+	hasPort := false
+	hasHost := false
+
+	// Check existing options
+	for _, opt := range options {
+		if strings.HasPrefix(opt, "PORT=") {
+			hasPort = true
+		} else if strings.HasPrefix(opt, "HOST=") {
+			hasHost = true
+		}
+		updatedOptions = append(updatedOptions, opt)
+	}
+
+	// Add PORT/HOST to tell SAM bridge where to forward datagrams TO (our UDP listener)
+	// Do NOT set sam.udp.port/sam.udp.host - those configure SAM bridge's own UDP port (default 7655)
+	if !hasHost {
+		updatedOptions = append(updatedOptions, "HOST=127.0.0.1")
+	}
+	if !hasPort {
+		updatedOptions = append(updatedOptions, "PORT="+strconv.Itoa(udpPort))
+	}
+
+	return updatedOptions
+}
+
+// NewRawSession creates a new raw session for sending and receiving raw datagrams using SAMv3 UDP forwarding.
 // It initializes the session with the provided SAM connection, session ID, cryptographic keys,
-// and configuration options, returning a RawSession instance or an error if creation fails.
+// and configuration options. It automatically creates a UDP listener for receiving forwarded datagrams
+// (SAMv3 requirement) and configures the session with PORT/HOST parameters.
+// V1/V2 compatibility (reading from TCP control socket) is no longer supported.
+// Returns a RawSession instance that uses UDP forwarding for all raw datagram reception.
 // Example usage: session, err := NewRawSession(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error) {
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
 		"options": options,
 	})
-	logger.Debug("Creating new RawSession")
+	logger.Debug("Creating new RawSession with SAMv3 UDP forwarding")
+
+	// Create UDP listener for receiving forwarded raw datagrams (SAMv3 requirement)
+	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		logger.WithError(err).Error("Failed to resolve UDP address")
+		return nil, oops.Errorf("failed to resolve UDP address: %w", err)
+	}
+
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create UDP listener")
+		return nil, oops.Errorf("failed to create UDP listener: %w", err)
+	}
+
+	// Get the actual port assigned by the OS
+	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
+	logger.WithField("udp_port", udpPort).Debug("Created UDP listener for raw datagram forwarding")
+
+	// Inject UDP forwarding parameters into session options (SAMv3 requirement)
+	options = ensureRawUDPForwardingParameters(options, udpPort)
 
 	// Create the base session using the common package
 	session, err := sam.NewGenericSession("RAW", id, keys, options)
 	if err != nil {
 		logger.WithError(err).Error("Failed to create generic session")
+		udpConn.Close() // Clean up UDP listener on error
 		return nil, oops.Errorf("failed to create raw session: %w", err)
 	}
 
@@ -32,6 +89,7 @@ func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []s
 	if !ok {
 		logger.Error("Session is not a BaseSession")
 		session.Close()
+		udpConn.Close() // Clean up UDP listener on error
 		return nil, oops.Errorf("invalid session type")
 	}
 
@@ -39,9 +97,11 @@ func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []s
 		BaseSession: baseSession,
 		sam:         sam,
 		options:     options,
+		udpConn:     udpConn,
+		udpEnabled:  true,
 	}
 
-	logger.Debug("Successfully created RawSession")
+	logger.Debug("Successfully created RawSession with UDP forwarding")
 	return rs, nil
 }
 
@@ -52,19 +112,29 @@ func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []s
 // This function is specifically designed for use with SAMv3.3 PRIMARY sessions where
 // subsessions are created using SESSION ADD rather than SESSION CREATE commands.
 //
+// For PRIMARY raw subsessions, UDP forwarding is mandatory (SAMv3 requirement).
+// The UDP connection must be provided for proper raw datagram reception via UDP forwarding.
+//
 // Parameters:
 //   - sam: SAM connection for data operations (separate from the primary session's control connection)
 //   - id: The subsession ID that was already registered with SESSION ADD
 //   - keys: The I2P keys from the primary session (shared across all subsessions)
 //   - options: Configuration options for the subsession
+//   - udpConn: UDP connection for receiving forwarded raw datagrams (required, not nil)
 //
 // Returns a RawSession ready for use without attempting to create a new SAM session.
-func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error) {
+func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*RawSession, error) {
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
 		"options": options,
+		"udp_enabled": udpConn != nil,
 	})
-	logger.Debug("Creating RawSession from existing subsession")
+	logger.Debug("Creating RawSession from existing subsession with SAMv3 UDP forwarding")
+
+	if udpConn == nil {
+		logger.Error("UDP connection is required for SAMv3 raw subsessions")
+		return nil, oops.Errorf("udp connection is required for raw subsessions (v3 only)")
+	}
 
 	// Create a BaseSession manually since the session is already registered
 	baseSession, err := common.NewBaseSessionFromSubsession(sam, id, keys)
@@ -77,9 +147,11 @@ func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKey
 		BaseSession: baseSession,
 		sam:         sam,
 		options:     options,
+		udpConn:     udpConn,
+		udpEnabled:  true,
 	}
 
-	logger.Debug("Successfully created RawSession from subsession")
+	logger.Debug("Successfully created RawSession from subsession with UDP forwarding")
 	return rs, nil
 }
 
@@ -144,28 +216,60 @@ func (s *RawSession) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 	return s.NewWriter().SendDatagram(data, dest)
 }
 
-// ReceiveDatagram receives a single raw datagram from any source.
-// This is a convenience method that creates a temporary reader, starts the receive loop,
-// gets one datagram, and cleans up the resources automatically.
+// ReceiveDatagram receives a single raw datagram from any source using SAMv3 UDP forwarding.
+// This method performs a direct UDP read without creating a reader or receive loop.
+// V1/V2 TCP control socket reading is no longer supported.
 // Example usage: datagram, err := session.ReceiveDatagram()
 func (s *RawSession) ReceiveDatagram() (*RawDatagram, error) {
-	reader := s.NewReader()
-	if reader == nil {
-		return nil, oops.Errorf("session is closed")
+	s.mu.RLock()
+	udpConn := s.udpConn
+	s.mu.RUnlock()
+
+	// V3-only: Always read from UDP connection
+	if udpConn == nil {
+		return nil, oops.Errorf("UDP connection not available (v3 UDP forwarding required)")
 	}
 
-	// Start the receive loop for this reader
-	go reader.receiveLoop()
+	return s.readRawFromUDP(udpConn)
+}
 
-	// Get one datagram and then close the reader to clean up the goroutine
-	datagram, err := reader.ReceiveDatagram()
-	reader.Close()
+// readRawFromUDP reads a forwarded raw datagram from the UDP connection.
+// This is used for SAMv3 UDP forwarding where raw datagrams are forwarded as-is.
+// Format per SAMv3.md: Raw datagrams are forwarded as-is to the specified host:port without a prefix.
+// For RAW sessions with HEADER=true option, datagrams are prepended with a line containing
+// PROTOCOL=nnn FROM_PORT=nnnn TO_PORT=nnnn.
+func (s *RawSession) readRawFromUDP(udpConn *net.UDPConn) (*RawDatagram, error) {
+	buffer := make([]byte, 65536) // Large buffer for UDP datagrams
+	n, remoteAddr, err := udpConn.ReadFromUDP(buffer)
+	if err != nil {
+		return nil, oops.Errorf("failed to read from UDP connection: %w", err)
+	}
 
-	return datagram, err
+	log.WithFields(logrus.Fields{
+		"bytes_read": n,
+		"remote_addr": remoteAddr,
+	}).Debug("Received UDP raw datagram")
+
+	// Raw datagrams are forwarded as-is (no prefix in standard mode)
+	// TODO: Handle HEADER=true mode if needed in the future
+	data := buffer[:n]
+
+	// For raw datagrams without header, we don't have source destination information
+	// This is by design for RAW datagrams - they are anonymous
+	// Create empty I2P address for anonymous source
+	emptyKeys := i2pkeys.I2PKeys{}
+	datagram := &RawDatagram{
+		Data:   data,
+		Source: emptyKeys.Addr(), // Empty source for anonymous raw datagrams
+		Local:  s.Addr(),
+	}
+
+	return datagram, nil
 }
 
 // Close closes the raw session and all associated resources.
-// This method is safe to call multiple times and will only perform cleanup once.
+// This method safely terminates the session, closes the UDP listener and underlying connection,
+// and cleans up any background goroutines. It's safe to call multiple times.
 // All readers and writers created from this session will become invalid after closing.
 // Example usage: defer session.Close()
 func (s *RawSession) Close() error {
@@ -180,6 +284,14 @@ func (s *RawSession) Close() error {
 	logger.Debug("Closing RawSession")
 
 	s.closed = true
+
+	// Close the UDP listener for v3 forwarding
+	if s.udpConn != nil {
+		if err := s.udpConn.Close(); err != nil {
+			logger.WithError(err).Warn("Failed to close UDP listener")
+			// Continue with base session closure even if UDP close fails
+		}
+	}
 
 	// Close the base session
 	if err := s.BaseSession.Close(); err != nil {
