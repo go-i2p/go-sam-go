@@ -368,7 +368,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Primary session creation pattern works")
-					
+
 					// Explicitly close session to avoid conflicts with subsequent tests
 					session.Close()
 				},
@@ -382,7 +382,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 						t.Fatalf("Failed to create SAM connection for stream session: %v", err)
 					}
 					defer streamSam.Close()
-					
+
 					// Generate unique keys for each session to avoid conflicts
 					keys, err := streamSam.NewKeys()
 					if err != nil {
@@ -408,7 +408,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Stream session creation and listener pattern works")
-					
+
 					// Explicitly close session to avoid conflicts with subsequent tests
 					listener.Close()
 					session.Close()
@@ -423,7 +423,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 						t.Fatalf("Failed to create SAM connection for datagram session: %v", err)
 					}
 					defer datagramSam.Close()
-					
+
 					// Generate unique keys for each session to avoid conflicts
 					keys, err := datagramSam.NewKeys()
 					if err != nil {
@@ -442,7 +442,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Datagram session creation pattern works")
-					
+
 					// Explicitly close session to avoid conflicts with subsequent tests
 					session.Close()
 				},
@@ -456,7 +456,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 						t.Fatalf("Failed to create SAM connection for raw session: %v", err)
 					}
 					defer rawSam.Close()
-					
+
 					// Generate unique keys for each session to avoid conflicts
 					keys, err := rawSam.NewKeys()
 					if err != nil {
@@ -475,7 +475,7 @@ func TestSAM3CompatibilityIntegration(t *testing.T) {
 					}
 
 					t.Log("✓ Raw session creation pattern works")
-					
+
 					// Explicitly close session to avoid conflicts with subsequent tests
 					session.Close()
 				},
