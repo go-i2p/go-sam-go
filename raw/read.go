@@ -82,8 +82,8 @@ func (r *RawReader) waitForRawReceiveLoopTermination(logger *logger.Entry) {
 	select {
 	case <-r.doneChan:
 		// receiveLoop has confirmed it stopped
-	case <-time.After(5 * time.Second):
-		// Timeout protection - log warning but continue cleanup
+	case <-time.After(1 * time.Second):
+		// Shorter timeout for tests - log warning but continue cleanup
 		logger.Warn("Timeout waiting for receive loop to stop")
 	}
 }

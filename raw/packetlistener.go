@@ -49,10 +49,20 @@ func (l *RawListener) Close() error {
 	// Signal the accept loop to terminate
 	close(l.closeChan)
 
-	// Close the reader to stop receiving datagrams
+	// Close the main reader to stop receiving datagrams
 	if l.reader != nil {
 		l.reader.Close()
 	}
+
+	// Close all active readers created by acceptRawConnection
+	logger.WithField("active_readers", len(l.activeReaders)).Debug("Cleaning up active readers")
+	for _, reader := range l.activeReaders {
+		if reader != nil {
+			reader.Close()
+		}
+	}
+	// Clear the slice after cleanup
+	l.activeReaders = nil
 
 	logger.Debug("Successfully closed RawListener")
 	return nil
@@ -150,8 +160,13 @@ func (l *RawListener) acceptRawConnection() (*RawConn, error) {
 		writer:  l.session.NewWriter(),
 	}
 
-	// Start the reader loop once for this connection
+	// Track the reader for proper cleanup
 	if conn.reader != nil {
+		l.mu.Lock()
+		l.activeReaders = append(l.activeReaders, conn.reader)
+		l.mu.Unlock()
+		
+		// Start the reader loop once for this connection
 		go conn.reader.receiveLoop()
 	}
 

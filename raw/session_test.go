@@ -10,6 +10,38 @@ import (
 
 const testSAMAddr = "127.0.0.1:7656"
 
+// createSessionWithTimeout creates a RawSession with timeout protection to prevent test hangs
+func createSessionWithTimeout(t *testing.T, sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) *RawSession {
+	t.Helper()
+	
+	// Add a small delay to reduce SAM bridge contention between tests
+	time.Sleep(200 * time.Millisecond)
+	
+	sessionChan := make(chan *RawSession, 1)
+	errorChan := make(chan error, 1)
+	
+	go func() {
+		session, err := NewRawSession(sam, id, keys, options)
+		if err != nil {
+			errorChan <- err
+		} else {
+			sessionChan <- session
+		}
+	}()
+	
+	// Wait for session creation with timeout
+	select {
+	case session := <-sessionChan:
+		return session
+	case err := <-errorChan:
+		t.Fatalf("Failed to create session: %v", err)
+		return nil
+	case <-time.After(15 * time.Second): // Shorter timeout for faster test feedback
+		t.Fatalf("Session creation timed out - SAM bridge may be overloaded")
+		return nil
+	}
+}
+
 func setupTestSAM(t *testing.T) (*common.SAM, i2pkeys.I2PKeys) {
 	t.Helper()
 
@@ -83,7 +115,17 @@ func TestNewRawSession(t *testing.T) {
 			sam, keys := setupTestSAM(t)
 			defer sam.Close()
 
-			session, err := NewRawSession(sam, tt.id, keys, tt.options)
+			var session *RawSession
+			var err error
+			
+			if tt.wantErr {
+				// For error cases, use direct call to avoid timeout protection interfering with error testing
+				session, err = NewRawSession(sam, tt.id, keys, tt.options)
+			} else {
+				// For success cases, use timeout protection
+				session = createSessionWithTimeout(t, sam, tt.id, keys, tt.options)
+			}
+			
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewRawSession() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -117,13 +159,11 @@ func TestRawSession_Close(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewRawSession(sam, "test_close", keys, nil)
-	if err != nil {
-		t.Fatalf("Failed to create session: %v", err)
-	}
+	session := createSessionWithTimeout(t, sam, "test_close", keys, nil)
+	defer session.Close()
 
 	// Close the session
-	err = session.Close()
+	err := session.Close()
 	if err != nil {
 		t.Errorf("Close() error = %v", err)
 	}
@@ -139,10 +179,7 @@ func TestRawSession_Addr(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewRawSession(sam, "test_addr", keys, nil)
-	if err != nil {
-		t.Fatalf("Failed to create session: %v", err)
-	}
+	session := createSessionWithTimeout(t, sam, "test_addr", keys, nil)
 	defer session.Close()
 
 	addr := session.Addr()
@@ -157,15 +194,13 @@ func TestRawSession_NewReader(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewRawSession(sam, "test_reader", keys, nil)
-	if err != nil {
-		t.Fatalf("Failed to create session: %v", err)
-	}
+	session := createSessionWithTimeout(t, sam, "test_reader", keys, nil)
 	defer session.Close()
 
 	reader := session.NewReader()
 	if reader == nil {
 		t.Error("NewReader() returned nil")
+		return // Early return to avoid nil pointer dereferences
 	}
 	// Critical fix: Ensure reader is properly closed to prevent goroutine leaks
 	defer reader.Close()
@@ -193,15 +228,13 @@ func TestRawSession_NewWriter(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewRawSession(sam, "test_writer", keys, nil)
-	if err != nil {
-		t.Fatalf("Failed to create session: %v", err)
-	}
+	session := createSessionWithTimeout(t, sam, "test_writer", keys, nil)
 	defer session.Close()
 
 	writer := session.NewWriter()
 	if writer == nil {
 		t.Error("NewWriter() returned nil")
+		return // Early return to avoid nil pointer dereferences
 	}
 
 	if writer.session != session {
@@ -217,10 +250,7 @@ func TestRawSession_PacketConn(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewRawSession(sam, "test_packetconn", keys, nil)
-	if err != nil {
-		t.Fatalf("Failed to create session: %v", err)
-	}
+	session := createSessionWithTimeout(t, sam, "test_packetconn", keys, nil)
 	defer session.Close()
 
 	conn := session.PacketConn()

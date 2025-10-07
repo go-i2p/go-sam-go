@@ -60,11 +60,12 @@ type RawConn struct {
 
 // RawListener implements net.Listener for I2P raw connections
 type RawListener struct {
-	session    *RawSession
-	reader     *RawReader
-	acceptChan chan *RawConn
-	errorChan  chan error
-	closeChan  chan struct{}
-	closed     bool
-	mu         sync.RWMutex
+	session       *RawSession
+	reader        *RawReader
+	acceptChan    chan *RawConn
+	errorChan     chan error
+	closeChan     chan struct{}
+	closed        bool
+	mu            sync.RWMutex
+	activeReaders []*RawReader // Track all readers created by acceptRawConnection
 }
