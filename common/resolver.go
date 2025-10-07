@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/sirupsen/logrus"
 )
 
 // NewSAMResolver creates a new SAMResolver using an existing SAM instance.
@@ -43,7 +44,7 @@ func NewFullSAMResolver(address string) (*SAMResolver, error) {
 func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error) {
 	log.WithField("name", name).Debug("Resolving name")
 
-	if err := sam.sendLookupRequest(name); err != nil {
+	if err := sam.sendLookupRequest(name, false); err != nil {
 		return i2pkeys.I2PAddr(""), err
 	}
 
@@ -57,13 +58,53 @@ func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error) {
 		return i2pkeys.I2PAddr(""), err
 	}
 
+	addr, _, err := sam.processLookupResponse(scanner, name)
+	return addr, err
+}
+
+// ResolveWithOptions performs a name lookup with SAMv3.2+ service options support.
+// When options is true, the SAM bridge may return additional service metadata.
+// Returns the resolved address, service options map, and any error.
+// The options map contains key-value pairs of service information (ports, protocols, etc.).
+func (sam *SAMResolver) ResolveWithOptions(name string, options bool) (i2pkeys.I2PAddr, map[string]string, error) {
+	log.WithFields(logrus.Fields{
+		"name":    name,
+		"options": options,
+	}).Debug("Resolving name with options")
+
+	if err := sam.sendLookupRequest(name, options); err != nil {
+		return i2pkeys.I2PAddr(""), nil, err
+	}
+
+	response, err := sam.readLookupResponse()
+	if err != nil {
+		return i2pkeys.I2PAddr(""), nil, err
+	}
+
+	scanner, err := sam.prepareLookupScanner(response)
+	if err != nil {
+		return i2pkeys.I2PAddr(""), nil, err
+	}
+
 	return sam.processLookupResponse(scanner, name)
 }
 
 // sendLookupRequest sends a NAMING LOOKUP request to the SAM connection.
-// It writes the lookup command and handles any connection errors.
-func (sam *SAMResolver) sendLookupRequest(name string) error {
-	if _, err := sam.Conn.Write([]byte("NAMING LOOKUP NAME=" + name + "\r\n")); err != nil {
+// It writes the lookup command with optional OPTIONS=true parameter and handles any connection errors.
+func (sam *SAMResolver) sendLookupRequest(name string, options bool) error {
+	cmd := "NAMING LOOKUP NAME=" + name
+	if options {
+		cmd += " OPTIONS=true"
+	}
+	cmd += "\r\n"
+
+	log.WithFields(logrus.Fields{
+		"name":    name,
+		"options": options,
+		"command": strings.TrimSpace(cmd),
+	}).Debug("Sending lookup request")
+
+	if _, err := sam.Conn.Write([]byte(cmd)); err != nil {
 		log.WithError(err).Error("Failed to write to SAM connection")
 		sam.Close()
 		return err
@@ -97,16 +138,23 @@ func (sam *SAMResolver) prepareLookupScanner(response []byte) (*bufio.Scanner, e
 	return scanner, nil
 }
 
-// processLookupResponse processes the scanner tokens and returns the resolved address.
-// It handles different response types and accumulates error messages.
-func (sam *SAMResolver) processLookupResponse(scanner *bufio.Scanner, name string) (i2pkeys.I2PAddr, error) {
+// processLookupResponse processes the scanner tokens and returns the resolved address and options.
+// It handles different response types and accumulates error messages and service metadata.
+func (sam *SAMResolver) processLookupResponse(scanner *bufio.Scanner, name string) (i2pkeys.I2PAddr, map[string]string, error) {
 	errStr := ""
+	options := make(map[string]string)
+
 	for scanner.Scan() {
 		text := scanner.Text()
 		log.WithField("text", text).Debug("Parsing SAM response token")
 
 		if resolved, found := sam.handleValueResponse(text); found {
-			return resolved, nil
+			return resolved, options, nil
+		}
+
+		// Handle service options (key=value pairs from OPTIONS=true)
+		if sam.handleOptionsResponse(text, options) {
+			continue
 		}
 
 		if sam.shouldSkipToken(text, name) {
@@ -115,7 +163,7 @@ func (sam *SAMResolver) processLookupResponse(scanner *bufio.Scanner, name strin
 
 		errStr = sam.handleErrorResponse(text, name, errStr)
 	}
-	return i2pkeys.I2PAddr(""), errors.New(errStr)
+	return i2pkeys.I2PAddr(""), options, errors.New(errStr)
 }
 
 // handleValueResponse processes VALUE= responses and returns the resolved address.
@@ -127,6 +175,36 @@ func (sam *SAMResolver) handleValueResponse(text string) (i2pkeys.I2PAddr, bool)
 		return addr, true
 	}
 	return i2pkeys.I2PAddr(""), false
+}
+
+// handleOptionsResponse processes service option responses from SAMv3.2+ OPTIONS=true lookups.
+// Returns true if this was an option response that was handled, false otherwise.
+// Options are in format "key=value" and get stored in the options map.
+func (sam *SAMResolver) handleOptionsResponse(text string, options map[string]string) bool {
+	// Skip standard SAM response tokens
+	if strings.HasPrefix(text, "RESULT=") || strings.HasPrefix(text, "NAME=") ||
+		strings.HasPrefix(text, "VALUE=") || strings.HasPrefix(text, "MESSAGE=") {
+		return false
+	}
+
+	// Check if this looks like a service option (contains = but not a known SAM token)
+	if strings.Contains(text, "=") {
+		parts := strings.SplitN(text, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key != "" && value != "" {
+				options[key] = value
+				log.WithFields(logrus.Fields{
+					"key":   key,
+					"value": value,
+				}).Debug("Added service option")
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // shouldSkipToken determines if a token should be skipped without processing.

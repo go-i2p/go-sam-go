@@ -53,6 +53,10 @@ type I2PConfig struct {
 	ReduceIdleQuantity        int
 	LeaseSetEncryption        string
 
+	// SAMv3.2+ Authentication support
+	User     string // Username for authenticated SAM bridges
+	Password string // Password for authenticated SAM bridges
+
 	// Streaming Library options
 	AccessListType string
 	AccessList     []string

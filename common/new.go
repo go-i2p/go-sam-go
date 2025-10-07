@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/samber/oops"
+	"github.com/sirupsen/logrus"
 )
 
 // NewSAM creates a new SAM instance by connecting to the specified address,
@@ -12,7 +13,25 @@ import (
 // It also initializes the SAM resolver directly after the connection is established.
 // The SAM instance is ready to use for further operations like session creation or name resolution.
 func NewSAM(address string) (*SAM, error) {
-	logger := log.WithField("address", address)
+	return NewSAMWithAuth(address, "", "")
+}
+
+// NewSAMWithAuth creates a new SAM instance with optional authentication support.
+// This function supports SAMv3.2+ USER/PASSWORD authentication for connecting to
+// authenticated SAM bridges. If user and password are empty, no authentication is used.
+//
+// Parameters:
+//   - address: SAM bridge address (e.g., "127.0.0.1:7656")
+//   - user: Username for authentication (empty string for no auth)
+//   - password: Password for authentication (empty string for no auth)
+//
+// Returns a SAM instance ready for session creation or an error if connection fails.
+func NewSAMWithAuth(address, user, password string) (*SAM, error) {
+	logger := log.WithFields(logrus.Fields{
+		"address": address,
+		"user":    user,
+		"auth":    user != "" || password != "",
+	})
 	logger.Debug("Creating new SAM instance")
 
 	// Use existing helper function for connection establishment
@@ -25,6 +44,10 @@ func NewSAM(address string) (*SAM, error) {
 	s := &SAM{
 		Conn: conn,
 	}
+
+	// Configure authentication if provided
+	s.SAMEmit.I2PConfig.User = user
+	s.SAMEmit.I2PConfig.Password = password
 
 	// Use existing helper function for hello handshake with proper cleanup
 	if err := sendHelloAndValidate(conn, s); err != nil {

@@ -15,8 +15,20 @@ func (e *SAMEmit) SamOptionsString() string {
 
 // Hello generates the SAM protocol HELLO command for initial handshake.
 // Includes minimum and maximum supported SAM protocol versions for negotiation.
+// Optionally includes USER and PASSWORD parameters for authenticated SAM bridges.
 func (e *SAMEmit) Hello() string {
-	hello := fmt.Sprintf("HELLO VERSION MIN=%s MAX=%s \n", e.I2PConfig.MinSAM(), e.I2PConfig.MaxSAM())
+	hello := fmt.Sprintf("HELLO VERSION MIN=%s MAX=%s", e.I2PConfig.MinSAM(), e.I2PConfig.MaxSAM())
+
+	// Add authentication parameters if provided (SAMv3.2+ feature)
+	if e.I2PConfig.User != "" {
+		hello += fmt.Sprintf(` USER="%s"`, e.I2PConfig.User)
+	}
+	if e.I2PConfig.Password != "" {
+		hello += fmt.Sprintf(` PASSWORD="%s"`, e.I2PConfig.Password)
+	}
+
+	hello += " \n"
+
 	log.WithField("hello", hello).Debug("Generated HELLO command")
 	return hello
 }
