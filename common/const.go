@@ -22,13 +22,37 @@ const (
 	SESSION_I2P_ERROR      = "SESSION STATUS RESULT=I2P_ERROR MESSAGE="
 )
 
+// Signature Type Constants - I2P Cryptographic Security Configuration
+//
+// SECURITY RECOMMENDATION: Always use SIG_DEFAULT (EdDSA_SHA512_Ed25519) for new applications.
+// EdDSA provides superior performance, smaller key sizes, and robust security compared to
+// legacy signature algorithms. It is the I2P network's recommended signature type.
+//
 // SIG_NONE is deprecated, use SIG_DEFAULT instead for secure signatures.
-// SIG_DSA_SHA1 specifies DSA with SHA1 signature type (legacy, not recommended).
+// SIG_DSA_SHA1 specifies DSA with SHA1 signature type (LEGACY - NOT RECOMMENDED for new applications).
+//   - Legacy algorithm with known cryptographic weaknesses
+//   - Larger key sizes and slower performance
+//   - Should only be used for compatibility with very old I2P destinations
+//
 // SIG_ECDSA_SHA256_P256 specifies ECDSA with SHA256 on P256 curve signature type.
+//   - Acceptable security but larger signatures than EdDSA
+//   - Consider EdDSA for better performance
+//
 // SIG_ECDSA_SHA384_P384 specifies ECDSA with SHA384 on P384 curve signature type.
+//   - Higher security margin but significantly larger signatures
+//   - Slower key generation and verification
+//
 // SIG_ECDSA_SHA512_P521 specifies ECDSA with SHA512 on P521 curve signature type.
+//   - Highest security but largest signatures and slowest performance
+//   - Only recommended for extremely high-security applications
+//
 // SIG_EdDSA_SHA512_Ed25519 specifies EdDSA with SHA512 on Ed25519 curve signature type.
+//   - RECOMMENDED: Fastest signature verification, smallest signatures
+//   - State-of-the-art cryptographic security with excellent performance
+//   - Default choice for all new I2P applications
+//
 // SIG_DEFAULT points to the recommended secure signature type for new applications.
+//   - Currently set to EdDSA_SHA512_Ed25519 for optimal security and performance
 const (
 	SIG_NONE                 = "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"
 	SIG_DSA_SHA1             = "SIGNATURE_TYPE=DSA_SHA1"

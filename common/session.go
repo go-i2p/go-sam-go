@@ -101,13 +101,46 @@ func (sam *SAM) transmitSessionMessage(message []byte) error {
 }
 
 // readSessionResponse reads the response from the SAM connection.
+// Uses dynamic buffer allocation to handle large session responses with many I2CP options.
 func (sam *SAM) readSessionResponse() (string, error) {
-	buf := make([]byte, 4096)
+	buf := make([]byte, 4096) // Initial buffer size for typical responses
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read SAM response")
 		return "", oops.Errorf("reading from connection failed: %w", err)
 	}
+
+	// If buffer was completely filled, there might be more data
+	if n == len(buf) {
+		// Use a growing buffer to read remaining data
+		response := make([]byte, n, len(buf)*2)
+		copy(response, buf[:n])
+
+		for {
+			additionalBuf := make([]byte, 2048)
+			additionalN, err := sam.Conn.Read(additionalBuf)
+			if err != nil {
+				if additionalN == 0 {
+					// Connection closed or no more data
+					break
+				}
+				log.WithError(err).Error("Failed to read additional SAM response data")
+				return "", oops.Errorf("error reading additional SAM data: %w", err)
+			}
+
+			response = append(response, additionalBuf[:additionalN]...)
+
+			// If we didn't fill the additional buffer, we're done
+			if additionalN < len(additionalBuf) {
+				break
+			}
+		}
+
+		responseStr := string(response)
+		log.WithField("response", responseStr).Debug("Received SAM response")
+		return responseStr, nil
+	}
+
 	response := string(buf[:n])
 	log.WithField("response", response).Debug("Received SAM response")
 	return response, nil

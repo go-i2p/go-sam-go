@@ -62,10 +62,46 @@ func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error) {
 	return addr, err
 }
 
-// ResolveWithOptions performs a name lookup with SAMv3.2+ service options support.
-// When options is true, the SAM bridge may return additional service metadata.
-// Returns the resolved address, service options map, and any error.
-// The options map contains key-value pairs of service information (ports, protocols, etc.).
+// ResolveWithOptions performs a name lookup with SAMv3.2+ service discovery support.
+// When options is true, the SAM bridge may return additional service metadata along with the address.
+//
+// This function enables SAMv3.2+ service discovery by requesting OPTIONS=true in the NAMING LOOKUP
+// command. Service operators can publish metadata about their services to help clients automatically
+// discover connection parameters, supported protocols, and service capabilities.
+//
+// Parameters:
+//   - name: I2P hostname to resolve (e.g., "service.i2p", "forum.i2p")
+//   - options: Set to true to request service metadata, false for address-only lookup
+//
+// Returns:
+//   - i2pkeys.I2PAddr: The resolved I2P destination address
+//   - map[string]string: Service options/metadata (empty if options=false or no metadata available)
+//   - error: Any error that occurred during resolution
+//
+// Service Discovery Examples:
+//
+//	// Basic address resolution (compatible with older SAM versions)
+//	addr, _, err := resolver.ResolveWithOptions("mysite.i2p", false)
+//
+//	// Service discovery with metadata (SAMv3.2+ feature)
+//	addr, metadata, err := resolver.ResolveWithOptions("api.i2p", true)
+//	if err != nil {
+//	    return err
+//	}
+//
+//	// Extract service information from metadata
+//	if port := metadata["port"]; port != "" {
+//	    fmt.Printf("Service port: %s\n", port)
+//	}
+//	if protocol := metadata["protocol"]; protocol != "" {
+//	    fmt.Printf("Protocol: %s\n", protocol)
+//	}
+//	if path := metadata["path"]; path != "" {
+//	    fmt.Printf("API path: %s\n", path)
+//	}
+//
+// Common metadata keys include: port, protocol, path, description, version, contact.
+// Metadata availability depends on service operator configuration and SAM bridge version.
 func (sam *SAMResolver) ResolveWithOptions(name string, options bool) (i2pkeys.I2PAddr, map[string]string, error) {
 	log.WithFields(logrus.Fields{
 		"name":    name,
@@ -113,15 +149,47 @@ func (sam *SAMResolver) sendLookupRequest(name string, options bool) error {
 }
 
 // readLookupResponse reads the response from the SAM connection.
+// Uses dynamic buffer allocation to handle large naming responses with service options.
 // It handles reading errors and connection cleanup on failure.
 func (sam *SAMResolver) readLookupResponse() ([]byte, error) {
-	buf := make([]byte, 4096)
+	buf := make([]byte, 4096) // Initial buffer size for typical responses
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read from SAM connection")
 		sam.Close()
 		return nil, err
 	}
+
+	// If buffer was completely filled, there might be more data
+	if n == len(buf) {
+		// Use a growing buffer to read remaining data
+		response := make([]byte, n, len(buf)*2)
+		copy(response, buf[:n])
+
+		for {
+			additionalBuf := make([]byte, 2048)
+			additionalN, err := sam.Conn.Read(additionalBuf)
+			if err != nil {
+				if additionalN == 0 {
+					// Connection closed or no more data
+					break
+				}
+				log.WithError(err).Error("Failed to read additional SAM response data")
+				sam.Close()
+				return nil, err
+			}
+
+			response = append(response, additionalBuf[:additionalN]...)
+
+			// If we didn't fill the additional buffer, we're done
+			if additionalN < len(additionalBuf) {
+				break
+			}
+		}
+
+		return response, nil
+	}
+
 	return buf[:n], nil
 }
 
@@ -180,6 +248,42 @@ func (sam *SAMResolver) handleValueResponse(text string) (i2pkeys.I2PAddr, bool)
 // handleOptionsResponse processes service option responses from SAMv3.2+ OPTIONS=true lookups.
 // Returns true if this was an option response that was handled, false otherwise.
 // Options are in format "key=value" and get stored in the options map.
+//
+// SAMv3.2+ Service Discovery Examples:
+//
+// When performing a lookup with OPTIONS=true, you can receive service metadata:
+//
+//	resolver.LookupWithOptions("myservice.i2p", true)
+//
+// Common service option keys include:
+//   - "port": TCP port number for the service (e.g., "port=8080")
+//   - "protocol": Service protocol type (e.g., "protocol=http", "protocol=https")
+//   - "path": Default path for HTTP services (e.g., "path=/api/v1")
+//   - "description": Human-readable service description
+//   - "version": Service version information
+//   - "contact": Service operator contact information
+//
+// Usage Pattern:
+//
+//	addr, options, err := resolver.LookupWithOptions("service.i2p", true)
+//	if err != nil {
+//	    log.Fatal("Lookup failed:", err)
+//	}
+//
+//	// Check for HTTP service with specific port
+//	if port := options["port"]; port != "" {
+//	    if protocol := options["protocol"]; protocol == "http" {
+//	        fmt.Printf("HTTP service available at %s:%s\n", addr, port)
+//	    }
+//	}
+//
+//	// Check for API path
+//	if path := options["path"]; path != "" {
+//	    fmt.Printf("API endpoint: %s%s\n", addr, path)
+//	}
+//
+// Service operators can publish this metadata in their I2P router configuration
+// to help clients discover service capabilities and connection parameters.
 func (sam *SAMResolver) handleOptionsResponse(text string, options map[string]string) bool {
 	// Skip standard SAM response tokens
 	if strings.HasPrefix(text, "RESULT=") || strings.HasPrefix(text, "NAME=") ||

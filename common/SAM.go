@@ -169,14 +169,45 @@ func (sam *SAM) sendDestGenerateCommand(sigType string) error {
 }
 
 // readKeyGenerationResponse reads the response from the SAM connection.
-// It allocates a buffer and reads the response data for key generation.
+// It uses dynamic buffer allocation to handle large destination keys and I2CP options.
+// The function grows the buffer as needed to prevent response truncation.
 func (sam *SAM) readKeyGenerationResponse() ([]byte, error) {
-	buf := make([]byte, 8192)
+	buf := make([]byte, 8192) // Initial buffer size for typical responses
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read SAM response for key generation")
 		return nil, oops.Errorf("error with reading in SAM: %w", err)
 	}
+
+	// If buffer was completely filled, there might be more data
+	if n == len(buf) {
+		// Use a growing buffer to read remaining data
+		response := make([]byte, n, len(buf)*2)
+		copy(response, buf[:n])
+
+		for {
+			additionalBuf := make([]byte, 4096)
+			additionalN, err := sam.Conn.Read(additionalBuf)
+			if err != nil {
+				if additionalN == 0 {
+					// Connection closed or no more data
+					break
+				}
+				log.WithError(err).Error("Failed to read additional SAM response data")
+				return nil, oops.Errorf("error reading additional SAM data: %w", err)
+			}
+
+			response = append(response, additionalBuf[:additionalN]...)
+
+			// If we didn't fill the additional buffer, we're done
+			if additionalN < len(additionalBuf) {
+				break
+			}
+		}
+
+		return response, nil
+	}
+
 	return buf[:n], nil
 }
 
