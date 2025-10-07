@@ -2,9 +2,10 @@ package sam3
 
 import (
 	"fmt"
-	"log"
+	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-i2p/i2pkeys"
 )
@@ -156,64 +157,142 @@ func Test_StreamingServerClient(t *testing.T) {
 }
 
 func ExampleStreamSession() {
-	// Creates a new StreamingSession, dials to a local test listener and gets a SAMConn
-	// which behaves just like a normal net.Conn.
+	// Creates a new StreamingSession with a local server and client.
+	// Demonstrates how a SAMConn behaves just like a normal net.Conn.
 	//
 	// Requirements: This example requires a running I2P router with SAM bridge enabled.
 
 	const samBridge = "127.0.0.1:7656"
 
-	sam, err := NewSAM(samBridge)
+	// Create server session first
+	server_sam, err := NewSAM(samBridge)
 	if err != nil {
 		fmt.Printf("Failed to connect to I2P SAM bridge: %v", err)
 		return
 	}
-	defer sam.Close()
-	keys, err := sam.NewKeys()
+	defer server_sam.Close()
+
+	server_keys, err := server_sam.NewKeys()
 	if err != nil {
-		fmt.Printf("Failed to generate I2P keys: %v", err)
-		return
-	}
-	// See the example Option_* variables.
-	ss, err := sam.NewStreamSession("stream_example", keys, Options_Small)
-	if err != nil {
-		fmt.Printf("Failed to create stream session: %v", err)
+		fmt.Printf("Failed to generate server I2P keys: %v", err)
 		return
 	}
 
-	// Note: In a real example, you would set up a test listener here
-	// For demonstration purposes, we'll use a placeholder destination
-	someone, err := sam.Lookup("test.i2p")
+	server_session, err := server_sam.NewStreamSession("stream_server", server_keys, Options_Small)
 	if err != nil {
-		fmt.Printf("Failed to lookup test destination: %v", err)
+		fmt.Printf("Failed to create server stream session: %v", err)
+		return
+	}
+	defer server_session.Close()
+
+	// Synchronization channels
+	serverReady := make(chan bool)
+	clientDone := make(chan bool)
+
+	// Server goroutine - listens and responds with HTTP-like content
+	go func() {
+		listener, err := server_session.Listen()
+		if err != nil {
+			fmt.Printf("Server failed to listen: %v", err)
+			serverReady <- false
+			return
+		}
+		defer listener.Close()
+		serverReady <- true
+
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// Read client request
+		buf := make([]byte, 256)
+		_, _ = conn.Read(buf)
+
+		// Send HTTP-like response
+		response := "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body>Test</body></html>"
+		conn.Write([]byte(response))
+	}()
+
+	// Wait for server to be ready
+	if !<-serverReady {
 		return
 	}
 
-	conn, err := ss.DialI2P(someone)
-	if err != nil {
-		fmt.Printf("Failed to dial test destination: %v", err)
-		return
-	}
-	defer conn.Close()
-	fmt.Println("Sending HTTP GET /")
-	if _, err := conn.Write([]byte("GET /\n")); err != nil {
-		fmt.Printf("Failed to write to connection: %v", err)
-		return
-	}
-	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
-	if err != nil {
-		fmt.Printf("Failed to read from connection: %v", err)
-		return
-	}
-	if !strings.Contains(strings.ToLower(string(buf[:n])), "http") && !strings.Contains(strings.ToLower(string(buf[:n])), "html") {
-		fmt.Printf("Failed to get HTTP/HTML response from test destination (got %d bytes)", n)
-		return
-	} else {
-		fmt.Println("Read HTTP/HTML from test destination")
-		log.Println("Read HTTP/HTML from test destination")
-	}
-	return
+	// Client operations in separate goroutine
+	go func() {
+		client_sam, err := NewSAM(samBridge)
+		if err != nil {
+			fmt.Printf("Client failed to connect to I2P: %v", err)
+			clientDone <- false
+			return
+		}
+		defer client_sam.Close()
+
+		client_keys, err := client_sam.NewKeys()
+		if err != nil {
+			fmt.Printf("Client failed to generate keys: %v", err)
+			clientDone <- false
+			return
+		}
+
+		client_session, err := client_sam.NewStreamSession("stream_client", client_keys, Options_Small)
+		if err != nil {
+			fmt.Printf("Client failed to create session: %v", err)
+			clientDone <- false
+			return
+		}
+		defer client_session.Close()
+
+		// I2P tunnel establishment can take 30-120 seconds, so we retry dialing
+		var conn net.Conn
+		var dialErr error
+		for attempt := 0; attempt < 6; attempt++ {
+			conn, dialErr = client_session.DialI2P(server_keys.Addr())
+			if dialErr == nil {
+				break
+			}
+			if attempt < 5 {
+				// Exponential backoff: 15s, 30s, 45s, 60s, 75s
+				sleepTime := time.Duration(15*(attempt+1)) * time.Second
+				fmt.Printf("Dial attempt %d failed: %v. Retrying in %v...\n", attempt+1, dialErr, sleepTime)
+				time.Sleep(sleepTime)
+			}
+		}
+		if dialErr != nil {
+			fmt.Printf("Client failed to dial server after retries: %v", dialErr)
+			clientDone <- false
+			return
+		}
+		defer conn.Close()
+
+		fmt.Println("Sending HTTP GET /")
+		if _, err := conn.Write([]byte("GET /\n")); err != nil {
+			fmt.Printf("Failed to write to connection: %v", err)
+			clientDone <- false
+			return
+		}
+
+		buf := make([]byte, 4096)
+		n, err := conn.Read(buf)
+		if err != nil {
+			fmt.Printf("Failed to read from connection: %v", err)
+			clientDone <- false
+			return
+		}
+
+		response := string(buf[:n])
+		if strings.Contains(strings.ToLower(response), "http") || strings.Contains(strings.ToLower(response), "html") {
+			fmt.Println("Read HTTP/HTML from test destination")
+		} else {
+			fmt.Printf("Failed to get HTTP/HTML response (got %d bytes)", n)
+		}
+		clientDone <- true
+	}()
+
+	// Wait for client to complete
+	<-clientDone
 
 	// Output:
 	// Sending HTTP GET /
@@ -229,49 +308,64 @@ func ExampleStreamListener() {
 
 	const samBridge = "127.0.0.1:7656"
 
-	sam, err := NewSAM(samBridge)
+	server_sam, err := NewSAM(samBridge)
 	if err != nil {
 		fmt.Printf("Failed to connect to I2P SAM bridge: %v", err)
 		return
 	}
-	defer sam.Close()
-	keys, err := sam.NewKeys()
+	defer server_sam.Close()
+	keys, err := server_sam.NewKeys()
 	if err != nil {
 		fmt.Printf("Failed to generate I2P keys: %v", err)
 		return
 	}
 
-	quit := make(chan bool)
+	// Create server session BEFORE starting client goroutine
+	server_session, err := server_sam.NewStreamSession("server_example", keys, Options_Small)
+	if err != nil {
+		fmt.Printf("Failed to create server session: %v", err)
+		return
+	}
 
-	// Client connecting to the server
+	// Channels for synchronization and results
+	quit := make(chan bool)
+	serverReady := make(chan bool)
+
+	// Client connecting to the server - waits for server readiness signal
 	go func(server i2pkeys.I2PAddr) {
-		csam, err := NewSAM(samBridge)
+		// Wait for server to be fully ready (session + listener created)
+		if !<-serverReady {
+			quit <- false
+			return
+		}
+
+		client_sam, err := NewSAM(samBridge)
 		if err != nil {
 			fmt.Printf("Client failed to connect to I2P: %v", err)
 			quit <- false
 			return
 		}
-		defer csam.Close()
-		keys, err := csam.NewKeys()
+		defer client_sam.Close()
+		keys, err := client_sam.NewKeys()
 		if err != nil {
 			fmt.Printf("Client failed to generate keys: %v", err)
 			quit <- false
 			return
 		}
-		cs, err := csam.NewStreamSession("client_example", keys, Options_Small)
+		client_session, err := client_sam.NewStreamSession("client_example", keys, Options_Small)
 		if err != nil {
 			fmt.Printf("Client failed to create session: %v", err)
 			quit <- false
 			return
 		}
-		conn, err := cs.DialI2P(server)
+		client_conn, err := client_session.DialI2P(server)
 		if err != nil {
 			fmt.Printf("Client failed to dial server: %v", err)
 			quit <- false
 			return
 		}
 		buf := make([]byte, 256)
-		n, err := conn.Read(buf)
+		n, err := client_conn.Read(buf)
 		if err != nil {
 			fmt.Printf("Client failed to read: %v", err)
 			quit <- false
@@ -279,18 +373,18 @@ func ExampleStreamListener() {
 		}
 		fmt.Println(string(buf[:n]))
 		quit <- true
-	}(keys.Addr()) // end of client
+	}(keys.Addr()) // end of client - pass server address
 
-	ss, err := sam.NewStreamSession("server_example", keys, Options_Small)
-	if err != nil {
-		fmt.Printf("Failed to create server session: %v", err)
-		return
-	}
-	l, err := ss.Listen()
+	// Create listener and signal client can proceed
+	l, err := server_session.Listen()
 	if err != nil {
 		fmt.Printf("Failed to listen: %v", err)
+		serverReady <- false // Signal failure to client
 		return
 	}
+	defer l.Close()
+	serverReady <- true // Signal success to client
+
 	conn, err := l.Accept()
 	if err != nil {
 		fmt.Printf("Failed to accept connection: %v", err)
