@@ -34,3 +34,4 @@ test-logs:
 
 godoc:
 	find ./*/ -type d -exec godocdown --output={}/DOC.md {} \;
+	godocdown --output=DOC.md .

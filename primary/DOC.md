@@ -96,6 +96,27 @@ Example usage:
     streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
     datagramSub, err := session.NewDatagramSubSession("datagram-1", datagramOptions)
 
+#### func  NewPrimarySessionWithSignature
+
+```go
+func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error)
+```
+NewPrimarySessionWithSignature creates a new primary session with the specified
+signature type. This is a package-level function that provides direct access to
+signature-aware session creation without requiring wrapper types. It delegates
+to the common package for session creation while maintaining the same primary
+session functionality and sub-session management capabilities.
+
+The signature type allows specifying custom cryptographic parameters for
+enhanced security or compatibility with specific I2P network configurations.
+Different signature types provide various security levels, performance
+characteristics, and compatibility options.
+
+Example usage:
+
+    session, err := NewPrimarySessionWithSignature(sam, "secure-primary", keys, options, "EdDSA_SHA512_Ed25519")
+    streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
+
 #### func (*PrimarySession) Addr
 
 ```go
@@ -191,14 +212,13 @@ infrastructure while providing full DatagramSession functionality for UDP-like
 authenticated messaging. Each sub-session must have a unique identifier within
 the primary session scope.
 
-The created sub-session inherits the primary session's keys and base
-configuration but can have additional datagram-specific options for customizing
-behavior such as message timeouts, reliability settings, and other datagram
-parameters.
+This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session's SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.
 
 Example usage:
 
-    datagramSub, err := primary.NewDatagramSubSession("udp-handler", []string{"receive.timeout=60"})
+    datagramSub, err := primary.NewDatagramSubSession("udp-handler", []string{"FROM_PORT=8080"})
     writer := datagramSub.NewWriter()
     reader := datagramSub.NewReader()
 
@@ -213,13 +233,13 @@ while providing full RawSession functionality for unrepliable datagram
 communication. Each sub-session must have a unique identifier within the primary
 session scope.
 
-The created sub-session inherits the primary session's keys and base
-configuration but can have additional raw-specific options for customizing
-behavior such as transmission parameters and other raw communication settings.
+This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session's SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.
 
 Example usage:
 
-    rawSub, err := primary.NewRawSubSession("raw-sender", []string{"send.timeout=30"})
+    rawSub, err := primary.NewRawSubSession("raw-sender", []string{"FROM_PORT=8080"})
     writer := rawSub.NewWriter()
     reader := rawSub.NewReader()
 
@@ -234,16 +254,23 @@ infrastructure while providing full StreamSession functionality for TCP-like
 reliable connections. Each sub-session must have a unique identifier within the
 primary session scope.
 
-The created sub-session inherits the primary session's keys and base
-configuration but can have additional stream-specific options for customizing
-behavior such as connection timeouts, buffer sizes, and other streaming
-parameters.
+This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session's SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.
 
 Example usage:
 
-    streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"connect.timeout=30"})
+    streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"FROM_PORT=8080"})
     listener, err := streamSub.Listen()
     conn, err := streamSub.Dial("destination.b32.i2p")
+
+#### func (*PrimarySession) NewUniqueStreamSubSession
+
+```go
+func (p *PrimarySession) NewUniqueStreamSubSession(s string) (*StreamSubSession, error)
+```
+NewUniqueStreamSubSession creates a new unique stream sub-session within this
+primary session.
 
 #### func (*PrimarySession) SubSessionCount
 

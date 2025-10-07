@@ -310,6 +310,93 @@ and server capabilities for establishing reliable streaming connections over the
 I2P network. Example usage: session, err := NewStreamSession(sam, "my-session",
 keys, []string{"inbound.length=1"})
 
+#### func  NewStreamSessionFromSubsession
+
+```go
+func NewStreamSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
+```
+NewStreamSessionFromSubsession creates a StreamSession for a subsession that has
+already been registered with a PRIMARY session using SESSION ADD. This
+constructor skips the session creation step since the subsession is already
+registered with the SAM bridge.
+
+This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.
+
+Parameters:
+
+    - sam: SAM connection for data operations (separate from the primary session's control connection)
+    - id: The subsession ID that was already registered with SESSION ADD
+    - keys: The I2P keys from the primary session (shared across all subsessions)
+    - options: Configuration options for the subsession
+
+Returns a StreamSession ready for use without attempting to create a new SAM
+session.
+
+#### func  NewStreamSessionWithSignature
+
+```go
+func NewStreamSessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
+```
+NewStreamSessionWithSignature creates a new streaming session with a custom
+signature type for TCP-like I2P connections. This is the package-level function
+version that allows specifying cryptographic signature algorithms. It
+initializes the session with the provided SAM connection, session ID,
+cryptographic keys, configuration options, and signature type. The session
+provides both client and server capabilities for establishing reliable streaming
+connections over the I2P network with custom cryptographic settings. Example
+usage: session, err := NewStreamSessionWithSignature(sam, "my-session", keys,
+[]string{"inbound.length=1"}, "EdDSA_SHA512_Ed25519")
+
+#### func  NewStreamSessionWithSignatureAndPorts
+
+```go
+func NewStreamSessionWithSignatureAndPorts(sam *common.SAM, id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
+```
+NewStreamSessionWithSignatureAndPorts creates a new stream session with custom
+signature type and port configuration. This function provides advanced control
+over both cryptographic parameters and port mapping for stream sessions. The
+'from' parameter specifies the local port binding, while 'to' specifies the
+target port for connections. Port specifications can be single ports ("80") or
+ranges ("8080-8090") depending on I2P router configuration.
+
+This method enables complex port forwarding scenarios and integration with
+existing network infrastructure that expects specific port mappings. It's
+particularly useful for applications that need to maintain consistent port
+assignments or work with legacy systems expecting fixed port numbers.
+
+Example usage:
+
+    session, err := NewStreamSessionWithSignatureAndPorts(sam, "http-proxy", "8080", "80", keys,
+                       []string{"inbound.length=2"}, "EdDSA_SHA512_Ed25519")
+
+#### func (*StreamSession) Accept
+
+```go
+func (s *StreamSession) Accept() (*StreamConn, error)
+```
+Accept creates a listener and accepts the next incoming connection from remote
+I2P destinations. This is a convenience method that automatically creates a
+listener and calls Accept() on it. It provides a simpler API for applications
+that only need to accept a single connection or want to handle each connection
+acceptance individually.
+
+For applications that need to accept multiple connections or want more control
+over listener lifecycle, use Listen() to get a StreamListener and call Accept()
+on it directly.
+
+Each call to Accept creates a new internal listener, so applications accepting
+multiple connections should use Listen() once and then call Accept() multiple
+times on the listener for better performance and resource management.
+
+Returns a StreamConn for the accepted connection, or an error if the acceptance
+fails. The error may be due to session closure, network issues, or I2P tunnel
+problems.
+
+Example usage: conn, err := session.Accept() // Simple single connection
+acceptance
+
 #### func (*StreamSession) Addr
 
 ```go

@@ -238,6 +238,30 @@ cryptographic keys, and configuration options, returning a RawSession instance
 or an error if creation fails. Example usage: session, err := NewRawSession(sam,
 "my-session", keys, []string{"inbound.length=1"})
 
+#### func  NewRawSessionFromSubsession
+
+```go
+func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
+```
+NewRawSessionFromSubsession creates a RawSession for a subsession that has
+already been registered with a PRIMARY session using SESSION ADD. This
+constructor skips the session creation step since the subsession is already
+registered with the SAM bridge.
+
+This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.
+
+Parameters:
+
+    - sam: SAM connection for data operations (separate from the primary session's control connection)
+    - id: The subsession ID that was already registered with SESSION ADD
+    - keys: The I2P keys from the primary session (shared across all subsessions)
+    - options: Configuration options for the subsession
+
+Returns a RawSession ready for use without attempting to create a new SAM
+session.
+
 #### func (*RawSession) Addr
 
 ```go

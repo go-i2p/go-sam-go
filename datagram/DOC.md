@@ -275,6 +275,30 @@ returns a DatagramSession instance that can be used for sending and receiving
 datagrams over the I2P network. Example usage: session, err :=
 NewDatagramSession(sam, "my-session", keys, []string{"inbound.length=1"})
 
+#### func  NewDatagramSessionFromSubsession
+
+```go
+func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
+```
+NewDatagramSessionFromSubsession creates a DatagramSession for a subsession that
+has already been registered with a PRIMARY session using SESSION ADD. This
+constructor skips the session creation step since the subsession is already
+registered with the SAM bridge.
+
+This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.
+
+Parameters:
+
+    - sam: SAM connection for data operations (separate from the primary session's control connection)
+    - id: The subsession ID that was already registered with SESSION ADD
+    - keys: The I2P keys from the primary session (shared across all subsessions)
+    - options: Configuration options for the subsession
+
+Returns a DatagramSession ready for use without attempting to create a new SAM
+session.
+
 #### func (*DatagramSession) Addr
 
 ```go
@@ -411,16 +435,37 @@ provides compatibility with standard Go networking code by wrapping the datagram
 session in a connection that implements the PacketConn interface. Example usage:
 conn := session.PacketConn(); n, addr, err := conn.ReadFrom(buffer)
 
+#### func (*DatagramSession) ReadFrom
+
+```go
+func (ds *DatagramSession) ReadFrom(p []byte) (n int, addr net.Addr, err error)
+```
+ReadFrom reads a datagram message from the session, storing it in p. It returns
+the number of bytes read (n), the sender's I2P address (addr), and any error
+encountered (err). The address can be used to reply to the sender.
+
+The method blocks until a datagram is available or an error occurs. If the
+provided buffer p is too small to hold the incoming datagram, the excess data
+will be discarded, and n will be set to the buffer size.
+
+Example usage:
+
+    n, addr, err := ds.ReadFrom(buf)
+    if err != nil {
+        // handle error
+    }
+    fmt.Printf("Received %d bytes from %s\n", n, addr.Base32())
+
 #### func (*DatagramSession) ReceiveDatagram
 
 ```go
 func (s *DatagramSession) ReceiveDatagram() (*Datagram, error)
 ```
-ReceiveDatagram receives a single datagram from any source. This is a
-convenience method that creates a temporary reader, starts the receive loop,
-gets one datagram, and cleans up resources automatically. For continuous
-reception, use NewReader() and manage the reader lifecycle manually. Example
-usage: datagram, err := session.ReceiveDatagram()
+ReceiveDatagram receives a single datagram from the I2P network. This method is
+a convenience wrapper that performs a direct single read operation without
+starting a continuous receive loop. For continuous reception, use NewReader()
+and manage the reader lifecycle manually. Example usage: datagram, err :=
+session.ReceiveDatagram()
 
 #### func (*DatagramSession) SendDatagram
 
@@ -432,6 +477,35 @@ convenience method that creates a temporary writer and sends the datagram
 immediately. For multiple sends, it's more efficient to create a writer once and
 reuse it. Example usage: err := session.SendDatagram([]byte("hello"),
 destinationAddr)
+
+#### func (*DatagramSession) WriteTo
+
+```go
+func (ds *DatagramSession) WriteTo(p []byte, addr net.Addr) (n int, err error)
+```
+WriteTo sends a datagram message to the specified I2P address. It returns the
+number of bytes written (n) and any error encountered (err).
+
+The returned n may be less than len(p) if the message was truncated to fit the
+maximum datagram size limit.
+
+The error return value may indicate:
+
+    - SAM protocol errors (e.g., malformed commands, protocol violations, or non-OK responses)
+    - I2P network errors (e.g., tunnel not established, network unreachable, or timeouts)
+    - Application errors (e.g., nil session, invalid address type, or session not connected)
+
+The method may block until the message is sent or an error occurs. If the
+message is larger than the maximum allowed datagram size, it will be truncated
+to fit within the limit.
+
+Example usage:
+
+    n, err := ds.WriteTo([]byte("Hello, I2P!"), addr)
+    if err != nil {
+        // handle error
+    }
+    fmt.Printf("Sent %d bytes to %s\n", n, addr.Base32())
 
 #### type DatagramWriter
 
@@ -454,10 +528,10 @@ dest)
 func (w *DatagramWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
 ```
 SendDatagram sends a datagram to the specified I2P destination address. This
-method handles the complete datagram transmission process including data
-encoding, SAM protocol communication, and response validation. It blocks until
-the datagram is sent or an error occurs, respecting the configured timeout
-duration. Example usage: err := writer.SendDatagram([]byte("hello world"),
+method uses the preferred SAMv3 approach: sending via UDP socket to port 7655
+rather than using the DATAGRAM SEND command on the SAM bridge socket. It blocks
+until the datagram is sent or an error occurs, respecting the configured
+timeout. Example usage: err := writer.SendDatagram([]byte("hello world"),
 destinationAddr)
 
 #### func (*DatagramWriter) SetTimeout

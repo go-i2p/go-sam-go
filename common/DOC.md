@@ -45,14 +45,56 @@ const (
 	SIG_DEFAULT = SIG_EdDSA_SHA512_Ed25519
 )
 ```
+Signature Type Constants - I2P Cryptographic Security Configuration
+
+SECURITY RECOMMENDATION: Always use SIG_DEFAULT (EdDSA_SHA512_Ed25519) for new
+applications. EdDSA provides superior performance, smaller key sizes, and robust
+security compared to legacy signature algorithms. It is the I2P network's
+recommended signature type.
+
 SIG_NONE is deprecated, use SIG_DEFAULT instead for secure signatures.
-SIG_DSA_SHA1 specifies DSA with SHA1 signature type (legacy, not recommended).
+SIG_DSA_SHA1 specifies DSA with SHA1 signature type (LEGACY - NOT RECOMMENDED
+for new applications).
+
+    - Legacy algorithm with known cryptographic weaknesses
+    - Larger key sizes and slower performance
+    - Should only be used for compatibility with very old I2P destinations
+
 SIG_ECDSA_SHA256_P256 specifies ECDSA with SHA256 on P256 curve signature type.
+
+    - Acceptable security but larger signatures than EdDSA
+    - Consider EdDSA for better performance
+
 SIG_ECDSA_SHA384_P384 specifies ECDSA with SHA384 on P384 curve signature type.
+
+    - Higher security margin but significantly larger signatures
+    - Slower key generation and verification
+
 SIG_ECDSA_SHA512_P521 specifies ECDSA with SHA512 on P521 curve signature type.
+
+    - Highest security but largest signatures and slowest performance
+    - Only recommended for extremely high-security applications
+
 SIG_EdDSA_SHA512_Ed25519 specifies EdDSA with SHA512 on Ed25519 curve signature
-type. SIG_DEFAULT points to the recommended secure signature type for new
+type.
+
+    - RECOMMENDED: Fastest signature verification, smallest signatures
+    - State-of-the-art cryptographic security with excellent performance
+    - Default choice for all new I2P applications
+
+SIG_DEFAULT points to the recommended secure signature type for new
 applications.
+
+    - Currently set to EdDSA_SHA512_Ed25519 for optimal security and performance
+
+```go
+const (
+	SESSION_ADD_OK    = "SESSION STATUS RESULT=OK"
+	SESSION_REMOVE_OK = "SESSION STATUS RESULT=OK"
+)
+```
+SESSION_ADD_OK indicates successful subsession addition to primary session.
+SESSION_REMOVE_OK indicates successful subsession removal from primary session.
 
 ```go
 const (
@@ -388,6 +430,29 @@ type BaseSession struct {
 BaseSession provides the underlying SAM session functionality. It manages the
 connection to the SAM bridge and handles session lifecycle.
 
+#### func  NewBaseSessionFromSubsession
+
+```go
+func NewBaseSessionFromSubsession(sam *SAM, id string, keys i2pkeys.I2PKeys) (*BaseSession, error)
+```
+NewBaseSessionFromSubsession creates a BaseSession for a subsession that has
+already been registered with a PRIMARY session using SESSION ADD. This
+constructor is used when the subsession is already registered with the SAM
+bridge and doesn't need a new session creation.
+
+This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.
+
+Parameters:
+
+    - sam: SAM connection for data operations (separate from the primary session's control connection)
+    - id: The subsession ID that was already registered with SESSION ADD
+    - keys: The I2P keys from the primary session (shared across all subsessions)
+
+Returns a BaseSession ready for use without attempting to create a new SAM
+session.
+
 #### func (*BaseSession) Close
 
 ```go
@@ -537,6 +602,10 @@ type I2PConfig struct {
 	ReduceIdleQuantity        int
 	LeaseSetEncryption        string
 
+	// SAMv3.2+ Authentication support
+	User     string // Username for authenticated SAM bridges
+	Password string // Password for authenticated SAM bridges
+
 	// Streaming Library options
 	AccessListType string
 	AccessList     []string
@@ -609,6 +678,15 @@ func (f *I2PConfig) FromPort() string
 ```
 FromPort returns the FROM_PORT configuration string for SAM bridges >= 3.1
 Returns an empty string if SAM version < 3.1 or if fromport is "0"
+
+#### func (*I2PConfig) GenerateRandomTunnelName
+
+```go
+func (f *I2PConfig) GenerateRandomTunnelName() string
+```
+GenerateRandomTunnelName creates a random 12-character tunnel name using
+lowercase letters. This function is deterministic for testing when a fixed seed
+is used.
 
 #### func (*I2PConfig) ID
 
@@ -853,6 +931,50 @@ eliminating the need for separate helper functions. It also initializes the SAM
 resolver directly after the connection is established. The SAM instance is ready
 to use for further operations like session creation or name resolution.
 
+#### func  NewSAMWithAuth
+
+```go
+func NewSAMWithAuth(address, user, password string) (*SAM, error)
+```
+NewSAMWithAuth creates a new SAM instance with optional authentication support.
+This function supports SAMv3.2+ USER/PASSWORD authentication for connecting to
+authenticated SAM bridges. If user and password are empty, no authentication is
+used.
+
+Parameters:
+
+    - address: SAM bridge address (e.g., "127.0.0.1:7656")
+    - user: Username for authentication (empty string for no auth)
+    - password: Password for authentication (empty string for no auth)
+
+Returns a SAM instance ready for session creation or an error if connection
+fails.
+
+#### func (*SAM) AddSubSession
+
+```go
+func (sam *SAM) AddSubSession(style, id string, options []string) error
+```
+AddSubSession adds a subsession to an existing PRIMARY session using the SESSION
+ADD command. This method implements the SAMv3.3 protocol for creating
+subsessions that share the same destination and tunnels as the primary session
+while providing separate protocol handling.
+
+Parameters:
+
+    - style: Session style ("STREAM", "DATAGRAM", or "RAW")
+    - id: Unique subsession identifier within the primary session scope
+    - options: Additional SAM protocol options for the subsession
+
+The subsession inherits the destination from the primary session and uses the
+same tunnel infrastructure for enhanced efficiency. Each subsession must have a
+unique combination of style and port to enable proper routing of incoming
+traffic.
+
+Example usage:
+
+    err := sam.AddSubSession("STREAM", "stream-sub-1", []string{"FROM_PORT=8080"})
+
 #### func (*SAM) Close
 
 ```go
@@ -932,6 +1054,28 @@ desination (the address) that anyone can send messages to.
 func (sam *SAM) ReadKeys(r io.Reader) (err error)
 ```
 read public/private keys from an io.Reader
+
+#### func (*SAM) RemoveSubSession
+
+```go
+func (sam *SAM) RemoveSubSession(id string) error
+```
+RemoveSubSession removes a subsession from the primary session using the SESSION
+REMOVE command. This method implements the SAMv3.3 protocol for cleanly
+terminating subsessions while keeping the primary session and other subsessions
+active.
+
+Parameters:
+
+    - id: Unique subsession identifier to remove
+
+After removal, the subsession is closed and may not be used for sending or
+receiving data. The primary session and other subsessions remain unaffected by
+this operation.
+
+Example usage:
+
+    err := sam.RemoveSubSession("stream-sub-1")
 
 #### type SAMEmit
 
@@ -1028,7 +1172,8 @@ method for network transmission of key generation requests.
 func (e *SAMEmit) Hello() string
 ```
 Hello generates the SAM protocol HELLO command for initial handshake. Includes
-minimum and maximum supported SAM protocol versions for negotiation.
+minimum and maximum supported SAM protocol versions for negotiation. Optionally
+includes USER and PASSWORD parameters for authenticated SAM bridges.
 
 #### func (*SAMEmit) HelloBytes
 
@@ -1101,6 +1246,57 @@ func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error)
 ```
 Performs a lookup, probably this order: 1) routers known addresses, cached
 addresses, 3) by asking peers in the I2P network.
+
+#### func (*SAMResolver) ResolveWithOptions
+
+```go
+func (sam *SAMResolver) ResolveWithOptions(name string, options bool) (i2pkeys.I2PAddr, map[string]string, error)
+```
+ResolveWithOptions performs a name lookup with SAMv3.2+ service discovery
+support. When options is true, the SAM bridge may return additional service
+metadata along with the address.
+
+This function enables SAMv3.2+ service discovery by requesting OPTIONS=true in
+the NAMING LOOKUP command. Service operators can publish metadata about their
+services to help clients automatically discover connection parameters, supported
+protocols, and service capabilities.
+
+Parameters:
+
+    - name: I2P hostname to resolve (e.g., "service.i2p", "forum.i2p")
+    - options: Set to true to request service metadata, false for address-only lookup
+
+Returns:
+
+    - i2pkeys.I2PAddr: The resolved I2P destination address
+    - map[string]string: Service options/metadata (empty if options=false or no metadata available)
+    - error: Any error that occurred during resolution
+
+Service Discovery Examples:
+
+    // Basic address resolution (compatible with older SAM versions)
+    addr, _, err := resolver.ResolveWithOptions("mysite.i2p", false)
+
+    // Service discovery with metadata (SAMv3.2+ feature)
+    addr, metadata, err := resolver.ResolveWithOptions("api.i2p", true)
+    if err != nil {
+        return err
+    }
+
+    // Extract service information from metadata
+    if port := metadata["port"]; port != "" {
+        fmt.Printf("Service port: %s\n", port)
+    }
+    if protocol := metadata["protocol"]; protocol != "" {
+        fmt.Printf("Protocol: %s\n", protocol)
+    }
+    if path := metadata["path"]; path != "" {
+        fmt.Printf("API path: %s\n", path)
+    }
+
+Common metadata keys include: port, protocol, path, description, version,
+contact. Metadata availability depends on service operator configuration and SAM
+bridge version.
 
 #### type Session
 
