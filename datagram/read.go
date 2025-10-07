@@ -1,11 +1,9 @@
 package datagram
 
 import (
-	"bufio"
 	"strings"
 	"time"
 
-	"github.com/go-i2p/common/base64"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
@@ -330,64 +328,41 @@ func (r *DatagramReader) readFromConnection() (string, error) {
 }
 
 // parseDatagramResponse parses the DATAGRAM RECEIVED response to extract source and data.
+// Actual format is 2 lines:
+//
+//	Line 1: DATAGRAM RECEIVED DESTINATION=$destination SIZE=$numBytes [FROM_PORT=nnn] [TO_PORT=nnn]
+//	Line 2: [raw data - NOT base64 encoded]
 func (r *DatagramReader) parseDatagramResponse(response string) (string, string, error) {
-	scanner := r.createDatagramResponseScanner(response)
-	source, data := r.extractDatagramSourceAndData(scanner)
-	return r.validateDatagramParsedData(source, data)
-}
-
-// createDatagramResponseScanner sets up a word-based scanner for the DATAGRAM response.
-func (r *DatagramReader) createDatagramResponseScanner(response string) *bufio.Scanner {
-	scanner := bufio.NewScanner(strings.NewReader(response))
-	scanner.Split(bufio.ScanWords)
-	return scanner
-}
-
-// extractDatagramSourceAndData parses tokens from the scanner to extract source and data.
-func (r *DatagramReader) extractDatagramSourceAndData(scanner *bufio.Scanner) (source, data string) {
-	for scanner.Scan() {
-		word := scanner.Text()
-		source, data = r.processDatagramToken(word, source, data)
+	lines := strings.Split(response, "\n")
+	if len(lines) < 2 {
+		return "", "", oops.Errorf("invalid datagram response format: expected 2 lines, got %d", len(lines))
 	}
-	return source, data
-}
 
-// processDatagramToken processes a single token and updates source/data accordingly.
-func (r *DatagramReader) processDatagramToken(word, source, data string) (string, string) {
-	switch {
-	case r.isDatagramProtocolToken(word):
-		return source, data
-	case strings.HasPrefix(word, "DESTINATION="):
-		return word[12:], data
-	case strings.HasPrefix(word, "SIZE="):
-		return source, data // We'll get the actual data size from the payload
-	default:
-		// Remaining data is the base64-encoded payload
-		return source, r.accumulateDatagramData(data, word)
+	// Parse first line for headers
+	headerLine := strings.TrimSpace(lines[0])
+	var source string
+
+	// Split header line by spaces and look for DESTINATION=
+	headerParts := strings.Fields(headerLine)
+	for _, part := range headerParts {
+		if strings.HasPrefix(part, "DESTINATION=") {
+			source = part[12:] // Remove "DESTINATION=" prefix
+			break
+		}
 	}
-}
 
-// isDatagramProtocolToken checks if the token is a DATAGRAM protocol keyword to ignore.
-func (r *DatagramReader) isDatagramProtocolToken(word string) bool {
-	return word == "DATAGRAM" || word == "RECEIVED"
-}
-
-// accumulateDatagramData appends token to data string with proper spacing.
-func (r *DatagramReader) accumulateDatagramData(data, word string) string {
-	if data == "" {
-		return word
-	}
-	return data + " " + word
-}
-
-// validateDatagramParsedData ensures both source and data were extracted successfully.
-func (r *DatagramReader) validateDatagramParsedData(source, data string) (string, string, error) {
 	if source == "" {
-		return "", "", oops.Errorf("no source in datagram")
+		return "", "", oops.Errorf("no source destination found in datagram response")
+	}
+
+	// Get data from second line (raw data, not base64)
+	data := ""
+	if len(lines) > 1 {
+		data = lines[1] // Raw data, not base64 encoded
 	}
 
 	if data == "" {
-		return "", "", oops.Errorf("no data in datagram")
+		return "", "", oops.Errorf("empty data in datagram response")
 	}
 
 	return source, data, nil
@@ -400,13 +375,9 @@ func (r *DatagramReader) createDatagram(source, data string) (*Datagram, error) 
 		return nil, oops.Errorf("failed to parse source address: %w", err)
 	}
 
-	decodedData, err := base64.I2PEncoding.DecodeString(data)
-	if err != nil {
-		return nil, oops.Errorf("failed to decode datagram data: %w", err)
-	}
-
+	// Data is already raw bytes, not base64 encoded
 	datagram := &Datagram{
-		Data:   decodedData,
+		Data:   []byte(data),
 		Source: sourceAddr,
 		Local:  r.session.Addr(),
 	}
