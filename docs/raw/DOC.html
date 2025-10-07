@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 175 commits
+        📝 176 commits
         
       </div>
     </div>
@@ -295,6 +295,31 @@ cryptographic keys, and configuration options, returning a RawSession instance
 or an error if creation fails. Example usage: session, err := NewRawSession(sam,
 &ldquo;my-session&rdquo;, keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
 
+<h4 id="func-newrawsessionfromsubsession">func  NewRawSessionFromSubsession</h4>
+
+<pre><code class="language-go">func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
+</code></pre>
+
+<p>NewRawSessionFromSubsession creates a RawSession for a subsession that has
+already been registered with a PRIMARY session using SESSION ADD. This
+constructor skips the session creation step since the subsession is already
+registered with the SAM bridge.</p>
+
+<p>This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- sam: SAM connection for data operations (separate from the primary session's control connection)
+- id: The subsession ID that was already registered with SESSION ADD
+- keys: The I2P keys from the primary session (shared across all subsessions)
+- options: Configuration options for the subsession
+</code></pre>
+
+<p>Returns a RawSession ready for use without attempting to create a new SAM
+session.</p>
+
 <h4 id="func-rawsession-addr">func (*RawSession) Addr</h4>
 
 <pre><code class="language-go">func (s *RawSession) Addr() i2pkeys.I2PAddr
@@ -516,7 +541,7 @@ signature type</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-07 02:11:30 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-07 02:17:29 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 175 commits
+        📝 176 commits
         
       </div>
     </div>
@@ -332,6 +332,31 @@ returns a DatagramSession instance that can be used for sending and receiving
 datagrams over the I2P network. Example usage: session, err :=
 NewDatagramSession(sam, &ldquo;my-session&rdquo;, keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
 
+<h4 id="func-newdatagramsessionfromsubsession">func  NewDatagramSessionFromSubsession</h4>
+
+<pre><code class="language-go">func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
+</code></pre>
+
+<p>NewDatagramSessionFromSubsession creates a DatagramSession for a subsession that
+has already been registered with a PRIMARY session using SESSION ADD. This
+constructor skips the session creation step since the subsession is already
+registered with the SAM bridge.</p>
+
+<p>This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- sam: SAM connection for data operations (separate from the primary session's control connection)
+- id: The subsession ID that was already registered with SESSION ADD
+- keys: The I2P keys from the primary session (shared across all subsessions)
+- options: Configuration options for the subsession
+</code></pre>
+
+<p>Returns a DatagramSession ready for use without attempting to create a new SAM
+session.</p>
+
 <h4 id="func-datagramsession-addr">func (*DatagramSession) Addr</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) Addr() i2pkeys.I2PAddr
@@ -468,16 +493,38 @@ provides compatibility with standard Go networking code by wrapping the datagram
 session in a connection that implements the PacketConn interface. Example usage:
 conn := session.PacketConn(); n, addr, err := conn.ReadFrom(buffer)</p>
 
+<h4 id="func-datagramsession-readfrom">func (*DatagramSession) ReadFrom</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) ReadFrom(p []byte) (n int, addr net.Addr, err error)
+</code></pre>
+
+<p>ReadFrom reads a datagram message from the session, storing it in p. It returns
+the number of bytes read (n), the sender&rsquo;s I2P address (addr), and any error
+encountered (err). The address can be used to reply to the sender.</p>
+
+<p>The method blocks until a datagram is available or an error occurs. If the
+provided buffer p is too small to hold the incoming datagram, the excess data
+will be discarded, and n will be set to the buffer size.</p>
+
+<p>Example usage:</p>
+
+<pre><code>n, addr, err := ds.ReadFrom(buf)
+if err != nil {
+    // handle error
+}
+fmt.Printf(&quot;Received %d bytes from %s\n&quot;, n, addr.Base32())
+</code></pre>
+
 <h4 id="func-datagramsession-receivedatagram">func (*DatagramSession) ReceiveDatagram</h4>
 
 <pre><code class="language-go">func (s *DatagramSession) ReceiveDatagram() (*Datagram, error)
 </code></pre>
 
-<p>ReceiveDatagram receives a single datagram from any source. This is a
-convenience method that creates a temporary reader, starts the receive loop,
-gets one datagram, and cleans up resources automatically. For continuous
-reception, use NewReader() and manage the reader lifecycle manually. Example
-usage: datagram, err := session.ReceiveDatagram()</p>
+<p>ReceiveDatagram receives a single datagram from the I2P network. This method is
+a convenience wrapper that performs a direct single read operation without
+starting a continuous receive loop. For continuous reception, use NewReader()
+and manage the reader lifecycle manually. Example usage: datagram, err :=
+session.ReceiveDatagram()</p>
 
 <h4 id="func-datagramsession-senddatagram">func (*DatagramSession) SendDatagram</h4>
 
@@ -489,6 +536,37 @@ convenience method that creates a temporary writer and sends the datagram
 immediately. For multiple sends, it&rsquo;s more efficient to create a writer once and
 reuse it. Example usage: err := session.SendDatagram([]byte(&ldquo;hello&rdquo;),
 destinationAddr)</p>
+
+<h4 id="func-datagramsession-writeto">func (*DatagramSession) WriteTo</h4>
+
+<pre><code class="language-go">func (ds *DatagramSession) WriteTo(p []byte, addr net.Addr) (n int, err error)
+</code></pre>
+
+<p>WriteTo sends a datagram message to the specified I2P address. It returns the
+number of bytes written (n) and any error encountered (err).</p>
+
+<p>The returned n may be less than len(p) if the message was truncated to fit the
+maximum datagram size limit.</p>
+
+<p>The error return value may indicate:</p>
+
+<pre><code>- SAM protocol errors (e.g., malformed commands, protocol violations, or non-OK responses)
+- I2P network errors (e.g., tunnel not established, network unreachable, or timeouts)
+- Application errors (e.g., nil session, invalid address type, or session not connected)
+</code></pre>
+
+<p>The method may block until the message is sent or an error occurs. If the
+message is larger than the maximum allowed datagram size, it will be truncated
+to fit within the limit.</p>
+
+<p>Example usage:</p>
+
+<pre><code>n, err := ds.WriteTo([]byte(&quot;Hello, I2P!&quot;), addr)
+if err != nil {
+    // handle error
+}
+fmt.Printf(&quot;Sent %d bytes to %s\n&quot;, n, addr.Base32())
+</code></pre>
 
 <h4 id="type-datagramwriter">type DatagramWriter</h4>
 
@@ -510,10 +588,10 @@ dest)</p>
 </code></pre>
 
 <p>SendDatagram sends a datagram to the specified I2P destination address. This
-method handles the complete datagram transmission process including data
-encoding, SAM protocol communication, and response validation. It blocks until
-the datagram is sent or an error occurs, respecting the configured timeout
-duration. Example usage: err := writer.SendDatagram([]byte(&ldquo;hello world&rdquo;),
+method uses the preferred SAMv3 approach: sending via UDP socket to port 7655
+rather than using the DATAGRAM SEND command on the SAM bridge socket. It blocks
+until the datagram is sent or an error occurs, respecting the configured
+timeout. Example usage: err := writer.SendDatagram([]byte(&ldquo;hello world&rdquo;),
 destinationAddr)</p>
 
 <h4 id="func-datagramwriter-settimeout">func (*DatagramWriter) SetTimeout</h4>
@@ -582,7 +660,7 @@ sam.NewDatagramSessionWithSignature(id, keys, options, &ldquo;EdDSA_SHA512_Ed255
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-07 02:11:30 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-07 02:17:29 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

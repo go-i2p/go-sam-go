@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 175 commits
+        📝 176 commits
         
       </div>
     </div>
@@ -158,6 +158,28 @@ streamSub, err := session.NewStreamSubSession(&quot;stream-1&quot;, streamOption
 datagramSub, err := session.NewDatagramSubSession(&quot;datagram-1&quot;, datagramOptions)
 </code></pre>
 
+<h4 id="func-newprimarysessionwithsignature">func  NewPrimarySessionWithSignature</h4>
+
+<pre><code class="language-go">func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error)
+</code></pre>
+
+<p>NewPrimarySessionWithSignature creates a new primary session with the specified
+signature type. This is a package-level function that provides direct access to
+signature-aware session creation without requiring wrapper types. It delegates
+to the common package for session creation while maintaining the same primary
+session functionality and sub-session management capabilities.</p>
+
+<p>The signature type allows specifying custom cryptographic parameters for
+enhanced security or compatibility with specific I2P network configurations.
+Different signature types provide various security levels, performance
+characteristics, and compatibility options.</p>
+
+<p>Example usage:</p>
+
+<pre><code>session, err := NewPrimarySessionWithSignature(sam, &quot;secure-primary&quot;, keys, options, &quot;EdDSA_SHA512_Ed25519&quot;)
+streamSub, err := session.NewStreamSubSession(&quot;stream-1&quot;, streamOptions)
+</code></pre>
+
 <h4 id="func-primarysession-addr">func (*PrimarySession) Addr</h4>
 
 <pre><code class="language-go">func (p *PrimarySession) Addr() i2pkeys.I2PAddr
@@ -258,14 +280,13 @@ infrastructure while providing full DatagramSession functionality for UDP-like
 authenticated messaging. Each sub-session must have a unique identifier within
 the primary session scope.</p>
 
-<p>The created sub-session inherits the primary session&rsquo;s keys and base
-configuration but can have additional datagram-specific options for customizing
-behavior such as message timeouts, reliability settings, and other datagram
-parameters.</p>
+<p>This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session&rsquo;s SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.</p>
 
 <p>Example usage:</p>
 
-<pre><code>datagramSub, err := primary.NewDatagramSubSession(&quot;udp-handler&quot;, []string{&quot;receive.timeout=60&quot;})
+<pre><code>datagramSub, err := primary.NewDatagramSubSession(&quot;udp-handler&quot;, []string{&quot;FROM_PORT=8080&quot;})
 writer := datagramSub.NewWriter()
 reader := datagramSub.NewReader()
 </code></pre>
@@ -281,13 +302,13 @@ while providing full RawSession functionality for unrepliable datagram
 communication. Each sub-session must have a unique identifier within the primary
 session scope.</p>
 
-<p>The created sub-session inherits the primary session&rsquo;s keys and base
-configuration but can have additional raw-specific options for customizing
-behavior such as transmission parameters and other raw communication settings.</p>
+<p>This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session&rsquo;s SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.</p>
 
 <p>Example usage:</p>
 
-<pre><code>rawSub, err := primary.NewRawSubSession(&quot;raw-sender&quot;, []string{&quot;send.timeout=30&quot;})
+<pre><code>rawSub, err := primary.NewRawSubSession(&quot;raw-sender&quot;, []string{&quot;FROM_PORT=8080&quot;})
 writer := rawSub.NewWriter()
 reader := rawSub.NewReader()
 </code></pre>
@@ -303,17 +324,24 @@ infrastructure while providing full StreamSession functionality for TCP-like
 reliable connections. Each sub-session must have a unique identifier within the
 primary session scope.</p>
 
-<p>The created sub-session inherits the primary session&rsquo;s keys and base
-configuration but can have additional stream-specific options for customizing
-behavior such as connection timeouts, buffer sizes, and other streaming
-parameters.</p>
+<p>This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session&rsquo;s SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.</p>
 
 <p>Example usage:</p>
 
-<pre><code>streamSub, err := primary.NewStreamSubSession(&quot;tcp-handler&quot;, []string{&quot;connect.timeout=30&quot;})
+<pre><code>streamSub, err := primary.NewStreamSubSession(&quot;tcp-handler&quot;, []string{&quot;FROM_PORT=8080&quot;})
 listener, err := streamSub.Listen()
 conn, err := streamSub.Dial(&quot;destination.b32.i2p&quot;)
 </code></pre>
+
+<h4 id="func-primarysession-newuniquestreamsubsession">func (*PrimarySession) NewUniqueStreamSubSession</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) NewUniqueStreamSubSession(s string) (*StreamSubSession, error)
+</code></pre>
+
+<p>NewUniqueStreamSubSession creates a new unique stream sub-session within this
+primary session.</p>
 
 <h4 id="func-primarysession-subsessioncount">func (*PrimarySession) SubSessionCount</h4>
 
@@ -632,7 +660,7 @@ method is thread-safe and can be called concurrently.</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-07 02:11:30 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-07 02:17:29 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

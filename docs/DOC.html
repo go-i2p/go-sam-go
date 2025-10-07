@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 175 commits
+        📝 176 commits
         
       </div>
     </div>
@@ -66,24 +66,61 @@
 <pre><code>import &quot;github.com/go-i2p/go-sam-go&quot;
 </code></pre>
 
-<p>Package sam3 provides a compatibility layer for the go-i2p/sam3 library using
-go-sam-go as the backend</p>
+<p>Package sam3 provides configuration wrapper functions for exposing common
+package configuration functionality at the root level. This file implements
+wrapper functions for SAMEmit options and I2PConfig creation that enable
+applications to configure I2P tunnel parameters and session behaviors through a
+clean, sam3-compatible API.</p>
+
+<p>Package sam provides a pure-Go implementation of SAMv3.3 (Simple Anonymous
+Messaging) for I2P networks. This is the root package wrapper that provides
+sam3-compatible API surface while delegating implementation details to
+specialized sub-packages.</p>
+
+<p>Package sam provides a pure-Go implementation of SAMv3.3 for I2P networks. This
+file implements the main wrapper functions that delegate to sub-package
+implementations while providing the sam3-compatible API surface at the root
+package level.</p>
+
+<p>Package sam provides type aliases and wrappers for exposing sub-package types at
+the root level. This file implements the sam3-compatible API surface by creating
+type aliases that delegate to the appropriate sub-package implementations while
+maintaining a clean public interface.</p>
 
 <h2 id="usage">Usage</h2>
 
 <pre><code class="language-go">const (
-	Sig_NONE                 = &quot;SIGNATURE_TYPE=EdDSA_SHA512_Ed25519&quot;
-	Sig_DSA_SHA1             = &quot;SIGNATURE_TYPE=DSA_SHA1&quot;
-	Sig_ECDSA_SHA256_P256    = &quot;SIGNATURE_TYPE=ECDSA_SHA256_P256&quot;
-	Sig_ECDSA_SHA384_P384    = &quot;SIGNATURE_TYPE=ECDSA_SHA384_P384&quot;
-	Sig_ECDSA_SHA512_P521    = &quot;SIGNATURE_TYPE=ECDSA_SHA512_P521&quot;
+	// Sig_NONE is deprecated, use Sig_EdDSA_SHA512_Ed25519 instead for secure signatures.
+	Sig_NONE = &quot;SIGNATURE_TYPE=EdDSA_SHA512_Ed25519&quot;
+
+	// Sig_DSA_SHA1 specifies DSA with SHA1 signature type (legacy, not recommended for new applications).
+	Sig_DSA_SHA1 = &quot;SIGNATURE_TYPE=DSA_SHA1&quot;
+
+	// Sig_ECDSA_SHA256_P256 specifies ECDSA with SHA256 on P256 curve signature type.
+	Sig_ECDSA_SHA256_P256 = &quot;SIGNATURE_TYPE=ECDSA_SHA256_P256&quot;
+
+	// Sig_ECDSA_SHA384_P384 specifies ECDSA with SHA384 on P384 curve signature type.
+	Sig_ECDSA_SHA384_P384 = &quot;SIGNATURE_TYPE=ECDSA_SHA384_P384&quot;
+
+	// Sig_ECDSA_SHA512_P521 specifies ECDSA with SHA512 on P521 curve signature type.
+	Sig_ECDSA_SHA512_P521 = &quot;SIGNATURE_TYPE=ECDSA_SHA512_P521&quot;
+
+	// Sig_EdDSA_SHA512_Ed25519 specifies EdDSA with SHA512 on Ed25519 curve signature type (recommended).
 	Sig_EdDSA_SHA512_Ed25519 = &quot;SIGNATURE_TYPE=EdDSA_SHA512_Ed25519&quot;
+
+	// Sig_DEFAULT points to the recommended secure signature type for new applications.
+	Sig_DEFAULT = Sig_EdDSA_SHA512_Ed25519
 )
 </code></pre>
 
-<p>Constants from original sam3</p>
+<p>Signature type constants for I2P destination key generation. These specify the
+cryptographic signature algorithm used for I2P destinations. SIG_DEFAULT points
+to the recommended secure signature type for new applications.</p>
 
 <pre><code class="language-go">var (
+	// Options_Humongous provides maximum anonymity and redundancy for extremely high-value traffic.
+	// Suitable for applications requiring the highest level of anonymity protection with significant
+	// resource overhead. Uses 3-hop tunnels with high redundancy and parallel connections.
 	Options_Humongous = []string{
 		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
 		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
@@ -91,6 +128,9 @@ go-sam-go as the backend</p>
 		&quot;inbound.quantity=6&quot;, &quot;outbound.quantity=6&quot;,
 	}
 
+	// Options_Large provides strong anonymity for high-traffic applications.
+	// Suitable for applications shuffling large amounts of traffic with good anonymity protection.
+	// Balances performance and anonymity with reasonable resource usage.
 	Options_Large = []string{
 		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
 		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
@@ -98,6 +138,9 @@ go-sam-go as the backend</p>
 		&quot;inbound.quantity=4&quot;, &quot;outbound.quantity=4&quot;,
 	}
 
+	// Options_Wide provides minimal anonymity but high performance for traffic requiring low latency.
+	// Suitable for applications prioritizing speed over anonymity. Uses 1-hop tunnels with
+	// moderate redundancy for basic privacy protection while maintaining performance.
 	Options_Wide = []string{
 		&quot;inbound.length=1&quot;, &quot;outbound.length=1&quot;,
 		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
@@ -105,6 +148,9 @@ go-sam-go as the backend</p>
 		&quot;inbound.quantity=3&quot;, &quot;outbound.quantity=3&quot;,
 	}
 
+	// Options_Medium provides balanced anonymity and performance for moderate traffic loads.
+	// Suitable for applications with medium traffic requirements that need good anonymity
+	// without excessive resource overhead. Provides solid baseline protection.
 	Options_Medium = []string{
 		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
 		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
@@ -112,6 +158,9 @@ go-sam-go as the backend</p>
 		&quot;inbound.quantity=2&quot;, &quot;outbound.quantity=2&quot;,
 	}
 
+	// Options_Default provides sensible defaults for most use cases.
+	// Recommended starting point for most applications. Provides good anonymity
+	// with reasonable performance characteristics and resource usage.
 	Options_Default = []string{
 		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
 		&quot;inbound.lengthVariance=0&quot;, &quot;outbound.lengthVariance=0&quot;,
@@ -119,6 +168,9 @@ go-sam-go as the backend</p>
 		&quot;inbound.quantity=1&quot;, &quot;outbound.quantity=1&quot;,
 	}
 
+	// Options_Small provides basic anonymity for low-traffic, short-duration connections.
+	// Suitable only for applications with minimal traffic requirements and short connection
+	// lifetimes. Offers basic privacy with minimal resource usage.
 	Options_Small = []string{
 		&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;,
 		&quot;inbound.lengthVariance=1&quot;, &quot;outbound.lengthVariance=1&quot;,
@@ -126,6 +178,9 @@ go-sam-go as the backend</p>
 		&quot;inbound.quantity=1&quot;, &quot;outbound.quantity=1&quot;,
 	}
 
+	// Options_Warning_ZeroHop disables all anonymization - zero hop configuration.
+	// WARNING: This configuration provides NO anonymity protection and should only be used
+	// for testing or debugging purposes. All traffic is directly routed without tunnel protection.
 	Options_Warning_ZeroHop = []string{
 		&quot;inbound.length=0&quot;, &quot;outbound.length=0&quot;,
 		&quot;inbound.lengthVariance=0&quot;, &quot;outbound.lengthVariance=0&quot;,
@@ -135,1152 +190,1148 @@ go-sam-go as the backend</p>
 )
 </code></pre>
 
-<p>Predefined option sets (keeping your existing definitions)</p>
+<p>Predefined tunnel configuration option sets for different traffic patterns and
+anonymity requirements. These option sets balance performance, anonymity, and
+resource usage for common use cases. Each option set specifies tunnel length,
+variance, backup quantity, and parallel tunnel count.</p>
 
 <pre><code class="language-go">var (
-	PrimarySessionSwitch string = PrimarySessionString()
-	SAM_HOST                    = getEnv(&quot;sam_host&quot;, &quot;127.0.0.1&quot;)
-	SAM_PORT                    = getEnv(&quot;sam_port&quot;, &quot;7656&quot;)
+	// SAM_HOST specifies the SAM bridge host address.
+	// Can be overridden with the 'sam_host' environment variable.
+	// Defaults to localhost (127.0.0.1) for local I2P router connections.
+	SAM_HOST = getEnv(&quot;sam_host&quot;, &quot;127.0.0.1&quot;)
+
+	// SAM_PORT specifies the SAM bridge port number.
+	// Can be overridden with the 'sam_port' environment variable.
+	// Defaults to 7656, the standard SAM bridge port.
+	SAM_PORT = getEnv(&quot;sam_port&quot;, &quot;7656&quot;)
+
+	// PrimarySessionSwitch enables primary session functionality.
+	// This is used internally to enable multi-session capabilities.
+	PrimarySessionSwitch = PrimarySessionString()
 )
 </code></pre>
 
-<p>Global variables from original sam3</p>
-
-<h4 id="func-convertoptionstoslice">func  ConvertOptionsToSlice</h4>
-
-<pre><code class="language-go">func ConvertOptionsToSlice(opts Options) []string
-</code></pre>
-
-<p>Additional utility functions that may be needed for compatibility</p>
+<p>SAM bridge connection variables with environment variable support. These
+variables can be overridden using sam_host and sam_port environment variables.</p>
 
 <h4 id="func-extractdest">func  ExtractDest</h4>
 
 <pre><code class="language-go">func ExtractDest(input string) string
 </code></pre>
 
-<p>ExtractDest extracts destination from input</p>
+<p>ExtractDest extracts the destination address from a SAM protocol response
+string. This utility function takes the first space-separated token from the
+input as the destination. It&rsquo;s commonly used for parsing SAM session creation
+responses and connection messages.</p>
+
+<p>Example:</p>
+
+<pre><code>dest := ExtractDest(&quot;ABCD1234...destination_address RESULT=OK&quot;)
+// Returns: &quot;ABCD1234...destination_address&quot;
+</code></pre>
 
 <h4 id="func-extractpairint">func  ExtractPairInt</h4>
 
 <pre><code class="language-go">func ExtractPairInt(input, value string) int
 </code></pre>
 
-<p>ExtractPairInt extracts integer value from key=value pair</p>
+<p>ExtractPairInt extracts an integer value from a key=value pair in a
+space-separated string. This utility function searches for the specified key and
+converts its value to an integer. Returns 0 if the key is not found or the value
+cannot be converted to an integer.</p>
+
+<p>Example:</p>
+
+<pre><code>port := ExtractPairInt(&quot;HOST=example.org PORT=1234 TYPE=stream&quot;, &quot;PORT&quot;)
+// Returns: 1234
+</code></pre>
 
 <h4 id="func-extractpairstring">func  ExtractPairString</h4>
 
 <pre><code class="language-go">func ExtractPairString(input, value string) string
 </code></pre>
 
-<p>ExtractPairString extracts string value from key=value pair</p>
+<p>ExtractPairString extracts a string value from a key=value pair in a
+space-separated string. This utility function searches for the specified key and
+returns its associated value. Returns empty string if the key is not found or
+has no value.</p>
+
+<p>Example:</p>
+
+<pre><code>host := ExtractPairString(&quot;HOST=example.org PORT=1234 TYPE=stream&quot;, &quot;HOST&quot;)
+// Returns: &quot;example.org&quot;
+</code></pre>
 
 <h4 id="func-generateoptionstring">func  GenerateOptionString</h4>
 
 <pre><code class="language-go">func GenerateOptionString(opts []string) string
 </code></pre>
 
-<p>GenerateOptionString generates option string from slice</p>
+<p>GenerateOptionString converts a slice of tunnel options into a single
+space-separated string. This utility function takes an array of I2P tunnel
+configuration options and formats them for use in SAM protocol commands. Each
+option should be in &ldquo;key=value&rdquo; format.</p>
+
+<p>Example:</p>
+
+<pre><code>opts := []string{&quot;inbound.length=3&quot;, &quot;outbound.length=3&quot;}
+result := GenerateOptionString(opts)
+// Returns: &quot;inbound.length=3 outbound.length=3&quot;
+</code></pre>
 
 <h4 id="func-getsam3logger">func  GetSAM3Logger</h4>
 
 <pre><code class="language-go">func GetSAM3Logger() *logrus.Logger
 </code></pre>
 
-<p>GetSAM3Logger returns the initialized logger</p>
+<p>GetSAM3Logger returns the initialized logger instance used by the SAM library.
+This function provides access to the structured logger for applications that
+want to integrate with the library&rsquo;s logging system or adjust log levels.</p>
+
+<p>The logger is configured with appropriate fields for I2P and SAM operations,
+supporting debug, info, warn, and error levels with structured output.</p>
 
 <h4 id="func-ignoreporterror">func  IgnorePortError</h4>
 
 <pre><code class="language-go">func IgnorePortError(err error) error
 </code></pre>
 
-<p>IgnorePortError ignores port-related errors</p>
+<p>IgnorePortError filters out &ldquo;missing port in address&rdquo; errors for convenience
+when parsing addresses. This utility function is used when working with
+addresses that may not include port numbers. Returns nil if the error is about a
+missing port, otherwise returns the original error unchanged.</p>
+
+<p>This is particularly useful when parsing I2P destination addresses that don&rsquo;t
+always include port specifications, allowing graceful handling of address
+parsing operations.</p>
+
+<p>Example:</p>
+
+<pre><code>_, _, err := net.SplitHostPort(&quot;example.i2p&quot;)  // This would error
+err = IgnorePortError(err)  // This returns nil
+</code></pre>
 
 <h4 id="func-initializesam3logger">func  InitializeSAM3Logger</h4>
 
 <pre><code class="language-go">func InitializeSAM3Logger()
 </code></pre>
 
-<p>InitializeSAM3Logger initializes the logger</p>
+<p>InitializeSAM3Logger configures the logging system for the SAM library. This
+function sets up the logger with appropriate configuration for I2P operations,
+including proper log levels and formatting for SAM protocol debugging.</p>
+
+<p>The logger respects environment variables for configuration: - DEBUG_I2P:
+Controls log level (debug, info, warn, error) Applications should call this once
+during initialization if they want to enable structured logging for SAM
+operations.</p>
 
 <h4 id="func-primarysessionstring">func  PrimarySessionString</h4>
 
 <pre><code class="language-go">func PrimarySessionString() string
 </code></pre>
 
-<p>PrimarySessionString returns primary session string</p>
+<p>PrimarySessionString returns the primary session configuration identifier. This
+function provides compatibility with the sam3 library&rsquo;s primary session switch
+mechanism for enabling advanced session management features.</p>
 
 <h4 id="func-randstring">func  RandString</h4>
 
 <pre><code class="language-go">func RandString() string
 </code></pre>
 
-<p>RandString generates a random string</p>
+<p>RandString generates a random string suitable for use as session identifiers or
+tunnel names. This utility function creates cryptographically secure random
+strings using I2P&rsquo;s random number generator. The generated strings are URL-safe
+and suitable for use in SAM protocol commands and session identification.</p>
+
+<p>Returns a random string that can be used for session IDs, tunnel names, or other
+identifiers that require uniqueness and unpredictability in I2P operations.</p>
 
 <h4 id="func-samdefaultaddr">func  SAMDefaultAddr</h4>
 
 <pre><code class="language-go">func SAMDefaultAddr(fallforward string) string
 </code></pre>
 
-<p>SAMDefaultAddr returns default SAM address</p>
+<p>SAMDefaultAddr constructs the default SAM bridge address with fallback support.
+This utility function provides a standardized way to determine the SAM bridge
+address, using the provided fallback if the standard environment variables are
+not set.</p>
+
+<p>The function checks SAM_HOST and SAM_PORT variables first, then falls back to
+the provided fallforward parameter if those are not available. This enables
+flexible configuration while providing sensible defaults for most I2P
+installations.</p>
+
+<p>Example:</p>
+
+<pre><code>addr := SAMDefaultAddr(&quot;127.0.0.1:7656&quot;)
+// Returns: &quot;127.0.0.1:7656&quot; (or values from SAM_HOST/SAM_PORT if set)
+</code></pre>
+
+<h4 id="func-setaccesslist">func  SetAccessList</h4>
+
+<pre><code class="language-go">func SetAccessList(s []string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetAccessList sets the list of destinations for access control. The behavior
+depends on the access list type: whitelist allows only these destinations,
+blacklist denies these destinations.</p>
+
+<p>Example usage:</p>
+
+<pre><code>destinations := []string{&quot;dest1.b32.i2p&quot;, &quot;dest2.b32.i2p&quot;}
+emit, err := NewEmit(SetAccessList(destinations))
+</code></pre>
 
 <h4 id="func-setaccesslisttype">func  SetAccessListType</h4>
 
-<pre><code class="language-go">func SetAccessListType(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetAccessListType(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetAccessListType sets the type of access control to apply. Valid values are
+&ldquo;whitelist&rdquo; (allow only listed destinations), &ldquo;blacklist&rdquo; (deny listed
+destinations), or &ldquo;none&rdquo; (no filtering).</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetAccessListType(&quot;whitelist&quot;))
+</code></pre>
+
+<h4 id="func-setallowzeroin">func  SetAllowZeroIn</h4>
+
+<pre><code class="language-go">func SetAllowZeroIn(b bool) func(*SAMEmit) error
+</code></pre>
+
+<p>SetAllowZeroIn enables or disables acceptance of zero-hop inbound tunnels.
+Zero-hop tunnels provide no anonymity but offer better performance for
+applications that don&rsquo;t require anonymity protection.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetAllowZeroIn(false))
+</code></pre>
+
+<h4 id="func-setallowzeroout">func  SetAllowZeroOut</h4>
+
+<pre><code class="language-go">func SetAllowZeroOut(b bool) func(*SAMEmit) error
+</code></pre>
+
+<p>SetAllowZeroOut enables or disables acceptance of zero-hop outbound tunnels.
+Zero-hop tunnels provide no anonymity but offer better performance for
+applications that don&rsquo;t require anonymity protection.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetAllowZeroOut(false))
+</code></pre>
+
+<h4 id="func-setcloseidle">func  SetCloseIdle</h4>
+
+<pre><code class="language-go">func SetCloseIdle(b bool) func(*SAMEmit) error
+</code></pre>
+
+<p>SetCloseIdle enables or disables complete tunnel closure during extended idle
+periods. When enabled, closes all tunnels after the specified idle time to
+completely conserve router resources.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetCloseIdle(true))
 </code></pre>
 
 <h4 id="func-setcloseidletime">func  SetCloseIdleTime</h4>
 
-<pre><code class="language-go">func SetCloseIdleTime(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetCloseIdleTime(u int) func(*SAMEmit) error
 </code></pre>
 
-<h4 id="func-setinallowzerohop">func  SetInAllowZeroHop</h4>
+<p>SetCloseIdleTime sets the time in minutes to wait before closing all tunnels.
+After this period of inactivity, all tunnels will be closed to conserve router
+resources.</p>
 
-<pre><code class="language-go">func SetInAllowZeroHop(s string) func(*I2PConfig) error
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetCloseIdleTime(30)) // 30 minutes
 </code></pre>
 
-<p>Configuration option setters for all the missing Set* functions</p>
+<h4 id="func-setcloseidletimems">func  SetCloseIdleTimeMs</h4>
 
-<h4 id="func-setinbackupquantity">func  SetInBackupQuantity</h4>
+<pre><code class="language-go">func SetCloseIdleTimeMs(u int) func(*SAMEmit) error
+</code></pre>
 
-<pre><code class="language-go">func SetInBackupQuantity(s string) func(*I2PConfig) error
+<p>SetCloseIdleTimeMs sets the time in milliseconds to wait before closing all
+tunnels. After this period of inactivity, all tunnels will be closed to conserve
+router resources.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetCloseIdleTimeMs(1800000)) // 30 minutes
+</code></pre>
+
+<h4 id="func-setcompress">func  SetCompress</h4>
+
+<pre><code class="language-go">func SetCompress(b bool) func(*SAMEmit) error
+</code></pre>
+
+<p>SetCompress enables or disables data compression for tunnel traffic. Compression
+can reduce bandwidth usage but may impact performance and could potentially
+affect anonymity through traffic analysis.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetCompress(true))
+</code></pre>
+
+<h4 id="func-setencrypt">func  SetEncrypt</h4>
+
+<pre><code class="language-go">func SetEncrypt(b bool) func(*SAMEmit) error
+</code></pre>
+
+<p>SetEncrypt enables or disables encrypted lease sets for enhanced security.
+Encrypted lease sets provide additional protection against traffic analysis but
+may slightly impact performance and compatibility.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetEncrypt(true))
+</code></pre>
+
+<h4 id="func-setfastrecieve">func  SetFastRecieve</h4>
+
+<pre><code class="language-go">func SetFastRecieve(b bool) func(*SAMEmit) error
+</code></pre>
+
+<p>SetFastRecieve enables or disables fast receive mode for improved performance.
+When enabled, bypasses some protocol overhead for faster data transmission at
+the potential cost of some reliability guarantees.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetFastRecieve(true))
+</code></pre>
+
+<h4 id="func-setinbackups">func  SetInBackups</h4>
+
+<pre><code class="language-go">func SetInBackups(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetInBackups sets the number of backup inbound tunnels (0-5). Backup tunnels are
+pre-built spare tunnels that can quickly replace failed primary tunnels,
+improving connection reliability.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetInBackups(1))
 </code></pre>
 
 <h4 id="func-setinlength">func  SetInLength</h4>
 
-<pre><code class="language-go">func SetInLength(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetInLength(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetInLength sets the number of hops for inbound tunnels (0-6). Higher values
+provide better anonymity but increase latency and resource usage. Most
+applications use 3 hops as a balance between security and performance.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetInLength(3))
 </code></pre>
 
 <h4 id="func-setinquantity">func  SetInQuantity</h4>
 
-<pre><code class="language-go">func SetInQuantity(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetInQuantity(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetInQuantity sets the number of inbound tunnels to maintain (1-16). More
+tunnels provide better load distribution and redundancy but consume more router
+resources. Most applications use 1-4 tunnels.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetInQuantity(2))
 </code></pre>
 
 <h4 id="func-setinvariance">func  SetInVariance</h4>
 
-<pre><code class="language-go">func SetInVariance(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetInVariance(i int) func(*SAMEmit) error
 </code></pre>
 
-<h4 id="func-setoutallowzerohop">func  SetOutAllowZeroHop</h4>
+<p>SetInVariance sets the variance for inbound tunnel hop counts (-6 to 6). This
+adds randomness to tunnel lengths to prevent traffic analysis. Positive values
+increase maximum hops, negative values allow shorter tunnels.</p>
 
-<pre><code class="language-go">func SetOutAllowZeroHop(s string) func(*I2PConfig) error
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetInVariance(1))
 </code></pre>
 
-<h4 id="func-setoutbackupquantity">func  SetOutBackupQuantity</h4>
+<h4 id="func-setleasesetkey">func  SetLeaseSetKey</h4>
 
-<pre><code class="language-go">func SetOutBackupQuantity(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetLeaseSetKey(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetLeaseSetKey sets the public key for lease set encryption. This key is used to
+encrypt the lease set information, providing additional security for the
+destination&rsquo;s routing information.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetLeaseSetKey(&quot;base64-encoded-key&quot;))
+</code></pre>
+
+<h4 id="func-setleasesetprivatekey">func  SetLeaseSetPrivateKey</h4>
+
+<pre><code class="language-go">func SetLeaseSetPrivateKey(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetLeaseSetPrivateKey sets the private key for lease set decryption. This key is
+used to decrypt lease set information when encrypted lease sets are enabled for
+enhanced security.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetLeaseSetPrivateKey(&quot;base64-encoded-private-key&quot;))
+</code></pre>
+
+<h4 id="func-setleasesetprivatesigningkey">func  SetLeaseSetPrivateSigningKey</h4>
+
+<pre><code class="language-go">func SetLeaseSetPrivateSigningKey(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetLeaseSetPrivateSigningKey sets the private signing key for lease set
+authentication. This key is used to sign lease set information to ensure
+authenticity and prevent tampering with routing information.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetLeaseSetPrivateSigningKey(&quot;base64-encoded-signing-key&quot;))
+</code></pre>
+
+<h4 id="func-setmessagereliability">func  SetMessageReliability</h4>
+
+<pre><code class="language-go">func SetMessageReliability(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetMessageReliability sets the reliability level for message delivery. Options
+include &ldquo;none&rdquo;, &ldquo;BestEffort&rdquo;, or &ldquo;Guaranteed&rdquo; depending on the application&rsquo;s
+reliability requirements and performance trade-offs.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetMessageReliability(&quot;BestEffort&quot;))
+</code></pre>
+
+<h4 id="func-setname">func  SetName</h4>
+
+<pre><code class="language-go">func SetName(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetName sets the tunnel name for identification and debugging purposes. This
+name appears in I2P router logs and management interfaces to help identify and
+manage specific tunnels created by your application.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetName(&quot;my-app-tunnel&quot;))
+</code></pre>
+
+<h4 id="func-setoutbackups">func  SetOutBackups</h4>
+
+<pre><code class="language-go">func SetOutBackups(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetOutBackups sets the number of backup outbound tunnels (0-5). Backup tunnels
+are pre-built spare tunnels that can quickly replace failed primary tunnels,
+improving connection reliability.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetOutBackups(1))
 </code></pre>
 
 <h4 id="func-setoutlength">func  SetOutLength</h4>
 
-<pre><code class="language-go">func SetOutLength(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetOutLength(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetOutLength sets the number of hops for outbound tunnels (0-6). Higher values
+provide better anonymity but increase latency and resource usage. Most
+applications use 3 hops as a balance between security and performance.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetOutLength(3))
 </code></pre>
 
 <h4 id="func-setoutquantity">func  SetOutQuantity</h4>
 
-<pre><code class="language-go">func SetOutQuantity(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetOutQuantity(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetOutQuantity sets the number of outbound tunnels to maintain (1-16). More
+tunnels provide better load distribution and redundancy but consume more router
+resources. Most applications use 1-4 tunnels.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetOutQuantity(2))
 </code></pre>
 
 <h4 id="func-setoutvariance">func  SetOutVariance</h4>
 
-<pre><code class="language-go">func SetOutVariance(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetOutVariance(i int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetOutVariance sets the variance for outbound tunnel hop counts (-6 to 6). This
+adds randomness to tunnel lengths to prevent traffic analysis. Positive values
+increase maximum hops, negative values allow shorter tunnels.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetOutVariance(1))
+</code></pre>
+
+<h4 id="func-setreduceidle">func  SetReduceIdle</h4>
+
+<pre><code class="language-go">func SetReduceIdle(b bool) func(*SAMEmit) error
+</code></pre>
+
+<p>SetReduceIdle enables or disables tunnel reduction during extended idle periods.
+When enabled, reduces the number of active tunnels during idle time to conserve
+router resources while maintaining minimal connectivity.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetReduceIdle(true))
+</code></pre>
+
+<h4 id="func-setreduceidlequantity">func  SetReduceIdleQuantity</h4>
+
+<pre><code class="language-go">func SetReduceIdleQuantity(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetReduceIdleQuantity sets the minimum number of tunnels during idle periods.
+When idle reduction is enabled, this is the number of tunnels that will be
+maintained during periods of low activity.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetReduceIdleQuantity(1))
 </code></pre>
 
 <h4 id="func-setreduceidletime">func  SetReduceIdleTime</h4>
 
-<pre><code class="language-go">func SetReduceIdleTime(s string) func(*I2PConfig) error
+<pre><code class="language-go">func SetReduceIdleTime(u int) func(*SAMEmit) error
 </code></pre>
 
-<h4 id="func-setusecompression">func  SetUseCompression</h4>
+<p>SetReduceIdleTime sets the time in minutes to wait before reducing tunnels.
+After this period of inactivity, the number of tunnels will be reduced to the
+quantity specified by SetReduceIdleQuantity.</p>
 
-<pre><code class="language-go">func SetUseCompression(s string) func(*I2PConfig) error
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetReduceIdleTime(10)) // 10 minutes
 </code></pre>
+
+<h4 id="func-setreduceidletimems">func  SetReduceIdleTimeMs</h4>
+
+<pre><code class="language-go">func SetReduceIdleTimeMs(u int) func(*SAMEmit) error
+</code></pre>
+
+<p>SetReduceIdleTimeMs sets the time in milliseconds to wait before reducing
+tunnels. After this period of inactivity, the number of tunnels will be reduced
+to the quantity specified by SetReduceIdleQuantity.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetReduceIdleTimeMs(600000)) // 10 minutes
+</code></pre>
+
+<h4 id="func-setsamaddress">func  SetSAMAddress</h4>
+
+<pre><code class="language-go">func SetSAMAddress(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetSAMAddress sets the SAM bridge address all-at-once using &ldquo;host:port&rdquo; format.
+This convenience function parses the address string and sets both host and port
+simultaneously for simplified SAM bridge configuration.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetSAMAddress(&quot;127.0.0.1:7656&quot;))
+</code></pre>
+
+<h4 id="func-setsamhost">func  SetSAMHost</h4>
+
+<pre><code class="language-go">func SetSAMHost(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetSAMHost sets the hostname or IP address of the SAM bridge. The SAM bridge is
+the interface that allows applications to communicate with the I2P router for
+creating sessions and managing connections.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetSAMHost(&quot;127.0.0.1&quot;))
+</code></pre>
+
+<h4 id="func-setsamport">func  SetSAMPort</h4>
+
+<pre><code class="language-go">func SetSAMPort(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetSAMPort sets the port number of the SAM bridge using a string value. The port
+must be a valid TCP port number (0-65535) where the I2P router&rsquo;s SAM bridge is
+listening for incoming connections.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetSAMPort(&quot;7656&quot;))
+</code></pre>
+
+<h4 id="func-settype">func  SetType</h4>
+
+<pre><code class="language-go">func SetType(s string) func(*SAMEmit) error
+</code></pre>
+
+<p>SetType sets the session type for the forwarder server. Valid values are
+&ldquo;STREAM&rdquo;, &ldquo;DATAGRAM&rdquo;, or &ldquo;RAW&rdquo; corresponding to different communication patterns
+available in the I2P network protocol.</p>
+
+<p>Example usage:</p>
+
+<pre><code>emit, err := NewEmit(SetType(&quot;STREAM&quot;))
+</code></pre>
+
+<h4 id="func-splithostport">func  SplitHostPort</h4>
+
+<pre><code class="language-go">func SplitHostPort(hostport string) (string, string, error)
+</code></pre>
+
+<p>SplitHostPort separates host and port from a combined address string with
+I2P-aware handling. Unlike net.SplitHostPort, this function handles I2P
+addresses gracefully, including those without explicit port specifications.
+Returns host, port as strings, and error.</p>
+
+<p>This function is I2P-aware and handles the common case where I2P destination
+addresses don&rsquo;t include port numbers. Port defaults to &ldquo;0&rdquo; if not specified, and
+the function uses IgnorePortError internally to handle missing port situations
+gracefully.</p>
+
+<p>Example:</p>
+
+<pre><code>host, port, err := SplitHostPort(&quot;example.i2p&quot;)
+// Returns: &quot;example.i2p&quot;, &quot;0&quot;, nil
+</code></pre>
+
+<h4 id="type-basesession">type BaseSession</h4>
+
+<pre><code class="language-go">type BaseSession = common.BaseSession
+</code></pre>
+
+<p>BaseSession represents the underlying session functionality that all session
+types extend. It provides common operations like connection management, key
+access, and standard net.Conn interface implementation for I2P session
+operations.</p>
 
 <h4 id="type-datagramsession">type DatagramSession</h4>
 
-<pre><code class="language-go">type DatagramSession struct {
-}
+<pre><code class="language-go">type DatagramSession = datagram.DatagramSession
 </code></pre>
 
-<p>DatagramSession implements net.PacketConn for I2P datagrams</p>
-
-<h4 id="func-datagramsession-accept">func (*DatagramSession) Accept</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) Accept() (net.Conn, error)
-</code></pre>
-
-<p>Accept accepts connections (not applicable for datagrams)</p>
-
-<h4 id="func-datagramsession-addr">func (*DatagramSession) Addr</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) Addr() net.Addr
-</code></pre>
-
-<p>Addr returns the session address</p>
-
-<h4 id="func-datagramsession-b32">func (*DatagramSession) B32</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) B32() string
-</code></pre>
-
-<p>B32 returns the base32 address</p>
-
-<h4 id="func-datagramsession-close">func (*DatagramSession) Close</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) Close() error
-</code></pre>
-
-<p>Close closes the datagram session</p>
-
-<h4 id="func-datagramsession-dial">func (*DatagramSession) Dial</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) Dial(net string, addr string) (*DatagramSession, error)
-</code></pre>
-
-<p>Dial dials a connection (returns self for datagrams)</p>
-
-<h4 id="func-datagramsession-diali2premote">func (*DatagramSession) DialI2PRemote</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) DialI2PRemote(net string, addr net.Addr) (*DatagramSession, error)
-</code></pre>
-
-<p>DialI2PRemote dials to I2P remote</p>
-
-<h4 id="func-datagramsession-dialremote">func (*DatagramSession) DialRemote</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) DialRemote(net, addr string) (net.PacketConn, error)
-</code></pre>
-
-<p>DialRemote dials to remote address</p>
-
-<h4 id="func-datagramsession-localaddr">func (*DatagramSession) LocalAddr</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) LocalAddr() net.Addr
-</code></pre>
-
-<p>LocalAddr returns the local address</p>
-
-<h4 id="func-datagramsession-locali2paddr">func (*DatagramSession) LocalI2PAddr</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) LocalI2PAddr() i2pkeys.I2PAddr
-</code></pre>
-
-<p>LocalI2PAddr returns the I2P destination</p>
-
-<h4 id="func-datagramsession-lookup">func (*DatagramSession) Lookup</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) Lookup(name string) (a net.Addr, err error)
-</code></pre>
-
-<p>Lookup performs name lookup</p>
-
-<h4 id="func-datagramsession-read">func (*DatagramSession) Read</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) Read(b []byte) (n int, err error)
-</code></pre>
-
-<p>Read reads from the session</p>
-
-<h4 id="func-datagramsession-readfrom">func (*DatagramSession) ReadFrom</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) ReadFrom(b []byte) (n int, addr net.Addr, err error)
-</code></pre>
-
-<p>ReadFrom reads a datagram from the session</p>
-
-<h4 id="func-datagramsession-remoteaddr">func (*DatagramSession) RemoteAddr</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) RemoteAddr() net.Addr
-</code></pre>
-
-<p>RemoteAddr returns the remote address</p>
-
-<h4 id="func-datagramsession-setdeadline">func (*DatagramSession) SetDeadline</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) SetDeadline(t time.Time) error
-</code></pre>
-
-<p>SetDeadline sets read and write deadlines</p>
-
-<h4 id="func-datagramsession-setreaddeadline">func (*DatagramSession) SetReadDeadline</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) SetReadDeadline(t time.Time) error
-</code></pre>
-
-<p>SetReadDeadline sets read deadline</p>
-
-<h4 id="func-datagramsession-setwritebuffer">func (*DatagramSession) SetWriteBuffer</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) SetWriteBuffer(bytes int) error
-</code></pre>
-
-<p>SetWriteBuffer sets write buffer size</p>
-
-<h4 id="func-datagramsession-setwritedeadline">func (*DatagramSession) SetWriteDeadline</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) SetWriteDeadline(t time.Time) error
-</code></pre>
-
-<p>SetWriteDeadline sets write deadline</p>
-
-<h4 id="func-datagramsession-write">func (*DatagramSession) Write</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) Write(b []byte) (int, error)
-</code></pre>
-
-<p>Write writes to the session</p>
-
-<h4 id="func-datagramsession-writeto">func (*DatagramSession) WriteTo</h4>
-
-<pre><code class="language-go">func (s *DatagramSession) WriteTo(b []byte, addr net.Addr) (n int, err error)
-</code></pre>
-
-<p>WriteTo writes a datagram to the specified address</p>
+<p>DatagramSession provides UDP-like messaging capabilities with message
+reliability and ordering guarantees over I2P networks. It handles signed,
+authenticated messaging with replay protection for secure datagram communication
+patterns.</p>
 
 <h4 id="type-i2pconfig">type I2PConfig</h4>
 
-<pre><code class="language-go">type I2PConfig struct {
-	*common.I2PConfig
-}
+<pre><code class="language-go">type I2PConfig = common.I2PConfig
 </code></pre>
 
-<p>I2PConfig manages I2P configuration options</p>
+<p>I2PConfig manages I2P tunnel configuration options including tunnel length,
+backup quantities, variance settings, and other I2P-specific parameters.
+Applications use this to customize their anonymity and performance
+characteristics.</p>
 
 <h4 id="func-newconfig">func  NewConfig</h4>
 
 <pre><code class="language-go">func NewConfig(opts ...func(*I2PConfig) error) (*I2PConfig, error)
 </code></pre>
 
-<p>NewConfig creates a new I2PConfig</p>
+<p>NewConfig creates a new I2PConfig instance with default values and applies
+functional options. Returns a configured instance ready for use in session
+creation or an error if any option fails. This delegates to common.NewConfig
+while providing the sam3 API surface.</p>
 
-<h4 id="func-i2pconfig-destinationkey">func (*I2PConfig) DestinationKey</h4>
+<p>Example usage:</p>
 
-<pre><code class="language-go">func (f *I2PConfig) DestinationKey() string
-</code></pre>
-
-<h4 id="func-i2pconfig-id">func (*I2PConfig) ID</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) ID() string
-</code></pre>
-
-<h4 id="func-i2pconfig-maxsam">func (*I2PConfig) MaxSAM</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) MaxSAM() string
-</code></pre>
-
-<h4 id="func-i2pconfig-minsam">func (*I2PConfig) MinSAM</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) MinSAM() string
-</code></pre>
-
-<h4 id="func-i2pconfig-print">func (*I2PConfig) Print</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) Print() []string
-</code></pre>
-
-<h4 id="func-i2pconfig-reduce">func (*I2PConfig) Reduce</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) Reduce() string
-</code></pre>
-
-<h4 id="func-i2pconfig-reliability">func (*I2PConfig) Reliability</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) Reliability() string
-</code></pre>
-
-<h4 id="func-i2pconfig-samaddress">func (*I2PConfig) SAMAddress</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) SAMAddress() string
-</code></pre>
-
-<h4 id="func-i2pconfig-sam">func (*I2PConfig) Sam</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) Sam() string
-</code></pre>
-
-<h4 id="func-i2pconfig-sessionstyle">func (*I2PConfig) SessionStyle</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) SessionStyle() string
-</code></pre>
-
-<h4 id="func-i2pconfig-setsamaddress">func (*I2PConfig) SetSAMAddress</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) SetSAMAddress(addr string)
-</code></pre>
-
-<p>All the configuration method forwards</p>
-
-<h4 id="func-i2pconfig-signaturetype">func (*I2PConfig) SignatureType</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) SignatureType() string
-</code></pre>
-
-<h4 id="func-i2pconfig-toport">func (*I2PConfig) ToPort</h4>
-
-<pre><code class="language-go">func (f *I2PConfig) ToPort() string
+<pre><code>config, err := NewConfig(SetInLength(4), SetOutLength(4))
+if err != nil {
+    log.Fatal(&quot;Failed to create config:&quot;, err)
+}
 </code></pre>
 
 <h4 id="type-option">type Option</h4>
 
-<pre><code class="language-go">type Option func(*SAMEmit) error
+<pre><code class="language-go">type Option = common.Option
 </code></pre>
 
-<p>Option is a functional option for SAMEmit</p>
+<p>Option represents a functional option for configuring SAMEmit instances. This
+follows the functional options pattern to provide type-safe configuration with
+clear error handling and composable session parameter management.</p>
 
 <h4 id="type-options">type Options</h4>
 
-<pre><code class="language-go">type Options map[string]string
+<pre><code class="language-go">type Options = common.Options
 </code></pre>
 
-<p>Options represents a map of configuration options</p>
-
-<h4 id="func-convertslicetooptions">func  ConvertSliceToOptions</h4>
-
-<pre><code class="language-go">func ConvertSliceToOptions(slice []string) Options
-</code></pre>
-
-<h4 id="func-options-aslist">func (Options) AsList</h4>
-
-<pre><code class="language-go">func (opts Options) AsList() (ls []string)
-</code></pre>
-
-<p>AsList returns options as a list of strings</p>
+<p>Options represents a map of configuration options that can be applied to
+sessions. This provides a flexible way to specify tunnel parameters and session
+behaviors using key-value pairs that are converted to SAM protocol commands.</p>
 
 <h4 id="type-primarysession">type PrimarySession</h4>
 
-<pre><code class="language-go">type PrimarySession struct {
-	Timeout  time.Duration
-	Deadline time.Time
-	Config   SAMEmit
-}
+<pre><code class="language-go">type PrimarySession = primary.PrimarySession
 </code></pre>
 
-<p>PrimarySession represents a primary session</p>
-
-<h4 id="func-primarysession-addr">func (*PrimarySession) Addr</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) Addr() i2pkeys.I2PAddr
-</code></pre>
-
-<p>Addr returns the I2P address</p>
-
-<h4 id="func-primarysession-close">func (*PrimarySession) Close</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) Close() error
-</code></pre>
-
-<p>Close closes the session</p>
-
-<h4 id="func-primarysession-dial">func (*PrimarySession) Dial</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) Dial(network, addr string) (net.Conn, error)
-</code></pre>
-
-<p>Dial implements net.Dialer</p>
-
-<h4 id="func-primarysession-dialtcp">func (*PrimarySession) DialTCP</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) DialTCP(network string, laddr, raddr net.Addr) (net.Conn, error)
-</code></pre>
-
-<p>DialTCP implements x/dialer</p>
-
-<h4 id="func-primarysession-dialtcpi2p">func (*PrimarySession) DialTCPI2P</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) DialTCPI2P(network string, laddr, raddr string) (net.Conn, error)
-</code></pre>
-
-<p>DialTCPI2P dials TCP over I2P</p>
-
-<h4 id="func-primarysession-dialudp">func (*PrimarySession) DialUDP</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) DialUDP(network string, laddr, raddr net.Addr) (net.PacketConn, error)
-</code></pre>
-
-<p>DialUDP implements x/dialer</p>
-
-<h4 id="func-primarysession-dialudpi2p">func (*PrimarySession) DialUDPI2P</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) DialUDPI2P(network, laddr, raddr string) (*DatagramSession, error)
-</code></pre>
-
-<p>DialUDPI2P dials UDP over I2P</p>
-
-<h4 id="func-primarysession-from">func (*PrimarySession) From</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) From() string
-</code></pre>
-
-<p>From returns from port</p>
-
-<h4 id="func-primarysession-id">func (*PrimarySession) ID</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) ID() string
-</code></pre>
-
-<p>ID returns the session ID</p>
-
-<h4 id="func-primarysession-keys">func (*PrimarySession) Keys</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) Keys() i2pkeys.I2PKeys
-</code></pre>
-
-<p>Keys returns the session keys</p>
-
-<h4 id="func-primarysession-localaddr">func (*PrimarySession) LocalAddr</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) LocalAddr() net.Addr
-</code></pre>
-
-<p>LocalAddr returns local address</p>
-
-<h4 id="func-primarysession-lookup">func (*PrimarySession) Lookup</h4>
-
-<pre><code class="language-go">func (s *PrimarySession) Lookup(name string) (a net.Addr, err error)
-</code></pre>
-
-<p>Lookup performs name lookup</p>
-
-<h4 id="func-primarysession-newdatagramsubsession">func (*PrimarySession) NewDatagramSubSession</h4>
-
-<pre><code class="language-go">func (s *PrimarySession) NewDatagramSubSession(id string, udpPort int) (*DatagramSession, error)
-</code></pre>
-
-<p>NewDatagramSubSession creates a new datagram sub-session</p>
-
-<h4 id="func-primarysession-newrawsubsession">func (*PrimarySession) NewRawSubSession</h4>
-
-<pre><code class="language-go">func (s *PrimarySession) NewRawSubSession(id string, udpPort int) (*RawSession, error)
-</code></pre>
-
-<p>NewRawSubSession creates a new raw sub-session</p>
-
-<h4 id="func-primarysession-newstreamsubsession">func (*PrimarySession) NewStreamSubSession</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) NewStreamSubSession(id string) (*StreamSession, error)
-</code></pre>
-
-<p>NewStreamSubSession creates a new stream sub-session</p>
-
-<h4 id="func-primarysession-newstreamsubsessionwithports">func (*PrimarySession) NewStreamSubSessionWithPorts</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) NewStreamSubSessionWithPorts(id, from, to string) (*StreamSession, error)
-</code></pre>
-
-<p>NewStreamSubSessionWithPorts creates a new stream sub-session with ports</p>
-
-<h4 id="func-primarysession-newuniquestreamsubsession">func (*PrimarySession) NewUniqueStreamSubSession</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) NewUniqueStreamSubSession(id string) (*StreamSession, error)
-</code></pre>
-
-<p>NewUniqueStreamSubSession creates a unique stream sub-session</p>
-
-<h4 id="func-primarysession-resolve">func (*PrimarySession) Resolve</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) Resolve(network, addr string) (net.Addr, error)
-</code></pre>
-
-<p>Resolve resolves network address</p>
-
-<h4 id="func-primarysession-resolvetcpaddr">func (*PrimarySession) ResolveTCPAddr</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) ResolveTCPAddr(network, dest string) (net.Addr, error)
-</code></pre>
-
-<p>ResolveTCPAddr resolves TCP address</p>
-
-<h4 id="func-primarysession-resolveudpaddr">func (*PrimarySession) ResolveUDPAddr</h4>
-
-<pre><code class="language-go">func (sam *PrimarySession) ResolveUDPAddr(network, dest string) (net.Addr, error)
-</code></pre>
-
-<p>ResolveUDPAddr resolves UDP address</p>
-
-<h4 id="func-primarysession-signaturetype">func (*PrimarySession) SignatureType</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) SignatureType() string
-</code></pre>
-
-<p>SignatureType returns signature type</p>
-
-<h4 id="func-primarysession-to">func (*PrimarySession) To</h4>
-
-<pre><code class="language-go">func (ss *PrimarySession) To() string
-</code></pre>
-
-<p>To returns to port</p>
+<p>PrimarySession provides master session capabilities that can create and manage
+multiple sub-sessions of different types (stream, datagram, raw) within a single
+I2P session context. This enables complex applications with multiple
+communication patterns while sharing the same I2P identity and tunnel
+infrastructure.</p>
 
 <h4 id="type-rawsession">type RawSession</h4>
 
-<pre><code class="language-go">type RawSession struct {
-}
+<pre><code class="language-go">type RawSession = raw.RawSession
 </code></pre>
 
-<p>RawSession provides raw datagram messaging</p>
-
-<h4 id="func-rawsession-close">func (*RawSession) Close</h4>
-
-<pre><code class="language-go">func (s *RawSession) Close() error
-</code></pre>
-
-<p>Close closes the raw session</p>
-
-<h4 id="func-rawsession-localaddr">func (*RawSession) LocalAddr</h4>
-
-<pre><code class="language-go">func (s *RawSession) LocalAddr() i2pkeys.I2PAddr
-</code></pre>
-
-<p>LocalAddr returns the local I2P destination</p>
-
-<h4 id="func-rawsession-read">func (*RawSession) Read</h4>
-
-<pre><code class="language-go">func (s *RawSession) Read(b []byte) (n int, err error)
-</code></pre>
-
-<p>Read reads one raw datagram</p>
-
-<h4 id="func-rawsession-setdeadline">func (*RawSession) SetDeadline</h4>
-
-<pre><code class="language-go">func (s *RawSession) SetDeadline(t time.Time) error
-</code></pre>
-
-<p>SetDeadline sets read and write deadlines</p>
-
-<h4 id="func-rawsession-setreaddeadline">func (*RawSession) SetReadDeadline</h4>
-
-<pre><code class="language-go">func (s *RawSession) SetReadDeadline(t time.Time) error
-</code></pre>
-
-<p>SetReadDeadline sets read deadline</p>
-
-<h4 id="func-rawsession-setwritedeadline">func (*RawSession) SetWriteDeadline</h4>
-
-<pre><code class="language-go">func (s *RawSession) SetWriteDeadline(t time.Time) error
-</code></pre>
-
-<p>SetWriteDeadline sets write deadline</p>
-
-<h4 id="func-rawsession-writeto">func (*RawSession) WriteTo</h4>
-
-<pre><code class="language-go">func (s *RawSession) WriteTo(b []byte, addr i2pkeys.I2PAddr) (n int, err error)
-</code></pre>
-
-<p>WriteTo sends one raw datagram to the destination</p>
+<p>RawSession provides unrepliable datagram communication over I2P networks.
+Messages are encrypted end-to-end but senders cannot be identified or replied
+to, providing the highest level of sender anonymity for one-way communication.</p>
 
 <h4 id="type-sam">type SAM</h4>
 
 <pre><code class="language-go">type SAM struct {
-	Config SAMEmit
+	*common.SAM
 }
 </code></pre>
 
-<p>SAM represents the main controller for I2P router&rsquo;s SAM bridge</p>
+<p>SAM represents the core SAM bridge connection and provides methods for session
+creation and I2P address resolution. It embeds common.SAM to enable method
+extension while exposing the sam3-compatible interface at the root package
+level.</p>
 
 <h4 id="func-newsam">func  NewSAM</h4>
 
 <pre><code class="language-go">func NewSAM(address string) (*SAM, error)
 </code></pre>
 
-<p>NewSAM creates a new controller for the I2P routers SAM bridge</p>
+<p>NewSAM creates a new SAM connection to the specified address and performs the
+initial handshake. This is the main entry point for establishing connections to
+the I2P SAM bridge. Address should be in the format &ldquo;host:port&rdquo;, typically
+&ldquo;127.0.0.1:7656&rdquo; for local I2P routers.</p>
 
-<h4 id="func-sam-close">func (*SAM) Close</h4>
+<p>The function connects to the SAM bridge, performs the protocol handshake, and
+initializes the resolver for I2P name lookups. It returns a ready-to-use SAM
+instance or an error if any step of the initialization process fails.</p>
 
-<pre><code class="language-go">func (sam *SAM) Close() error
+<p>Example:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+if err != nil {
+    log.Fatal(err)
+}
+defer sam.Close()
 </code></pre>
-
-<p>Close closes this sam session</p>
-
-<h4 id="func-sam-ensurekeyfile">func (*SAM) EnsureKeyfile</h4>
-
-<pre><code class="language-go">func (sam *SAM) EnsureKeyfile(fname string) (keys i2pkeys.I2PKeys, err error)
-</code></pre>
-
-<p>EnsureKeyfile ensures keyfile exists</p>
-
-<h4 id="func-sam-keys">func (*SAM) Keys</h4>
-
-<pre><code class="language-go">func (sam *SAM) Keys() (k *i2pkeys.I2PKeys)
-</code></pre>
-
-<p>Keys returns the keys associated with this SAM instance</p>
-
-<h4 id="func-sam-lookup">func (*SAM) Lookup</h4>
-
-<pre><code class="language-go">func (sam *SAM) Lookup(name string) (i2pkeys.I2PAddr, error)
-</code></pre>
-
-<p>Lookup performs a name lookup</p>
 
 <h4 id="func-sam-newdatagramsession">func (*SAM) NewDatagramSession</h4>
 
-<pre><code class="language-go">func (s *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*DatagramSession, error)
+<pre><code class="language-go">func (sam *SAM) NewDatagramSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*DatagramSession, error)
 </code></pre>
 
-<p>NewDatagramSession creates a new datagram session</p>
+<p>NewDatagramSession creates a new datagram session for UDP-like authenticated
+messaging over I2P. Datagram sessions provide connectionless communication with
+message authentication and replay protection, suitable for applications that
+need fast, lightweight messaging without the overhead of connection
+establishment.</p>
 
-<h4 id="func-sam-newkeys">func (*SAM) NewKeys</h4>
+<p>Unlike raw sessions, datagram sessions provide sender authentication and message
+integrity verification, making them suitable for applications where message
+authenticity is important. Each message includes cryptographic signatures that
+allow recipients to verify the sender&rsquo;s identity and detect tampering.</p>
 
-<pre><code class="language-go">func (sam *SAM) NewKeys(sigType ...string) (i2pkeys.I2PKeys, error)
+<p>Returns a DatagramSession ready for sending and receiving authenticated
+datagrams, or an error if the session creation fails.</p>
+
+<p>The udpPort parameter specifies the local UDP port for the session&rsquo;s datagram
+interface. If set to 0, the I2P router will use the standard SAM UDP port
+(typically 7655). This port is used for the local UDP socket that communicates
+with the I2P datagram subsystem for message forwarding and reception.</p>
+
+<p>Example usage:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
+session, err := sam.NewDatagramSession(&quot;chat-app&quot;, keys, Options_Medium, 0)
 </code></pre>
-
-<p>NewKeys creates the I2P-equivalent of an IP address</p>
 
 <h4 id="func-sam-newprimarysession">func (*SAM) NewPrimarySession</h4>
 
 <pre><code class="language-go">func (sam *SAM) NewPrimarySession(id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error)
 </code></pre>
 
-<p>NewPrimarySession creates a new PrimarySession</p>
+<p>NewPrimarySession creates a new primary session that can manage multiple
+sub-sessions of different types (stream, datagram, raw) within a single I2P
+session context. The primary session enables complex applications with multiple
+communication patterns while sharing the same I2P identity and tunnel
+infrastructure for enhanced efficiency.</p>
+
+<p>The session ID must be unique and will be used to identify this session in the
+SAM protocol. The I2P keys define the cryptographic identity that will be shared
+across all sub-sessions created from this primary session. Configuration options
+control tunnel parameters such as length, backup quantity, and other
+I2P-specific settings.</p>
+
+<p>Returns a PrimarySession that can create and manage sub-sessions, or an error if
+the session creation fails due to SAM protocol errors, network issues, or
+invalid configuration parameters.</p>
+
+<p>Example usage:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
+primary, err := sam.NewPrimarySession(&quot;app-primary&quot;, keys, Options_Default)
+streamSub, err := primary.NewStreamSubSession(&quot;tcp-handler&quot;, []string{})
+datagramSub, err := primary.NewDatagramSubSession(&quot;udp-handler&quot;, []string{})
+</code></pre>
 
 <h4 id="func-sam-newprimarysessionwithsignature">func (*SAM) NewPrimarySessionWithSignature</h4>
 
 <pre><code class="language-go">func (sam *SAM) NewPrimarySessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error)
 </code></pre>
 
-<p>NewPrimarySessionWithSignature creates a new PrimarySession with signature</p>
+<p>NewPrimarySessionWithSignature creates a new primary session with a specific
+signature type. This method provides the same functionality as NewPrimarySession
+but allows explicit control over the cryptographic signature algorithm used for
+the session&rsquo;s I2P identity.</p>
+
+<p>The signature type must be one of the supported I2P signature algorithms (use
+the Sig_* constants defined in this package). Different signature types offer
+different security levels and performance characteristics - EdDSA_SHA512_Ed25519
+is recommended for most applications as it provides strong security with good
+performance.</p>
+
+<p>Returns a PrimarySession configured with the specified signature type, or an
+error if the session creation fails or the signature type is not supported by
+the I2P router.</p>
+
+<p>Example usage:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+keys, _ := i2pkeys.NewKeys(i2pkeys.KT_EdDSA_SHA512_Ed25519)
+primary, err := sam.NewPrimarySessionWithSignature(&quot;secure-primary&quot;, keys,
+	Options_Default, Sig_EdDSA_SHA512_Ed25519)
+</code></pre>
 
 <h4 id="func-sam-newrawsession">func (*SAM) NewRawSession</h4>
 
-<pre><code class="language-go">func (s *SAM) NewRawSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*RawSession, error)
+<pre><code class="language-go">func (sam *SAM) NewRawSession(id string, keys i2pkeys.I2PKeys, options []string, udpPort int) (*RawSession, error)
 </code></pre>
 
-<p>NewRawSession creates a new raw session</p>
+<p>NewRawSession creates a new raw session for unrepliable datagram communication
+over I2P. Raw sessions provide the most lightweight form of I2P communication,
+where messages are encrypted end-to-end but do not include sender authentication
+or guarantee delivery. Recipients cannot identify the sender or send replies
+directly.</p>
+
+<p>Raw sessions are suitable for applications that need maximum anonymity and
+minimal overhead, such as anonymous publishing, voting systems, or situations
+where sender identity must remain completely hidden. The lack of sender
+authentication provides stronger anonymity but eliminates the ability to verify
+message authenticity.</p>
+
+<p>The udpPort parameter specifies the local UDP port for the session&rsquo;s datagram
+interface. This port is used for the local UDP socket that communicates with the
+I2P raw datagram subsystem.</p>
+
+<p>Returns a RawSession ready for sending anonymous unrepliable datagrams, or an
+error if the session creation fails.</p>
+
+<p>Example usage:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
+session, err := sam.NewRawSession(&quot;anonymous-publisher&quot;, keys, Options_Small, 0)
+writer := session.NewWriter()
+reader := session.NewReader()
+</code></pre>
 
 <h4 id="func-sam-newstreamsession">func (*SAM) NewStreamSession</h4>
 
 <pre><code class="language-go">func (sam *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
 </code></pre>
 
-<p>NewStreamSession creates a new StreamSession</p>
+<p>NewStreamSession creates a new stream session for TCP-like reliable connections
+over I2P. Stream sessions provide connection-oriented communication with
+guarantees for message ordering, delivery, and flow control, similar to TCP but
+routed through I2P tunnels.</p>
+
+<p>The session can be used to create listeners for accepting incoming connections
+or to establish outbound connections to other I2P destinations. All connections
+share the same I2P identity defined by the provided keys and benefit from the
+tunnel configuration specified in the options.</p>
+
+<p>Returns a StreamSession ready for creating connections, or an error if the
+session creation fails due to SAM protocol errors, network issues, or invalid
+configuration.</p>
+
+<p>Example usage:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
+session, err := sam.NewStreamSession(&quot;web-server&quot;, keys, Options_Default)
+listener, err := session.Listen()
+conn, err := session.Dial(&quot;destination.b32.i2p&quot;)
+</code></pre>
 
 <h4 id="func-sam-newstreamsessionwithsignature">func (*SAM) NewStreamSessionWithSignature</h4>
 
 <pre><code class="language-go">func (sam *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
 </code></pre>
 
-<p>NewStreamSessionWithSignature creates a new StreamSession with custom signature</p>
+<p>NewStreamSessionWithSignature creates a new stream session with a specific
+signature type. This method provides the same functionality as NewStreamSession
+but allows explicit control over the cryptographic signature algorithm used for
+the session&rsquo;s I2P identity.</p>
+
+<p>The signature type determines the cryptographic strength and performance
+characteristics of the session. EdDSA_SHA512_Ed25519 is recommended for most
+applications, while ECDSA variants may be preferred for compatibility with older
+I2P routers or specific security requirements.</p>
+
+<p>Returns a StreamSession configured with the specified signature type, or an
+error if the session creation fails or the signature type is not supported.</p>
+
+<p>Example usage:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+keys, _ := i2pkeys.NewKeys(i2pkeys.KT_EdDSA_SHA512_Ed25519)
+session, err := sam.NewStreamSessionWithSignature(&quot;secure-stream&quot;, keys,
+	Options_Large, Sig_EdDSA_SHA512_Ed25519)
+</code></pre>
 
 <h4 id="func-sam-newstreamsessionwithsignatureandports">func (*SAM) NewStreamSessionWithSignatureAndPorts</h4>
 
 <pre><code class="language-go">func (sam *SAM) NewStreamSessionWithSignatureAndPorts(id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
 </code></pre>
 
-<p>NewStreamSessionWithSignatureAndPorts creates a new StreamSession with signature
-and ports</p>
+<p>NewStreamSessionWithSignatureAndPorts creates a new stream session with
+signature type and specific port configuration. This method enables advanced
+port mapping scenarios where the session should bind to specific local ports or
+forward to specific remote ports.</p>
 
-<h4 id="func-sam-readkeys">func (*SAM) ReadKeys</h4>
+<p>The &lsquo;from&rsquo; parameter specifies the local port or port range that the session
+should use for incoming connections. The &lsquo;to&rsquo; parameter specifies the target
+port or port range for outbound connections. Port specifications can be single
+ports (&ldquo;80&rdquo;) or ranges (&ldquo;8080-8090&rdquo;).</p>
 
-<pre><code class="language-go">func (sam *SAM) ReadKeys(r io.Reader) (err error)
+<p>This method is particularly useful for applications that need to maintain
+consistent port mappings or integrate with existing network infrastructure that
+expects specific port configurations.</p>
+
+<p>Returns a StreamSession with the specified port configuration, or an error if
+the session creation fails or the port configuration is invalid.</p>
+
+<p>Example usage:</p>
+
+<pre><code>sam, err := NewSAM(&quot;127.0.0.1:7656&quot;)
+keys, _ := i2pkeys.NewKeys(i2pkeys.KT_ECDSA_SHA256_P256)
+session, err := sam.NewStreamSessionWithSignatureAndPorts(&quot;http-proxy&quot;,
+	&quot;8080&quot;, &quot;80&quot;, keys, Options_Default, Sig_ECDSA_SHA256_P256)
 </code></pre>
-
-<p>ReadKeys reads public/private keys from an io.Reader</p>
 
 <h4 id="type-samconn">type SAMConn</h4>
 
-<pre><code class="language-go">type SAMConn struct {
-}
+<pre><code class="language-go">type SAMConn = stream.StreamConn
 </code></pre>
 
-<p>SAMConn implements net.Conn for I2P connections</p>
-
-<h4 id="func-samconn-close">func (*SAMConn) Close</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) Close() error
-</code></pre>
-
-<p>Close closes the connection</p>
-
-<h4 id="func-samconn-localaddr">func (*SAMConn) LocalAddr</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) LocalAddr() net.Addr
-</code></pre>
-
-<p>LocalAddr returns the local address</p>
-
-<h4 id="func-samconn-read">func (*SAMConn) Read</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) Read(buf []byte) (int, error)
-</code></pre>
-
-<p>Read reads data from the connection</p>
-
-<h4 id="func-samconn-remoteaddr">func (*SAMConn) RemoteAddr</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) RemoteAddr() net.Addr
-</code></pre>
-
-<p>RemoteAddr returns the remote address</p>
-
-<h4 id="func-samconn-setdeadline">func (*SAMConn) SetDeadline</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) SetDeadline(t time.Time) error
-</code></pre>
-
-<p>SetDeadline sets read and write deadlines</p>
-
-<h4 id="func-samconn-setreaddeadline">func (*SAMConn) SetReadDeadline</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) SetReadDeadline(t time.Time) error
-</code></pre>
-
-<p>SetReadDeadline sets read deadline</p>
-
-<h4 id="func-samconn-setwritedeadline">func (*SAMConn) SetWriteDeadline</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) SetWriteDeadline(t time.Time) error
-</code></pre>
-
-<p>SetWriteDeadline sets write deadline</p>
-
-<h4 id="func-samconn-write">func (*SAMConn) Write</h4>
-
-<pre><code class="language-go">func (sc *SAMConn) Write(buf []byte) (int, error)
-</code></pre>
-
-<p>Write writes data to the connection</p>
+<p>SAMConn implements net.Conn for I2P streaming connections, providing a standard
+Go networking interface for TCP-like reliable communication over I2P networks.
+This alias maintains sam3 API compatibility while delegating to
+stream.StreamConn.</p>
 
 <h4 id="type-samemit">type SAMEmit</h4>
 
-<pre><code class="language-go">type SAMEmit struct {
-	I2PConfig
-}
+<pre><code class="language-go">type SAMEmit = common.SAMEmit
 </code></pre>
 
-<p>SAMEmit handles SAM protocol message generation</p>
+<p>SAMEmit handles SAM protocol message generation and configuration management. It
+embeds I2PConfig to provide comprehensive session configuration capabilities
+while managing the underlying SAM protocol communication requirements.</p>
 
 <h4 id="func-newemit">func  NewEmit</h4>
 
 <pre><code class="language-go">func NewEmit(opts ...func(*SAMEmit) error) (*SAMEmit, error)
 </code></pre>
 
-<p>NewEmit creates a new SAMEmit</p>
+<p>NewEmit creates a new SAMEmit instance with the specified configuration options.
+Applies functional options to configure the emitter with custom settings.
+Returns an error if any option fails to apply correctly.</p>
 
-<h4 id="func-samemit-accept">func (*SAMEmit) Accept</h4>
+<p>Example usage:</p>
 
-<pre><code class="language-go">func (e *SAMEmit) Accept() string
-</code></pre>
-
-<p>Accept generates accept message</p>
-
-<h4 id="func-samemit-acceptbytes">func (*SAMEmit) AcceptBytes</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) AcceptBytes() []byte
-</code></pre>
-
-<p>AcceptBytes generates accept message as bytes</p>
-
-<h4 id="func-samemit-connect">func (*SAMEmit) Connect</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) Connect(dest string) string
-</code></pre>
-
-<p>Connect generates connect message</p>
-
-<h4 id="func-samemit-connectbytes">func (*SAMEmit) ConnectBytes</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) ConnectBytes(dest string) []byte
-</code></pre>
-
-<p>ConnectBytes generates connect message as bytes</p>
-
-<h4 id="func-samemit-create">func (*SAMEmit) Create</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) Create() string
-</code></pre>
-
-<p>Create generates session create message</p>
-
-<h4 id="func-samemit-createbytes">func (*SAMEmit) CreateBytes</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) CreateBytes() []byte
-</code></pre>
-
-<p>CreateBytes generates session create message as bytes</p>
-
-<h4 id="func-samemit-generatedestination">func (*SAMEmit) GenerateDestination</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) GenerateDestination() string
-</code></pre>
-
-<p>GenerateDestination generates destination message</p>
-
-<h4 id="func-samemit-generatedestinationbytes">func (*SAMEmit) GenerateDestinationBytes</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) GenerateDestinationBytes() []byte
-</code></pre>
-
-<p>GenerateDestinationBytes generates destination message as bytes</p>
-
-<h4 id="func-samemit-hello">func (*SAMEmit) Hello</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) Hello() string
-</code></pre>
-
-<p>Hello generates hello message</p>
-
-<h4 id="func-samemit-hellobytes">func (*SAMEmit) HelloBytes</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) HelloBytes() []byte
-</code></pre>
-
-<p>HelloBytes generates hello message as bytes</p>
-
-<h4 id="func-samemit-lookup">func (*SAMEmit) Lookup</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) Lookup(name string) string
-</code></pre>
-
-<p>Lookup generates lookup message</p>
-
-<h4 id="func-samemit-lookupbytes">func (*SAMEmit) LookupBytes</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) LookupBytes(name string) []byte
-</code></pre>
-
-<p>LookupBytes generates lookup message as bytes</p>
-
-<h4 id="func-samemit-samoptionsstring">func (*SAMEmit) SamOptionsString</h4>
-
-<pre><code class="language-go">func (e *SAMEmit) SamOptionsString() string
-</code></pre>
-
-<p>SamOptionsString returns SAM options as string</p>
-
-<h4 id="type-samresolver">type SAMResolver</h4>
-
-<pre><code class="language-go">type SAMResolver struct {
-	*SAM
+<pre><code>emit, err := NewEmit(SetSAMHost(&quot;localhost&quot;), SetSAMPort(&quot;7656&quot;))
+if err != nil {
+    log.Fatal(&quot;Failed to create emitter:&quot;, err)
 }
 </code></pre>
 
-<p>SAMResolver provides name resolution functionality</p>
+<h4 id="type-samresolver">type SAMResolver</h4>
+
+<pre><code class="language-go">type SAMResolver = common.SAMResolver
+</code></pre>
+
+<p>SAMResolver provides I2P address resolution services through the SAM protocol.
+It wraps the common.SAMResolver to provide name-to-address lookup functionality
+that applications need for connecting to I2P destinations by name.</p>
 
 <h4 id="func-newfullsamresolver">func  NewFullSAMResolver</h4>
 
 <pre><code class="language-go">func NewFullSAMResolver(address string) (*SAMResolver, error)
 </code></pre>
 
-<p>NewFullSAMResolver creates a new full SAMResolver</p>
+<p>NewFullSAMResolver creates a new complete SAM resolver by establishing its own
+connection. This convenience function creates both a SAM connection and resolver
+in a single operation. It&rsquo;s useful when you only need name resolution and don&rsquo;t
+require a persistent SAM connection for session management or other operations.</p>
+
+<p>The resolver will establish its own connection to the specified address and be
+ready for immediate use. The caller is responsible for closing the resolver when
+done.</p>
+
+<p>Example:</p>
+
+<pre><code>resolver, err := NewFullSAMResolver(&quot;127.0.0.1:7656&quot;)
+if err != nil {
+    return err
+}
+defer resolver.Close()
+</code></pre>
 
 <h4 id="func-newsamresolver">func  NewSAMResolver</h4>
 
 <pre><code class="language-go">func NewSAMResolver(parent *SAM) (*SAMResolver, error)
 </code></pre>
 
-<p>NewSAMResolver creates a new SAMResolver from existing SAM</p>
+<p>NewSAMResolver creates a new SAM resolver instance for I2P name lookups. This
+function creates a resolver that can translate I2P names (like &ldquo;example.i2p&rdquo;)
+into Base32 destination addresses for use in connections and messaging.</p>
 
-<h4 id="func-samresolver-resolve">func (*SAMResolver) Resolve</h4>
+<p>The resolver uses the provided SAM connection for performing lookups through the
+I2P network&rsquo;s address book and naming services. It&rsquo;s essential for applications
+that want to connect to I2P services using human-readable names.</p>
 
-<pre><code class="language-go">func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error)
+<p>Example:</p>
+
+<pre><code>resolver, err := NewSAMResolver(sam)
+if err != nil {
+    return err
+}
+addr, err := resolver.Resolve(&quot;example.i2p&quot;)
 </code></pre>
-
-<p>Resolve performs a lookup</p>
 
 <h4 id="type-streamlistener">type StreamListener</h4>
 
-<pre><code class="language-go">type StreamListener struct {
-}
+<pre><code class="language-go">type StreamListener = stream.StreamListener
 </code></pre>
 
-<p>StreamListener implements net.Listener for I2P streams</p>
-
-<h4 id="func-streamlistener-accept">func (*StreamListener) Accept</h4>
-
-<pre><code class="language-go">func (l *StreamListener) Accept() (net.Conn, error)
-</code></pre>
-
-<p>Accept accepts new inbound connections</p>
-
-<h4 id="func-streamlistener-accepti2p">func (*StreamListener) AcceptI2P</h4>
-
-<pre><code class="language-go">func (l *StreamListener) AcceptI2P() (*SAMConn, error)
-</code></pre>
-
-<p>AcceptI2P accepts a new inbound I2P connection</p>
-
-<h4 id="func-streamlistener-addr">func (*StreamListener) Addr</h4>
-
-<pre><code class="language-go">func (l *StreamListener) Addr() net.Addr
-</code></pre>
-
-<p>Addr returns the listener&rsquo;s address</p>
-
-<h4 id="func-streamlistener-close">func (*StreamListener) Close</h4>
-
-<pre><code class="language-go">func (l *StreamListener) Close() error
-</code></pre>
-
-<p>Close closes the listener</p>
-
-<h4 id="func-streamlistener-from">func (*StreamListener) From</h4>
-
-<pre><code class="language-go">func (l *StreamListener) From() string
-</code></pre>
-
-<p>From returns the from port</p>
-
-<h4 id="func-streamlistener-to">func (*StreamListener) To</h4>
-
-<pre><code class="language-go">func (l *StreamListener) To() string
-</code></pre>
-
-<p>To returns the to port</p>
+<p>StreamListener implements net.Listener for I2P streaming connections. It manages
+incoming connection acceptance and provides thread-safe operations for accepting
+connections from remote I2P destinations in server applications.</p>
 
 <h4 id="type-streamsession">type StreamSession</h4>
 
-<pre><code class="language-go">type StreamSession struct {
-	Timeout  time.Duration
-	Deadline time.Time
+<pre><code class="language-go">type StreamSession = stream.StreamSession
+</code></pre>
+
+<p>StreamSession provides TCP-like reliable connection capabilities over I2P
+networks. It supports both client and server operations with connection
+multiplexing, listener management, and standard Go networking interfaces for
+streaming data.</p>
+
+<h4 id="type-testlistener">type TestListener</h4>
+
+<pre><code class="language-go">type TestListener struct {
 }
 </code></pre>
 
-<p>StreamSession represents a streaming session</p>
+<p>TestListener manages a local I2P listener for testing purposes. It provides a
+stable, local destination that can replace external sites in tests.</p>
 
-<h4 id="func-streamsession-addr">func (*StreamSession) Addr</h4>
+<h4 id="func-setuptestlistener">func  SetupTestListener</h4>
 
-<pre><code class="language-go">func (s *StreamSession) Addr() i2pkeys.I2PAddr
+<pre><code class="language-go">func SetupTestListener(t *testing.T, config *TestListenerConfig) *TestListener
 </code></pre>
 
-<p>Addr returns the I2P destination address</p>
+<p>SetupTestListener creates and starts a local I2P listener that can serve as a
+test destination. This replaces the need for external sites like i2p-projekt.i2p
+or idk.i2p in tests. The listener will respond to HTTP GET requests with basic
+HTML content.</p>
 
-<h4 id="func-streamsession-close">func (*StreamSession) Close</h4>
+<h4 id="func-setuptestlistenerwithhttp">func  SetupTestListenerWithHTTP</h4>
 
-<pre><code class="language-go">func (s *StreamSession) Close() error
+<pre><code class="language-go">func SetupTestListenerWithHTTP(t *testing.T, sessionID string) *TestListener
 </code></pre>
 
-<p>Close closes the session</p>
+<p>SetupTestListenerWithHTTP creates a test listener that provides HTTP-like
+responses suitable for replacing external web sites in tests.</p>
 
-<h4 id="func-streamsession-dial">func (*StreamSession) Dial</h4>
+<h4 id="func-testlistener-addr">func (*TestListener) Addr</h4>
 
-<pre><code class="language-go">func (s *StreamSession) Dial(n, addr string) (c net.Conn, err error)
+<pre><code class="language-go">func (tl *TestListener) Addr() i2pkeys.I2PAddr
 </code></pre>
 
-<p>Dial establishes a connection to an address</p>
+<p>Addr returns the I2P address of the test listener.</p>
 
-<h4 id="func-streamsession-dialcontext">func (*StreamSession) DialContext</h4>
+<h4 id="func-testlistener-addrstring">func (*TestListener) AddrString</h4>
 
-<pre><code class="language-go">func (s *StreamSession) DialContext(ctx context.Context, n, addr string) (net.Conn, error)
+<pre><code class="language-go">func (tl *TestListener) AddrString() string
 </code></pre>
 
-<p>DialContext establishes a connection with context</p>
+<p>AddrString returns the Base32 address string of the test listener.</p>
 
-<h4 id="func-streamsession-dialcontexti2p">func (*StreamSession) DialContextI2P</h4>
+<h4 id="func-testlistener-close">func (*TestListener) Close</h4>
 
-<pre><code class="language-go">func (s *StreamSession) DialContextI2P(ctx context.Context, n, addr string) (*SAMConn, error)
+<pre><code class="language-go">func (tl *TestListener) Close() error
 </code></pre>
 
-<p>DialContextI2P establishes an I2P connection with context</p>
+<p>Close shuts down the test listener and cleans up resources.</p>
 
-<h4 id="func-streamsession-diali2p">func (*StreamSession) DialI2P</h4>
+<h4 id="type-testlistenerconfig">type TestListenerConfig</h4>
 
-<pre><code class="language-go">func (s *StreamSession) DialI2P(addr i2pkeys.I2PAddr) (*SAMConn, error)
+<pre><code class="language-go">type TestListenerConfig struct {
+	SessionID    string
+	HTTPResponse string // Optional custom HTTP response content
+	Timeout      time.Duration
+}
 </code></pre>
 
-<p>DialI2P dials to an I2P destination</p>
+<p>TestListenerConfig holds configuration for creating test listeners.</p>
 
-<h4 id="func-streamsession-from">func (*StreamSession) From</h4>
+<h4 id="func-defaulttestlistenerconfig">func  DefaultTestListenerConfig</h4>
 
-<pre><code class="language-go">func (s *StreamSession) From() string
+<pre><code class="language-go">func DefaultTestListenerConfig(sessionID string) *TestListenerConfig
 </code></pre>
 
-<p>From returns the from port</p>
-
-<h4 id="func-streamsession-id">func (*StreamSession) ID</h4>
-
-<pre><code class="language-go">func (s *StreamSession) ID() string
-</code></pre>
-
-<p>ID returns the local tunnel name</p>
-
-<h4 id="func-streamsession-keys">func (*StreamSession) Keys</h4>
-
-<pre><code class="language-go">func (s *StreamSession) Keys() i2pkeys.I2PKeys
-</code></pre>
-
-<p>Keys returns the keys associated with the session</p>
-
-<h4 id="func-streamsession-listen">func (*StreamSession) Listen</h4>
-
-<pre><code class="language-go">func (s *StreamSession) Listen() (*StreamListener, error)
-</code></pre>
-
-<p>Listen creates a new stream listener</p>
-
-<h4 id="func-streamsession-localaddr">func (*StreamSession) LocalAddr</h4>
-
-<pre><code class="language-go">func (s *StreamSession) LocalAddr() net.Addr
-</code></pre>
-
-<p>LocalAddr returns the local address</p>
-
-<h4 id="func-streamsession-lookup">func (*StreamSession) Lookup</h4>
-
-<pre><code class="language-go">func (s *StreamSession) Lookup(name string) (i2pkeys.I2PAddr, error)
-</code></pre>
-
-<p>Lookup performs name lookup</p>
-
-<h4 id="func-streamsession-read">func (*StreamSession) Read</h4>
-
-<pre><code class="language-go">func (s *StreamSession) Read(buf []byte) (int, error)
-</code></pre>
-
-<p>Read reads data from the stream</p>
-
-<h4 id="func-streamsession-remoteaddr">func (*StreamSession) RemoteAddr</h4>
-
-<pre><code class="language-go">func (s *StreamSession) RemoteAddr() net.Addr
-</code></pre>
-
-<p>RemoteAddr returns the remote address</p>
-
-<h4 id="func-streamsession-setdeadline">func (*StreamSession) SetDeadline</h4>
-
-<pre><code class="language-go">func (s *StreamSession) SetDeadline(t time.Time) error
-</code></pre>
-
-<p>SetDeadline sets read and write deadlines</p>
-
-<h4 id="func-streamsession-setreaddeadline">func (*StreamSession) SetReadDeadline</h4>
-
-<pre><code class="language-go">func (s *StreamSession) SetReadDeadline(t time.Time) error
-</code></pre>
-
-<p>SetReadDeadline sets read deadline</p>
-
-<h4 id="func-streamsession-setwritedeadline">func (*StreamSession) SetWriteDeadline</h4>
-
-<pre><code class="language-go">func (s *StreamSession) SetWriteDeadline(t time.Time) error
-</code></pre>
-
-<p>SetWriteDeadline sets write deadline</p>
-
-<h4 id="func-streamsession-signaturetype">func (*StreamSession) SignatureType</h4>
-
-<pre><code class="language-go">func (s *StreamSession) SignatureType() string
-</code></pre>
-
-<p>SignatureType returns the signature type</p>
-
-<h4 id="func-streamsession-to">func (*StreamSession) To</h4>
-
-<pre><code class="language-go">func (s *StreamSession) To() string
-</code></pre>
-
-<p>To returns the to port</p>
-
-<h4 id="func-streamsession-write">func (*StreamSession) Write</h4>
-
-<pre><code class="language-go">func (s *StreamSession) Write(data []byte) (int, error)
-</code></pre>
-
-<p>Write sends data over the stream</p>
+<p>DefaultTestListenerConfig returns a default configuration for test listeners.</p>
 
       </div>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-07 02:11:30 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-07 02:17:29 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

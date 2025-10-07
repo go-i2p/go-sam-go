@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 175 commits
+        📝 176 commits
         
       </div>
     </div>
@@ -108,14 +108,62 @@ to I2P router error.</p>
 )
 </code></pre>
 
+<p>Signature Type Constants - I2P Cryptographic Security Configuration</p>
+
+<p>SECURITY RECOMMENDATION: Always use SIG_DEFAULT (EdDSA_SHA512_Ed25519) for new
+applications. EdDSA provides superior performance, smaller key sizes, and robust
+security compared to legacy signature algorithms. It is the I2P network&rsquo;s
+recommended signature type.</p>
+
 <p>SIG_NONE is deprecated, use SIG_DEFAULT instead for secure signatures.
-SIG_DSA_SHA1 specifies DSA with SHA1 signature type (legacy, not recommended).
-SIG_ECDSA_SHA256_P256 specifies ECDSA with SHA256 on P256 curve signature type.
-SIG_ECDSA_SHA384_P384 specifies ECDSA with SHA384 on P384 curve signature type.
-SIG_ECDSA_SHA512_P521 specifies ECDSA with SHA512 on P521 curve signature type.
-SIG_EdDSA_SHA512_Ed25519 specifies EdDSA with SHA512 on Ed25519 curve signature
-type. SIG_DEFAULT points to the recommended secure signature type for new
+SIG_DSA_SHA1 specifies DSA with SHA1 signature type (LEGACY - NOT RECOMMENDED
+for new applications).</p>
+
+<pre><code>- Legacy algorithm with known cryptographic weaknesses
+- Larger key sizes and slower performance
+- Should only be used for compatibility with very old I2P destinations
+</code></pre>
+
+<p>SIG_ECDSA_SHA256_P256 specifies ECDSA with SHA256 on P256 curve signature type.</p>
+
+<pre><code>- Acceptable security but larger signatures than EdDSA
+- Consider EdDSA for better performance
+</code></pre>
+
+<p>SIG_ECDSA_SHA384_P384 specifies ECDSA with SHA384 on P384 curve signature type.</p>
+
+<pre><code>- Higher security margin but significantly larger signatures
+- Slower key generation and verification
+</code></pre>
+
+<p>SIG_ECDSA_SHA512_P521 specifies ECDSA with SHA512 on P521 curve signature type.</p>
+
+<pre><code>- Highest security but largest signatures and slowest performance
+- Only recommended for extremely high-security applications
+</code></pre>
+
+<p>SIG_EdDSA_SHA512_Ed25519 specifies EdDSA with SHA512 on Ed25519 curve signature
+type.</p>
+
+<pre><code>- RECOMMENDED: Fastest signature verification, smallest signatures
+- State-of-the-art cryptographic security with excellent performance
+- Default choice for all new I2P applications
+</code></pre>
+
+<p>SIG_DEFAULT points to the recommended secure signature type for new
 applications.</p>
+
+<pre><code>- Currently set to EdDSA_SHA512_Ed25519 for optimal security and performance
+</code></pre>
+
+<pre><code class="language-go">const (
+	SESSION_ADD_OK    = &quot;SESSION STATUS RESULT=OK&quot;
+	SESSION_REMOVE_OK = &quot;SESSION STATUS RESULT=OK&quot;
+)
+</code></pre>
+
+<p>SESSION_ADD_OK indicates successful subsession addition to primary session.
+SESSION_REMOVE_OK indicates successful subsession removal from primary session.</p>
 
 <pre><code class="language-go">const (
 	SAM_RESULT_OK            = &quot;RESULT=OK&quot;
@@ -450,6 +498,30 @@ Returns host, port as strings, and error. Port defaults to &ldquo;0&rdquo; if no
 <p>BaseSession provides the underlying SAM session functionality. It manages the
 connection to the SAM bridge and handles session lifecycle.</p>
 
+<h4 id="func-newbasesessionfromsubsession">func  NewBaseSessionFromSubsession</h4>
+
+<pre><code class="language-go">func NewBaseSessionFromSubsession(sam *SAM, id string, keys i2pkeys.I2PKeys) (*BaseSession, error)
+</code></pre>
+
+<p>NewBaseSessionFromSubsession creates a BaseSession for a subsession that has
+already been registered with a PRIMARY session using SESSION ADD. This
+constructor is used when the subsession is already registered with the SAM
+bridge and doesn&rsquo;t need a new session creation.</p>
+
+<p>This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- sam: SAM connection for data operations (separate from the primary session's control connection)
+- id: The subsession ID that was already registered with SESSION ADD
+- keys: The I2P keys from the primary session (shared across all subsessions)
+</code></pre>
+
+<p>Returns a BaseSession ready for use without attempting to create a new SAM
+session.</p>
+
 <h4 id="func-basesession-close">func (*BaseSession) Close</h4>
 
 <pre><code class="language-go">func (bs *BaseSession) Close() error
@@ -598,6 +670,10 @@ io.Writer interface for standard Go I/O operations.</p>
 	ReduceIdleQuantity        int
 	LeaseSetEncryption        string
 
+	// SAMv3.2+ Authentication support
+	User     string // Username for authenticated SAM bridges
+	Password string // Password for authenticated SAM bridges
+
 	// Streaming Library options
 	AccessListType string
 	AccessList     []string
@@ -670,6 +746,15 @@ If destination keys are set, returns them as a string, otherwise returns
 
 <p>FromPort returns the FROM_PORT configuration string for SAM bridges &gt;= 3.1
 Returns an empty string if SAM version &lt; 3.1 or if fromport is &ldquo;0&rdquo;</p>
+
+<h4 id="func-i2pconfig-generaterandomtunnelname">func (*I2PConfig) GenerateRandomTunnelName</h4>
+
+<pre><code class="language-go">func (f *I2PConfig) GenerateRandomTunnelName() string
+</code></pre>
+
+<p>GenerateRandomTunnelName creates a random 12-character tunnel name using
+lowercase letters. This function is deterministic for testing when a fixed seed
+is used.</p>
 
 <h4 id="func-i2pconfig-id">func (*I2PConfig) ID</h4>
 
@@ -911,6 +996,53 @@ eliminating the need for separate helper functions. It also initializes the SAM
 resolver directly after the connection is established. The SAM instance is ready
 to use for further operations like session creation or name resolution.</p>
 
+<h4 id="func-newsamwithauth">func  NewSAMWithAuth</h4>
+
+<pre><code class="language-go">func NewSAMWithAuth(address, user, password string) (*SAM, error)
+</code></pre>
+
+<p>NewSAMWithAuth creates a new SAM instance with optional authentication support.
+This function supports SAMv3.2+ USER/PASSWORD authentication for connecting to
+authenticated SAM bridges. If user and password are empty, no authentication is
+used.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- address: SAM bridge address (e.g., &quot;127.0.0.1:7656&quot;)
+- user: Username for authentication (empty string for no auth)
+- password: Password for authentication (empty string for no auth)
+</code></pre>
+
+<p>Returns a SAM instance ready for session creation or an error if connection
+fails.</p>
+
+<h4 id="func-sam-addsubsession">func (*SAM) AddSubSession</h4>
+
+<pre><code class="language-go">func (sam *SAM) AddSubSession(style, id string, options []string) error
+</code></pre>
+
+<p>AddSubSession adds a subsession to an existing PRIMARY session using the SESSION
+ADD command. This method implements the SAMv3.3 protocol for creating
+subsessions that share the same destination and tunnels as the primary session
+while providing separate protocol handling.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- style: Session style (&quot;STREAM&quot;, &quot;DATAGRAM&quot;, or &quot;RAW&quot;)
+- id: Unique subsession identifier within the primary session scope
+- options: Additional SAM protocol options for the subsession
+</code></pre>
+
+<p>The subsession inherits the destination from the primary session and uses the
+same tunnel infrastructure for enhanced efficiency. Each subsession must have a
+unique combination of style and port to enable proper routing of incoming
+traffic.</p>
+
+<p>Example usage:</p>
+
+<pre><code>err := sam.AddSubSession(&quot;STREAM&quot;, &quot;stream-sub-1&quot;, []string{&quot;FROM_PORT=8080&quot;})
+</code></pre>
+
 <h4 id="func-sam-close">func (*SAM) Close</h4>
 
 <pre><code class="language-go">func (sam *SAM) Close() error
@@ -990,6 +1122,30 @@ desination (the address) that anyone can send messages to.</p>
 </code></pre>
 
 <p>read public/private keys from an io.Reader</p>
+
+<h4 id="func-sam-removesubsession">func (*SAM) RemoveSubSession</h4>
+
+<pre><code class="language-go">func (sam *SAM) RemoveSubSession(id string) error
+</code></pre>
+
+<p>RemoveSubSession removes a subsession from the primary session using the SESSION
+REMOVE command. This method implements the SAMv3.3 protocol for cleanly
+terminating subsessions while keeping the primary session and other subsessions
+active.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- id: Unique subsession identifier to remove
+</code></pre>
+
+<p>After removal, the subsession is closed and may not be used for sending or
+receiving data. The primary session and other subsessions remain unaffected by
+this operation.</p>
+
+<p>Example usage:</p>
+
+<pre><code>err := sam.RemoveSubSession(&quot;stream-sub-1&quot;)
+</code></pre>
 
 <h4 id="type-samemit">type SAMEmit</h4>
 
@@ -1085,7 +1241,8 @@ method for network transmission of key generation requests.</p>
 </code></pre>
 
 <p>Hello generates the SAM protocol HELLO command for initial handshake. Includes
-minimum and maximum supported SAM protocol versions for negotiation.</p>
+minimum and maximum supported SAM protocol versions for negotiation. Optionally
+includes USER and PASSWORD parameters for authenticated SAM bridges.</p>
 
 <h4 id="func-samemit-hellobytes">func (*SAMEmit) HelloBytes</h4>
 
@@ -1158,6 +1315,60 @@ lookups.</p>
 <p>Performs a lookup, probably this order: 1) routers known addresses, cached
 addresses, 3) by asking peers in the I2P network.</p>
 
+<h4 id="func-samresolver-resolvewithoptions">func (*SAMResolver) ResolveWithOptions</h4>
+
+<pre><code class="language-go">func (sam *SAMResolver) ResolveWithOptions(name string, options bool) (i2pkeys.I2PAddr, map[string]string, error)
+</code></pre>
+
+<p>ResolveWithOptions performs a name lookup with SAMv3.2+ service discovery
+support. When options is true, the SAM bridge may return additional service
+metadata along with the address.</p>
+
+<p>This function enables SAMv3.2+ service discovery by requesting OPTIONS=true in
+the NAMING LOOKUP command. Service operators can publish metadata about their
+services to help clients automatically discover connection parameters, supported
+protocols, and service capabilities.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- name: I2P hostname to resolve (e.g., &quot;service.i2p&quot;, &quot;forum.i2p&quot;)
+- options: Set to true to request service metadata, false for address-only lookup
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- i2pkeys.I2PAddr: The resolved I2P destination address
+- map[string]string: Service options/metadata (empty if options=false or no metadata available)
+- error: Any error that occurred during resolution
+</code></pre>
+
+<p>Service Discovery Examples:</p>
+
+<pre><code>// Basic address resolution (compatible with older SAM versions)
+addr, _, err := resolver.ResolveWithOptions(&quot;mysite.i2p&quot;, false)
+
+// Service discovery with metadata (SAMv3.2+ feature)
+addr, metadata, err := resolver.ResolveWithOptions(&quot;api.i2p&quot;, true)
+if err != nil {
+    return err
+}
+
+// Extract service information from metadata
+if port := metadata[&quot;port&quot;]; port != &quot;&quot; {
+    fmt.Printf(&quot;Service port: %s\n&quot;, port)
+}
+if protocol := metadata[&quot;protocol&quot;]; protocol != &quot;&quot; {
+    fmt.Printf(&quot;Protocol: %s\n&quot;, protocol)
+}
+if path := metadata[&quot;path&quot;]; path != &quot;&quot; {
+    fmt.Printf(&quot;API path: %s\n&quot;, path)
+}
+</code></pre>
+
+<p>Common metadata keys include: port, protocol, path, description, version,
+contact. Metadata availability depends on service operator configuration and SAM
+bridge version.</p>
+
 <h4 id="type-session">type Session</h4>
 
 <pre><code class="language-go">type Session interface {
@@ -1177,7 +1388,7 @@ datagram, raw) must implement this interface.</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-07 02:11:30 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-07 02:17:29 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

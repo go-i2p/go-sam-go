@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 175 commits
+        📝 176 commits
         
       </div>
     </div>
@@ -368,6 +368,95 @@ and server capabilities for establishing reliable streaming connections over the
 I2P network. Example usage: session, err := NewStreamSession(sam, &ldquo;my-session&rdquo;,
 keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
 
+<h4 id="func-newstreamsessionfromsubsession">func  NewStreamSessionFromSubsession</h4>
+
+<pre><code class="language-go">func NewStreamSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSessionFromSubsession creates a StreamSession for a subsession that has
+already been registered with a PRIMARY session using SESSION ADD. This
+constructor skips the session creation step since the subsession is already
+registered with the SAM bridge.</p>
+
+<p>This function is specifically designed for use with SAMv3.3 PRIMARY sessions
+where subsessions are created using SESSION ADD rather than SESSION CREATE
+commands.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- sam: SAM connection for data operations (separate from the primary session's control connection)
+- id: The subsession ID that was already registered with SESSION ADD
+- keys: The I2P keys from the primary session (shared across all subsessions)
+- options: Configuration options for the subsession
+</code></pre>
+
+<p>Returns a StreamSession ready for use without attempting to create a new SAM
+session.</p>
+
+<h4 id="func-newstreamsessionwithsignature">func  NewStreamSessionWithSignature</h4>
+
+<pre><code class="language-go">func NewStreamSessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSessionWithSignature creates a new streaming session with a custom
+signature type for TCP-like I2P connections. This is the package-level function
+version that allows specifying cryptographic signature algorithms. It
+initializes the session with the provided SAM connection, session ID,
+cryptographic keys, configuration options, and signature type. The session
+provides both client and server capabilities for establishing reliable streaming
+connections over the I2P network with custom cryptographic settings. Example
+usage: session, err := NewStreamSessionWithSignature(sam, &ldquo;my-session&rdquo;, keys,
+[]string{&ldquo;inbound.length=1&rdquo;}, &ldquo;EdDSA_SHA512_Ed25519&rdquo;)</p>
+
+<h4 id="func-newstreamsessionwithsignatureandports">func  NewStreamSessionWithSignatureAndPorts</h4>
+
+<pre><code class="language-go">func NewStreamSessionWithSignatureAndPorts(sam *common.SAM, id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error)
+</code></pre>
+
+<p>NewStreamSessionWithSignatureAndPorts creates a new stream session with custom
+signature type and port configuration. This function provides advanced control
+over both cryptographic parameters and port mapping for stream sessions. The
+&lsquo;from&rsquo; parameter specifies the local port binding, while &lsquo;to&rsquo; specifies the
+target port for connections. Port specifications can be single ports (&ldquo;80&rdquo;) or
+ranges (&ldquo;8080-8090&rdquo;) depending on I2P router configuration.</p>
+
+<p>This method enables complex port forwarding scenarios and integration with
+existing network infrastructure that expects specific port mappings. It&rsquo;s
+particularly useful for applications that need to maintain consistent port
+assignments or work with legacy systems expecting fixed port numbers.</p>
+
+<p>Example usage:</p>
+
+<pre><code>session, err := NewStreamSessionWithSignatureAndPorts(sam, &quot;http-proxy&quot;, &quot;8080&quot;, &quot;80&quot;, keys,
+                   []string{&quot;inbound.length=2&quot;}, &quot;EdDSA_SHA512_Ed25519&quot;)
+</code></pre>
+
+<h4 id="func-streamsession-accept">func (*StreamSession) Accept</h4>
+
+<pre><code class="language-go">func (s *StreamSession) Accept() (*StreamConn, error)
+</code></pre>
+
+<p>Accept creates a listener and accepts the next incoming connection from remote
+I2P destinations. This is a convenience method that automatically creates a
+listener and calls Accept() on it. It provides a simpler API for applications
+that only need to accept a single connection or want to handle each connection
+acceptance individually.</p>
+
+<p>For applications that need to accept multiple connections or want more control
+over listener lifecycle, use Listen() to get a StreamListener and call Accept()
+on it directly.</p>
+
+<p>Each call to Accept creates a new internal listener, so applications accepting
+multiple connections should use Listen() once and then call Accept() multiple
+times on the listener for better performance and resource management.</p>
+
+<p>Returns a StreamConn for the accepted connection, or an error if the acceptance
+fails. The error may be due to session closure, network issues, or I2P tunnel
+problems.</p>
+
+<p>Example usage: conn, err := session.Accept() // Simple single connection
+acceptance</p>
+
 <h4 id="func-streamsession-addr">func (*StreamSession) Addr</h4>
 
 <pre><code class="language-go">func (s *StreamSession) Addr() i2pkeys.I2PAddr
@@ -452,7 +541,7 @@ session.NewDialer().SetTimeout(60*time.Second)</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-07 02:11:30 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-07 02:17:29 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
