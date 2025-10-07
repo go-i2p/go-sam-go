@@ -74,7 +74,7 @@ func TestDebugDatagramBasic(t *testing.T) {
 	// Step 7: Send message from sender to receiver
 	fmt.Println("DEBUG: Sending message from sender to receiver...")
 	fmt.Println("DEBUG: Note: I2P datagram delivery requires tunnel establishment and may take 1-5 minutes")
-	
+
 	receiverAddr := receiverKeys.Addr()
 	message := []byte("Hello from sender to receiver!")
 
