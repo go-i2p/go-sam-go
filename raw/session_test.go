@@ -167,6 +167,8 @@ func TestRawSession_NewReader(t *testing.T) {
 	if reader == nil {
 		t.Error("NewReader() returned nil")
 	}
+	// Critical fix: Ensure reader is properly closed to prevent goroutine leaks
+	defer reader.Close()
 
 	if reader.session != session {
 		t.Error("Reader session reference is incorrect")
@@ -225,6 +227,8 @@ func TestRawSession_PacketConn(t *testing.T) {
 	if conn == nil {
 		t.Error("PacketConn() returned nil")
 	}
+	// Critical fix: Ensure PacketConn is properly closed to prevent goroutine leaks
+	defer conn.Close()
 
 	rawConn, ok := conn.(*RawConn)
 	if !ok {
