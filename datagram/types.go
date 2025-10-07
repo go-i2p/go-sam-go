@@ -22,8 +22,8 @@ type DatagramSession struct {
 	options    []string
 	mu         sync.RWMutex
 	closed     bool
-	udpConn    *net.UDPConn     // UDP connection for receiving forwarded datagrams (PRIMARY subsessions)
-	udpEnabled bool              // Whether UDP forwarding is enabled
+	udpConn    *net.UDPConn // UDP connection for receiving forwarded datagrams (PRIMARY subsessions)
+	udpEnabled bool         // Whether UDP forwarding is enabled
 }
 
 // DatagramReader handles incoming datagram reception from the I2P network.

@@ -17,7 +17,7 @@ import (
 // This is required for all raw sessions in v3-only mode.
 func ensureRawUDPForwardingParameters(options []string, udpPort int) []string {
 	updatedOptions := make([]string, 0, len(options)+2)
-	
+
 	hasPort := false
 	hasHost := false
 
@@ -125,8 +125,8 @@ func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []s
 // Returns a RawSession ready for use without attempting to create a new SAM session.
 func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*RawSession, error) {
 	logger := log.WithFields(logrus.Fields{
-		"id":      id,
-		"options": options,
+		"id":          id,
+		"options":     options,
 		"udp_enabled": udpConn != nil,
 	})
 	logger.Debug("Creating RawSession from existing subsession with SAMv3 UDP forwarding")
@@ -246,7 +246,7 @@ func (s *RawSession) readRawFromUDP(udpConn *net.UDPConn) (*RawDatagram, error) 
 	}
 
 	log.WithFields(logrus.Fields{
-		"bytes_read": n,
+		"bytes_read":  n,
 		"remote_addr": remoteAddr,
 	}).Debug("Received UDP raw datagram")
 

@@ -85,7 +85,7 @@ func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, option
 // This is required for all datagram sessions in v3-only mode.
 func ensureUDPForwardingParameters(options []string, udpPort int) []string {
 	updatedOptions := make([]string, 0, len(options)+2)
-	
+
 	hasPort := false
 	hasHost := false
 
@@ -131,8 +131,8 @@ func ensureUDPForwardingParameters(options []string, udpPort int) []string {
 // Returns a DatagramSession ready for use without attempting to create a new SAM session.
 func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*DatagramSession, error) {
 	logger := log.WithFields(logrus.Fields{
-		"id":      id,
-		"options": options,
+		"id":          id,
+		"options":     options,
 		"udp_enabled": udpConn != nil,
 	})
 	logger.Debug("Creating DatagramSession from existing subsession with SAMv3 UDP forwarding")
@@ -249,10 +249,11 @@ func (s *DatagramSession) readSingleDatagram() (*Datagram, error) {
 // readDatagramFromUDP reads a forwarded datagram from the UDP connection.
 // This is used for PRIMARY subsessions where datagrams are forwarded via UDP by the SAM bridge.
 // Format per SAMv3.md:
-//   Line 1: $destination (base64 I2P destination)
-//   Line 2+: FROM_PORT=nnn TO_PORT=nnn (SAMv3.2+, may be on one or two lines)
-//   Then: \n (empty line separator)
-//   Remaining: $datagram_payload (raw data)
+//
+//	Line 1: $destination (base64 I2P destination)
+//	Line 2+: FROM_PORT=nnn TO_PORT=nnn (SAMv3.2+, may be on one or two lines)
+//	Then: \n (empty line separator)
+//	Remaining: $datagram_payload (raw data)
 func (s *DatagramSession) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram, error) {
 	buffer := make([]byte, 65536) // Large buffer for UDP datagrams
 	n, _, err := udpConn.ReadFromUDP(buffer)
@@ -264,7 +265,7 @@ func (s *DatagramSession) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram, 
 
 	// Parse the UDP datagram format per SAMv3.md
 	response := string(buffer[:n])
-	
+
 	// Find the first newline - that's the end of the header line
 	firstNewline := strings.Index(response, "\n")
 	if firstNewline == -1 {
@@ -273,7 +274,7 @@ func (s *DatagramSession) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram, 
 
 	// Line 1: Source destination (base64) followed by optional FROM_PORT=nnn TO_PORT=nnn
 	headerLine := strings.TrimSpace(response[:firstNewline])
-	
+
 	if headerLine == "" {
 		return nil, oops.Errorf("empty header line in UDP datagram")
 	}
@@ -285,7 +286,7 @@ func (s *DatagramSession) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram, 
 	if len(parts) == 0 {
 		return nil, oops.Errorf("empty header line in UDP datagram")
 	}
-	
+
 	source := parts[0] // First field is the destination
 	// Remaining parts are FROM_PORT and TO_PORT which we ignore for now
 

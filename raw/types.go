@@ -18,8 +18,8 @@ type RawSession struct {
 	options    []string
 	mu         sync.RWMutex
 	closed     bool
-	udpConn    *net.UDPConn     // UDP connection for receiving forwarded raw datagrams (SAMv3)
-	udpEnabled bool              // Whether UDP forwarding is enabled (always true in v3-only mode)
+	udpConn    *net.UDPConn // UDP connection for receiving forwarded raw datagrams (SAMv3)
+	udpEnabled bool         // Whether UDP forwarding is enabled (always true in v3-only mode)
 }
 
 // RawReader handles incoming raw datagram reception

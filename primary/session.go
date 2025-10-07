@@ -244,7 +244,7 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 	logger.Debug("Creating datagram sub-session with UDP forwarding")
 
 	// PRIMARY datagram subsessions MUST use UDP forwarding because the control socket
-	// is already used by the PRIMARY session. Per SAMv3.md: "If $port is not set, 
+	// is already used by the PRIMARY session. Per SAMv3.md: "If $port is not set,
 	// datagrams will NOT be forwarded, they will be received on the control socket"
 	// Setup UDP listener for receiving forwarded datagrams
 	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0") // Port 0 = let OS choose
