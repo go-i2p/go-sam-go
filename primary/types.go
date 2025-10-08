@@ -4,17 +4,18 @@ import (
 	"sync"
 
 	"github.com/go-i2p/go-sam-go/datagram"
+	"github.com/go-i2p/go-sam-go/datagram3"
 	"github.com/go-i2p/go-sam-go/raw"
 	"github.com/go-i2p/go-sam-go/stream"
 )
 
 // SubSession represents a generic interface for sub-sessions that can be managed
-// by a primary session. All sub-session types (stream, datagram, raw) implement
+// by a primary session. All sub-session types (stream, datagram, datagram3, raw) implement
 // this interface to provide unified lifecycle management and identification.
 type SubSession interface {
 	// ID returns the unique identifier for this sub-session
 	ID() string
-	// Type returns the session type ("STREAM", "DATAGRAM", "RAW")
+	// Type returns the session type ("STREAM", "DATAGRAM", "DATAGRAM3", "RAW")
 	Type() string
 	// Close closes the sub-session and releases its resources
 	Close() error
@@ -335,4 +336,63 @@ func (s *RawSubSession) Close() error {
 
 	s.active = false
 	return s.RawSession.Close()
+}
+
+// Datagram3SubSession wraps a datagram3.Datagram3Session to implement the SubSession interface.
+// This adapter allows Datagram3Session instances to be managed by primary sessions
+// while maintaining their full functionality and thread-safe operations.
+//
+// ⚠️  SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
+// ⚠️  This sub-session type uses hash-based source identification which is unauthenticated.
+// ⚠️  Do not trust source addresses without additional application-level authentication.
+// ⚠️  If you need authenticated sources, use DatagramSubSession (DATAGRAM) instead.
+type Datagram3SubSession struct {
+	*datagram3.Datagram3Session
+	id     string
+	active bool
+	mu     sync.RWMutex
+}
+
+// NewDatagram3SubSession creates a Datagram3SubSession wrapper around a Datagram3Session.
+// This constructor initializes the wrapper with proper identification and state
+// management to enable primary session integration.
+//
+// ⚠️  SECURITY WARNING: Sources are UNAUTHENTICATED and can be spoofed!
+func NewDatagram3SubSession(id string, session *datagram3.Datagram3Session) *Datagram3SubSession {
+	return &Datagram3SubSession{
+		Datagram3Session: session,
+		id:               id,
+		active:           true,
+	}
+}
+
+// ID returns the unique identifier for this datagram3 sub-session.
+func (s *Datagram3SubSession) ID() string {
+	return s.id
+}
+
+// Type returns the session type identifier for datagram3 sessions.
+// Returns "DATAGRAM3" to distinguish from authenticated DATAGRAM sessions.
+func (s *Datagram3SubSession) Type() string {
+	return "DATAGRAM3"
+}
+
+// Active returns whether this datagram3 sub-session is currently active.
+func (s *Datagram3SubSession) Active() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.active
+}
+
+// Close closes the datagram3 sub-session and marks it as inactive.
+func (s *Datagram3SubSession) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.active {
+		return nil
+	}
+
+	s.active = false
+	return s.Datagram3Session.Close()
 }

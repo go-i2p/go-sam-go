@@ -1,6 +1,6 @@
-package datagram
+# go-sam-go/datagram
 
-High-level datagram library for UDP-like message delivery over I2P using the SAMv3 protocol.
+Datagram library for authenticated UDP-like message delivery over I2P using the SAMv3 protocol.
 
 ## Installation
 
@@ -8,16 +8,13 @@ Install using Go modules with the package path `github.com/go-i2p/go-sam-go/data
 
 ## Usage
 
-The package provides UDP-like datagram messaging over I2P networks. [`DatagramSession`](datagram/types.go) manages the session lifecycle, [`DatagramReader`](datagram/types.go) handles incoming datagrams, [`DatagramWriter`](datagram/types.go) sends outgoing datagrams, and [`DatagramConn`](datagram/types.go) implements the standard `net.PacketConn` interface for seamless integration with existing Go networking code.
+The package provides authenticated datagram messaging over I2P networks. DatagramSession manages the session lifecycle, DatagramReader handles incoming datagrams, DatagramWriter sends outgoing datagrams, and DatagramConn implements the standard net.PacketConn interface.
 
-Create sessions using [`NewDatagramSession`](datagram/session.go), send messages with [`SendDatagram()`](datagram/session.go), and receive messages using [`ReceiveDatagram()`](datagram/session.go). The implementation supports I2P address resolution, configurable tunnel parameters, and comprehensive error handling with proper resource cleanup.
-
-Key features include full `net.PacketConn` and `net.Conn` compatibility, I2P destination management, base64 payload encoding, and concurrent datagram processing with proper synchronization.
+Create sessions using NewDatagramSession(), send messages with SendDatagram(), and receive messages using ReceiveDatagram(). Supports I2P address resolution, configurable tunnel parameters, and proper resource cleanup.
 
 ## Dependencies
 
 - github.com/go-i2p/go-sam-go/common - Core SAM protocol implementation
-- github.com/go-i2p/i2pkeys - I2P cryptographic key handling  
-- github.com/go-i2p/logger - Logging functionality
+- github.com/go-i2p/i2pkeys - I2P cryptographic key handling
 - github.com/sirupsen/logrus - Structured logging
 - github.com/samber/oops - Enhanced error handling

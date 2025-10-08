@@ -1,13 +1,13 @@
-// Package datagram2 provides authenticated datagram sessions with replay protection for I2P.
+// Package datagram provides legacy authenticated datagram sessions for I2P using SAMv3 DATAGRAM.
 //
-// DATAGRAM2 sessions provide authenticated, repliable UDP-like messaging over I2P tunnels
-// with replay attack protection. This is the recommended datagram format for applications
-// requiring both source authentication and replay protection.
+// DATAGRAM sessions provide authenticated, repliable UDP-like messaging over I2P tunnels.
+// This is the legacy format without replay protection. For new applications requiring replay
+// protection, use package datagram2 instead.
 //
 // Key features:
 //   - Authenticated datagrams with signature verification
-//   - Replay protection (not available in legacy DATAGRAM)
 //   - Repliable (can send replies to sender)
+//   - No replay protection (use datagram2 if needed)
 //   - UDP-like messaging (unreliable, unordered)
 //   - Maximum 31744 bytes per datagram (11 KB recommended)
 //   - Implements net.PacketConn interface
@@ -18,12 +18,12 @@
 // Basic usage:
 //
 //	sam, err := common.NewSAM("127.0.0.1:7656")
-//	session, err := datagram2.NewDatagram2Session(sam, "my-session", keys, []string{"inbound.length=1"})
+//	session, err := datagram.NewDatagramSession(sam, "my-session", keys, []string{"inbound.length=1"})
 //	defer session.Close()
 //	conn := session.PacketConn()
 //	n, err := conn.WriteTo(data, destination)
 //	n, addr, err := conn.ReadFrom(buffer)
 //
-// See also: Package datagram (legacy, no replay protection), datagram3 (unauthenticated),
+// See also: Package datagram2 (with replay protection), datagram3 (unauthenticated),
 // stream (TCP-like), raw (non-repliable), primary (multi-session management).
-package datagram2
+package datagram

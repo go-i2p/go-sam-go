@@ -226,22 +226,28 @@ type RawSession struct {
 ```
 
 RawSession represents a raw session that can send and receive raw datagrams
+using SAMv3 UDP forwarding. V1/V2 TCP control socket reading is no longer
+supported.
 
 #### func  NewRawSession
 
 ```go
 func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
 ```
-NewRawSession creates a new raw session for sending and receiving raw datagrams.
-It initializes the session with the provided SAM connection, session ID,
-cryptographic keys, and configuration options, returning a RawSession instance
-or an error if creation fails. Example usage: session, err := NewRawSession(sam,
-"my-session", keys, []string{"inbound.length=1"})
+NewRawSession creates a new raw session for sending and receiving raw datagrams
+using SAMv3 UDP forwarding. It initializes the session with the provided SAM
+connection, session ID, cryptographic keys, and configuration options. It
+automatically creates a UDP listener for receiving forwarded datagrams (SAMv3
+requirement) and configures the session with PORT/HOST parameters. V1/V2
+compatibility (reading from TCP control socket) is no longer supported. Returns
+a RawSession instance that uses UDP forwarding for all raw datagram reception.
+Example usage: session, err := NewRawSession(sam, "my-session", keys,
+[]string{"inbound.length=1"})
 
 #### func  NewRawSessionFromSubsession
 
 ```go
-func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
+func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*RawSession, error)
 ```
 NewRawSessionFromSubsession creates a RawSession for a subsession that has
 already been registered with a PRIMARY session using SESSION ADD. This
@@ -252,12 +258,17 @@ This function is specifically designed for use with SAMv3.3 PRIMARY sessions
 where subsessions are created using SESSION ADD rather than SESSION CREATE
 commands.
 
+For PRIMARY raw subsessions, UDP forwarding is mandatory (SAMv3 requirement).
+The UDP connection must be provided for proper raw datagram reception via UDP
+forwarding.
+
 Parameters:
 
     - sam: SAM connection for data operations (separate from the primary session's control connection)
     - id: The subsession ID that was already registered with SESSION ADD
     - keys: The I2P keys from the primary session (shared across all subsessions)
     - options: Configuration options for the subsession
+    - udpConn: UDP connection for receiving forwarded raw datagrams (required, not nil)
 
 Returns a RawSession ready for use without attempting to create a new SAM
 session.
@@ -276,10 +287,11 @@ session's cryptographic keys. Example usage: addr := session.Addr()
 ```go
 func (s *RawSession) Close() error
 ```
-Close closes the raw session and all associated resources. This method is safe
-to call multiple times and will only perform cleanup once. All readers and
-writers created from this session will become invalid after closing. Example
-usage: defer session.Close()
+Close closes the raw session and all associated resources. This method safely
+terminates the session, closes the UDP listener and underlying connection, and
+cleans up any background goroutines. It's safe to call multiple times. All
+readers and writers created from this session will become invalid after closing.
+Example usage: defer session.Close()
 
 #### func (*RawSession) Dial
 
@@ -391,10 +403,10 @@ Example usage: conn := session.PacketConn(); n, addr, err := conn.ReadFrom(buf)
 ```go
 func (s *RawSession) ReceiveDatagram() (*RawDatagram, error)
 ```
-ReceiveDatagram receives a single raw datagram from any source. This is a
-convenience method that creates a temporary reader, starts the receive loop,
-gets one datagram, and cleans up the resources automatically. Example usage:
-datagram, err := session.ReceiveDatagram()
+ReceiveDatagram receives a single raw datagram from any source using SAMv3 UDP
+forwarding. This method performs a direct UDP read without creating a reader or
+receive loop. V1/V2 TCP control socket reading is no longer supported. Example
+usage: datagram, err := session.ReceiveDatagram()
 
 #### func (*RawSession) SendDatagram
 

@@ -227,10 +227,38 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 		}
 	})
 
+	t.Run("create datagram3 sub-session", func(t *testing.T) {
+		datagram3SubID := "datagram3_sub_1"
+		// DATAGRAM3 subsessions require a PORT parameter per SAM v3.3 specification
+		// WARNING: DATAGRAM3 sources are UNAUTHENTICATED and can be spoofed!
+		datagram3Sub, err := session.NewDatagram3SubSession(datagram3SubID, []string{"PORT=8082"})
+		if err != nil {
+			t.Fatalf("Failed to create datagram3 sub-session: %v", err)
+		}
+		defer datagram3Sub.Close()
+
+		if datagram3Sub.ID() != datagram3SubID {
+			t.Errorf("Datagram3 sub-session ID mismatch: got %s, want %s", datagram3Sub.ID(), datagram3SubID)
+		}
+
+		if datagram3Sub.Type() != "DATAGRAM3" {
+			t.Errorf("Datagram3 sub-session type mismatch: got %s, want DATAGRAM3", datagram3Sub.Type())
+		}
+
+		if !datagram3Sub.Active() {
+			t.Error("Datagram3 sub-session should be active")
+		}
+
+		// Check it's registered (should be 4 now with stream, datagram, raw, datagram3)
+		if session.SubSessionCount() != 4 {
+			t.Errorf("Expected 4 sub-sessions, got %d", session.SubSessionCount())
+		}
+	})
+
 	t.Run("list all sub-sessions", func(t *testing.T) {
 		subSessions := session.ListSubSessions()
-		if len(subSessions) != 3 {
-			t.Errorf("Expected 3 sub-sessions in list, got %d", len(subSessions))
+		if len(subSessions) != 4 {
+			t.Errorf("Expected 4 sub-sessions in list, got %d", len(subSessions))
 		}
 
 		// Check all types are present
@@ -239,7 +267,7 @@ func TestPrimarySessionSubSessions(t *testing.T) {
 			types[sub.Type()] = true
 		}
 
-		expectedTypes := []string{"STREAM", "DATAGRAM", "RAW"}
+		expectedTypes := []string{"STREAM", "DATAGRAM", "RAW", "DATAGRAM3"}
 		for _, expectedType := range expectedTypes {
 			if !types[expectedType] {
 				t.Errorf("Expected sub-session type %s not found", expectedType)

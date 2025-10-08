@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/go-sam-go/datagram"
+	"github.com/go-i2p/go-sam-go/datagram3"
 	"github.com/go-i2p/go-sam-go/raw"
 	"github.com/go-i2p/go-sam-go/stream"
 	"github.com/go-i2p/i2pkeys"
@@ -16,14 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// PrimarySession provides master session capabilities for managing multiple sub-sessions
-// of different types (stream, datagram, raw) within a single I2P session context.
-// It enables complex applications with multiple communication patterns while sharing
-// the same I2P identity and tunnel infrastructure for enhanced efficiency and anonymity.
-//
-// The primary session manages the lifecycle of all sub-sessions, ensures proper cleanup
-// cascading when the primary session is closed, and provides thread-safe operations
-// for creating, managing, and terminating sub-sessions across different protocols.
+// PrimarySession manages multiple sub-sessions sharing the same I2P identity and tunnels.
 type PrimarySession struct {
 	*common.BaseSession
 	sam      *common.SAM
@@ -33,21 +27,11 @@ type PrimarySession struct {
 	closed   bool
 }
 
-// NewPrimarySession creates a new primary session with the provided SAM connection,
-// session ID, cryptographic keys, and configuration options. The primary session
-// acts as a master container that can create and manage multiple sub-sessions of
-// different types while sharing the same I2P identity and tunnel infrastructure.
-//
-// The session uses PRIMARY session type in the SAM protocol, which allows multiple
-// sub-sessions to be created using the same underlying I2P destination and keys.
-// This provides better resource efficiency and maintains consistent identity across
-// different communication patterns within the same application.
-//
-// Example usage:
-//
-//	session, err := NewPrimarySession(sam, "my-primary", keys, []string{"inbound.length=2"})
-//	streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
-//	datagramSub, err := session.NewDatagramSubSession("datagram-1", datagramOptions)
+// NewPrimarySession creates a new primary session for managing multiple sub-sessions.
+// It initializes the session with the provided SAM connection, session ID, cryptographic keys,
+// and configuration options. The primary session allows creating multiple sub-sessions of
+// different types (stream, datagram, raw) while sharing the same I2P identity and tunnels.
+// Example usage: session, err := NewPrimarySession(sam, "my-primary", keys, []string{"inbound.length=2"})
 func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error) {
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
@@ -82,18 +66,9 @@ func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options
 }
 
 // NewPrimarySessionWithSignature creates a new primary session with the specified signature type.
-// This is a package-level function that provides direct access to signature-aware session creation
-// without requiring wrapper types. It delegates to the common package for session creation while
-// maintaining the same primary session functionality and sub-session management capabilities.
-//
-// The signature type allows specifying custom cryptographic parameters for enhanced security
-// or compatibility with specific I2P network configurations. Different signature types provide
-// various security levels, performance characteristics, and compatibility options.
-//
-// Example usage:
-//
-//	session, err := NewPrimarySessionWithSignature(sam, "secure-primary", keys, options, "EdDSA_SHA512_Ed25519")
-//	streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
+// This method allows specifying custom cryptographic parameters for enhanced security or
+// compatibility with specific I2P network configurations.
+// Example usage: session, err := NewPrimarySessionWithSignature(sam, "secure-primary", keys, options, "EdDSA_SHA512_Ed25519")
 func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error) {
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
@@ -134,16 +109,7 @@ func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2P
 // The sub-session shares the primary session's I2P identity and tunnel infrastructure
 // while providing full StreamSession functionality for TCP-like reliable connections.
 // Each sub-session must have a unique identifier within the primary session scope.
-//
-// This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
-// the subsession with the primary session's SAM connection, ensuring compliance
-// with the I2P SAM protocol specification for PRIMARY session management.
-//
-// Example usage:
-//
-//	streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"FROM_PORT=8080"})
-//	listener, err := streamSub.Listen()
-//	conn, err := streamSub.Dial("destination.b32.i2p")
+// Example usage: streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"FROM_PORT=8080"})
 func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*StreamSubSession, error) {
 	// Use write lock to ensure atomic sub-session creation and prevent race conditions
 	// during concurrent session creation operations in I2P SAM protocol
@@ -400,6 +366,114 @@ func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubS
 	return subSession, nil
 }
 
+// NewDatagram3SubSession creates a new datagram3 sub-session within this primary session using SAMv3 UDP forwarding.
+// The sub-session shares the primary session's I2P identity and tunnel infrastructure
+// while providing full Datagram3Session functionality for repliable but UNAUTHENTICATED datagram communication.
+// Each sub-session must have a unique identifier within the primary session scope.
+//
+// ⚠️  SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
+// ⚠️  Do not trust source addresses without additional application-level authentication.
+// ⚠️  If you need authenticated sources, use NewDatagramSubSession (DATAGRAM) instead.
+//
+// This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+// the subsession with the primary session's SAM connection, ensuring compliance
+// with the I2P SAM protocol specification for PRIMARY session management.
+//
+// Per SAMv3.3 specification, DATAGRAM3 subsessions REQUIRE UDP forwarding for proper operation.
+// Received datagrams contain a 32-byte hash instead of full authenticated destination.
+// Use the session's hash resolver to convert hashes to destinations for replies.
+//
+// Example usage:
+//
+//	datagram3Sub, err := primary.NewDatagram3SubSession("udp3-handler", []string{"FROM_PORT=8080"})
+//	reader := datagram3Sub.NewReader()
+//	writer := datagram3Sub.NewWriter()
+//	// Receive datagram with UNAUTHENTICATED source hash
+//	dg, err := reader.ReceiveDatagram()
+//	// Resolve hash to reply (cached by session)
+//	err = dg.ResolveSource(datagram3Sub)
+//	err = writer.SendDatagram([]byte("reply"), dg.Source)
+func (p *PrimarySession) NewDatagram3SubSession(id string, options []string) (*Datagram3SubSession, error) {
+	// Use write lock to ensure atomic sub-session creation and prevent race conditions
+	// during concurrent session creation operations in I2P SAM protocol
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.closed {
+		return nil, oops.Errorf("primary session is closed")
+	}
+
+	logger := log.WithFields(logrus.Fields{
+		"primary_id": p.ID(),
+		"sub_id":     id,
+		"options":    options,
+	})
+	logger.Warn("Creating DATAGRAM3 sub-session - sources are UNAUTHENTICATED and can be spoofed!")
+
+	// PRIMARY datagram3 subsessions MUST use UDP forwarding because the control socket
+	// is already used by the PRIMARY session. Per SAMv3.md: "If $port is not set,
+	// datagrams will NOT be forwarded, they will be received on the control socket"
+	// Setup UDP listener for receiving forwarded datagrams with hash-based sources
+	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0") // Port 0 = let OS choose
+	if err != nil {
+		return nil, oops.Errorf("failed to resolve UDP address: %w", err)
+	}
+
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return nil, oops.Errorf("failed to create UDP listener: %w", err)
+	}
+
+	// Get the actual port assigned by the OS
+	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
+	logger.WithField("udp_port", udpPort).Debug("Created UDP listener for datagram3 forwarding")
+
+	// Ensure PORT parameter is present and add UDP forwarding parameters
+	// This tells SAM bridge to forward datagrams to our UDP port instead of control socket
+	finalOptions := ensureDatagram3ForwardingParameters(options, udpPort)
+
+	// Add the subsession to the primary session using SESSION ADD with DATAGRAM3 style
+	if err := p.sam.AddSubSession("DATAGRAM3", id, finalOptions); err != nil {
+		logger.WithError(err).Error("Failed to add datagram3 subsession")
+		udpConn.Close()
+		return nil, oops.Errorf("failed to create datagram3 sub-session: %w", err)
+	}
+
+	// Create a new SAM connection for the sub-session data operations (for sending)
+	subSAM, err := p.createSubSAMConnection()
+	if err != nil {
+		logger.WithError(err).Error("Failed to create sub-SAM connection")
+		udpConn.Close()
+		p.sam.RemoveSubSession(id)
+		return nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
+	}
+
+	// Create the datagram3 session with UDP connection for receiving forwarded datagrams
+	// The session will initialize its own hash resolver for converting sources to destinations
+	datagram3Session, err := datagram3.NewDatagram3SessionFromSubsession(subSAM, id, p.Keys(), options, udpConn)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create datagram3 session wrapper")
+		subSAM.Close()
+		udpConn.Close()
+		p.sam.RemoveSubSession(id)
+		return nil, oops.Errorf("failed to create datagram3 sub-session: %w", err)
+	}
+
+	// Wrap the datagram3 session in a sub-session adapter
+	subSession := NewDatagram3SubSession(id, datagram3Session)
+
+	// Register the sub-session with the primary session registry
+	if err := p.registry.Register(id, subSession); err != nil {
+		logger.WithError(err).Error("Failed to register datagram3 sub-session")
+		datagram3Session.Close()
+		p.sam.RemoveSubSession(id)
+		return nil, oops.Errorf("failed to register datagram3 sub-session: %w", err)
+	}
+
+	logger.WithField("udp_port", udpPort).Warn("Successfully created datagram3 sub-session - remember sources are UNAUTHENTICATED!")
+	return subSession, nil
+}
+
 // GetSubSession retrieves a sub-session by its unique identifier.
 // Returns the sub-session instance if found, or an error if the sub-session
 // does not exist or the primary session is closed. This method provides
@@ -609,14 +683,7 @@ func ensurePortParameter(options []string) []string {
 	return result
 }
 
-// ensureDatagramForwardingParameters ensures proper UDP forwarding parameters for PRIMARY datagram subsessions.
-// Per SAMv3.md, PRIMARY datagram subsessions MUST use UDP forwarding because the control socket is already
-// used by the PRIMARY session. This function:
-// 1. Ensures PORT parameter is present (required for DATAGRAM subsessions)
-// 2. Adds sam.udp.host and sam.udp.port to enable UDP forwarding by SAM bridge
-// 3. If sam.udp.port is already present in options, it is preserved
-//
-// Without these parameters, datagrams would try to use the control socket which is not possible for subsessions.
+// ensureDatagramForwardingParameters ensures PORT and HOST parameters for UDP forwarding.
 func ensureDatagramForwardingParameters(options []string, udpPort int) []string {
 	hasPort := false
 	hasHost := false
@@ -647,10 +714,39 @@ func ensureDatagramForwardingParameters(options []string, udpPort int) []string 
 	return result
 }
 
-// ensureRawForwardingParameters ensures proper UDP forwarding parameters for PRIMARY raw subsessions.
-// Per SAMv3.md, PRIMARY raw subsessions MUST use UDP forwarding because the control socket is already
-// used by the PRIMARY session. PORT/HOST tell SAM where to forward datagrams TO (our UDP listener).
+// ensureRawForwardingParameters ensures PORT and HOST parameters for UDP forwarding.
 func ensureRawForwardingParameters(options []string, udpPort int) []string {
+	hasPort := false
+	hasHost := false
+
+	// Check what parameters are already present
+	for _, opt := range options {
+		if len(opt) >= 5 && (opt[:5] == "PORT=" || opt[:5] == "port=") {
+			hasPort = true
+		}
+		if len(opt) >= 5 && (opt[:5] == "HOST=" || opt[:5] == "host=") {
+			hasHost = true
+		}
+	}
+
+	// Build result with necessary parameters
+	result := make([]string, len(options), len(options)+2)
+	copy(result, options)
+
+	// Add PORT/HOST to tell SAM bridge where to forward datagrams TO (our UDP listener)
+	// Do NOT set sam.udp.port/sam.udp.host - those configure SAM bridge's own UDP port (default 7655)
+	if !hasPort {
+		result = append(result, fmt.Sprintf("PORT=%d", udpPort)) // Forward to our UDP port
+	}
+	if !hasHost {
+		result = append(result, "HOST=127.0.0.1") // Forward to localhost
+	}
+
+	return result
+}
+
+// ensureDatagram3ForwardingParameters ensures PORT and HOST parameters for UDP forwarding.
+func ensureDatagram3ForwardingParameters(options []string, udpPort int) []string {
 	hasPort := false
 	hasHost := false
 

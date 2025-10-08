@@ -5,6 +5,65 @@
 
 ## Usage
 
+#### type Datagram3SubSession
+
+```go
+type Datagram3SubSession struct {
+	*datagram3.Datagram3Session
+}
+```
+
+Datagram3SubSession wraps a datagram3.Datagram3Session to implement the
+SubSession interface. This adapter allows Datagram3Session instances to be
+managed by primary sessions while maintaining their full functionality and
+thread-safe operations.
+
+⚠️ SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
+⚠️ This sub-session type uses hash-based source identification which is
+unauthenticated. ⚠️ Do not trust source addresses without additional
+application-level authentication. ⚠️ If you need authenticated sources, use
+DatagramSubSession (DATAGRAM) instead.
+
+#### func  NewDatagram3SubSession
+
+```go
+func NewDatagram3SubSession(id string, session *datagram3.Datagram3Session) *Datagram3SubSession
+```
+NewDatagram3SubSession creates a Datagram3SubSession wrapper around a
+Datagram3Session. This constructor initializes the wrapper with proper
+identification and state management to enable primary session integration.
+
+⚠️ SECURITY WARNING: Sources are UNAUTHENTICATED and can be spoofed!
+
+#### func (*Datagram3SubSession) Active
+
+```go
+func (s *Datagram3SubSession) Active() bool
+```
+Active returns whether this datagram3 sub-session is currently active.
+
+#### func (*Datagram3SubSession) Close
+
+```go
+func (s *Datagram3SubSession) Close() error
+```
+Close closes the datagram3 sub-session and marks it as inactive.
+
+#### func (*Datagram3SubSession) ID
+
+```go
+func (s *Datagram3SubSession) ID() string
+```
+ID returns the unique identifier for this datagram3 sub-session.
+
+#### func (*Datagram3SubSession) Type
+
+```go
+func (s *Datagram3SubSession) Type() string
+```
+Type returns the session type identifier for datagram3 sessions. Returns
+"DATAGRAM3" to distinguish from authenticated DATAGRAM sessions.
+
 #### type DatagramSubSession
 
 ```go
@@ -201,6 +260,42 @@ Example usage:
         log.Printf("Sub-session %s (type: %s) is active: %v", sub.ID(), sub.Type(), sub.Active())
     }
 
+#### func (*PrimarySession) NewDatagram3SubSession
+
+```go
+func (p *PrimarySession) NewDatagram3SubSession(id string, options []string) (*Datagram3SubSession, error)
+```
+NewDatagram3SubSession creates a new datagram3 sub-session within this primary
+session using SAMv3 UDP forwarding. The sub-session shares the primary session's
+I2P identity and tunnel infrastructure while providing full Datagram3Session
+functionality for repliable but UNAUTHENTICATED datagram communication. Each
+sub-session must have a unique identifier within the primary session scope.
+
+⚠️ SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
+⚠️ Do not trust source addresses without additional application-level
+authentication. ⚠️ If you need authenticated sources, use NewDatagramSubSession
+(DATAGRAM) instead.
+
+This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session's SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.
+
+Per SAMv3.3 specification, DATAGRAM3 subsessions REQUIRE UDP forwarding for
+proper operation. Received datagrams contain a 32-byte hash instead of full
+authenticated destination. Use the session's hash resolver to convert hashes to
+destinations for replies.
+
+Example usage:
+
+    datagram3Sub, err := primary.NewDatagram3SubSession("udp3-handler", []string{"FROM_PORT=8080"})
+    reader := datagram3Sub.NewReader()
+    writer := datagram3Sub.NewWriter()
+    // Receive datagram with UNAUTHENTICATED source hash
+    dg, err := reader.ReceiveDatagram()
+    // Resolve hash to reply (cached by session)
+    err = dg.ResolveSource(datagram3Sub)
+    err = writer.SendDatagram([]byte("reply"), dg.Source)
+
 #### func (*PrimarySession) NewDatagramSubSession
 
 ```go
@@ -216,9 +311,13 @@ This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
 the subsession with the primary session's SAM connection, ensuring compliance
 with the I2P SAM protocol specification for PRIMARY session management.
 
+Per SAMv3.3 specification, DATAGRAM subsessions REQUIRE a PORT parameter. If
+PORT is not included in the options, PORT=0 (any port) will be added
+automatically.
+
 Example usage:
 
-    datagramSub, err := primary.NewDatagramSubSession("udp-handler", []string{"FROM_PORT=8080"})
+    datagramSub, err := primary.NewDatagramSubSession("udp-handler", []string{"PORT=8080", "FROM_PORT=8080"})
     writer := datagramSub.NewWriter()
     reader := datagramSub.NewReader()
 
@@ -227,15 +326,18 @@ Example usage:
 ```go
 func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubSession, error)
 ```
-NewRawSubSession creates a new raw sub-session within this primary session. The
-sub-session shares the primary session's I2P identity and tunnel infrastructure
-while providing full RawSession functionality for unrepliable datagram
-communication. Each sub-session must have a unique identifier within the primary
-session scope.
+NewRawSubSession creates a new raw sub-session within this primary session using
+SAMv3 UDP forwarding. The sub-session shares the primary session's I2P identity
+and tunnel infrastructure while providing full RawSession functionality for
+unrepliable datagram communication. Each sub-session must have a unique
+identifier within the primary session scope.
 
 This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
 the subsession with the primary session's SAM connection, ensuring compliance
 with the I2P SAM protocol specification for PRIMARY session management.
+
+Per SAMv3.3 specification, RAW subsessions REQUIRE UDP forwarding for proper
+operation. V1/V2 TCP control socket reading is no longer supported.
 
 Example usage:
 
@@ -492,7 +594,7 @@ Type returns the session type identifier for stream sessions.
 type SubSession interface {
 	// ID returns the unique identifier for this sub-session
 	ID() string
-	// Type returns the session type ("STREAM", "DATAGRAM", "RAW")
+	// Type returns the session type ("STREAM", "DATAGRAM", "DATAGRAM3", "RAW")
 	Type() string
 	// Close closes the sub-session and releases its resources
 	Close() error
@@ -502,8 +604,9 @@ type SubSession interface {
 ```
 
 SubSession represents a generic interface for sub-sessions that can be managed
-by a primary session. All sub-session types (stream, datagram, raw) implement
-this interface to provide unified lifecycle management and identification.
+by a primary session. All sub-session types (stream, datagram, datagram3, raw)
+implement this interface to provide unified lifecycle management and
+identification.
 
 #### type SubSessionRegistry
 
