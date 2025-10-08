@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 188 commits
+        📝 189 commits
         
       </div>
     </div>
@@ -317,24 +317,28 @@ datagrams over I2P. This session type provides UDP-like messaging capabilities
 through the I2P network, allowing applications to send and receive datagrams
 with message reliability and ordering guarantees. The session manages the
 underlying I2P connection and provides methods for creating readers and writers.
-Example usage: session, err := NewDatagramSession(sam, &ldquo;my-session&rdquo;, keys,
-options)</p>
+For PRIMARY subsessions, it can use UDP forwarding mode where datagrams are
+received via UDP socket. Example usage: session, err := NewDatagramSession(sam,
+&ldquo;my-session&rdquo;, keys, options)</p>
 
 <h4 id="func-newdatagramsession">func  NewDatagramSession</h4>
 
 <pre><code class="language-go">func NewDatagramSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
 </code></pre>
 
-<p>NewDatagramSession creates a new datagram session for UDP-like I2P messaging.
-This function establishes a new datagram session with the provided SAM
-connection, session ID, cryptographic keys, and configuration options. It
-returns a DatagramSession instance that can be used for sending and receiving
-datagrams over the I2P network. Example usage: session, err :=
+<p>NewDatagramSession creates a new datagram session for UDP-like I2P messaging
+using SAMv3 UDP forwarding. This function establishes a new datagram session
+with the provided SAM connection, session ID, cryptographic keys, and
+configuration options. It automatically creates a UDP listener for receiving
+forwarded datagrams (SAMv3 requirement) and configures the session with
+PORT/HOST parameters. V1/V2 compatibility (reading from TCP control socket) is
+no longer supported. Returns a DatagramSession instance that uses UDP forwarding
+for all datagram reception. Example usage: session, err :=
 NewDatagramSession(sam, &ldquo;my-session&rdquo;, keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
 
 <h4 id="func-newdatagramsessionfromsubsession">func  NewDatagramSessionFromSubsession</h4>
 
-<pre><code class="language-go">func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*DatagramSession, error)
+<pre><code class="language-go">func NewDatagramSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*DatagramSession, error)
 </code></pre>
 
 <p>NewDatagramSessionFromSubsession creates a DatagramSession for a subsession that
@@ -346,12 +350,17 @@ registered with the SAM bridge.</p>
 where subsessions are created using SESSION ADD rather than SESSION CREATE
 commands.</p>
 
+<p>For PRIMARY datagram subsessions, UDP forwarding is mandatory (SAMv3
+requirement). The UDP connection must be provided for proper datagram reception
+via UDP forwarding.</p>
+
 <p>Parameters:</p>
 
 <pre><code>- sam: SAM connection for data operations (separate from the primary session's control connection)
 - id: The subsession ID that was already registered with SESSION ADD
 - keys: The I2P keys from the primary session (shared across all subsessions)
 - options: Configuration options for the subsession
+- udpConn: UDP connection for receiving forwarded datagrams (required, not nil)
 </code></pre>
 
 <p>Returns a DatagramSession ready for use without attempting to create a new SAM
@@ -374,9 +383,9 @@ address:&rdquo;, myAddr.Base32())</p>
 </code></pre>
 
 <p>Close closes the datagram session and all associated resources. This method
-safely terminates the session, closes the underlying connection, and cleans up
-any background goroutines. It&rsquo;s safe to call multiple times. Example usage:
-defer session.Close()</p>
+safely terminates the session, closes the UDP listener and underlying
+connection, and cleans up any background goroutines. It&rsquo;s safe to call multiple
+times. Example usage: defer session.Close()</p>
 
 <h4 id="func-datagramsession-dial">func (*DatagramSession) Dial</h4>
 
@@ -640,9 +649,10 @@ sam.NewDatagramSession(&ldquo;my-session&rdquo;, keys, []string{&ldquo;inbound.l
 specifications. This method allows configuring specific port ranges for the
 session, enabling fine-grained control over network communication ports for
 advanced routing scenarios. Port configuration is useful for applications
-requiring specific port mappings or firewall compatibility. Example usage:
-session, err := sam.NewDatagramSessionWithPorts(id, &ldquo;8080&rdquo;, &ldquo;8081&rdquo;, keys,
-options)</p>
+requiring specific port mappings or firewall compatibility. This function
+creates a UDP listener for SAMv3 UDP forwarding (required for v3-only mode).
+Example usage: session, err := sam.NewDatagramSessionWithPorts(id, &ldquo;8080&rdquo;,
+&ldquo;8081&rdquo;, keys, options)</p>
 
 <h4 id="func-sam-newdatagramsessionwithsignature">func (*SAM) NewDatagramSessionWithSignature</h4>
 
@@ -660,7 +670,7 @@ sam.NewDatagramSessionWithSignature(id, keys, options, &ldquo;EdDSA_SHA512_Ed255
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-08 22:11:28 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-08 22:30:56 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

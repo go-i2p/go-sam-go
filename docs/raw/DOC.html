@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 188 commits
+        📝 189 commits
         
       </div>
     </div>
@@ -282,22 +282,28 @@ block if the reader is already closed.</p>
 }
 </code></pre>
 
-<p>RawSession represents a raw session that can send and receive raw datagrams</p>
+<p>RawSession represents a raw session that can send and receive raw datagrams
+using SAMv3 UDP forwarding. V1/V2 TCP control socket reading is no longer
+supported.</p>
 
 <h4 id="func-newrawsession">func  NewRawSession</h4>
 
 <pre><code class="language-go">func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
 </code></pre>
 
-<p>NewRawSession creates a new raw session for sending and receiving raw datagrams.
-It initializes the session with the provided SAM connection, session ID,
-cryptographic keys, and configuration options, returning a RawSession instance
-or an error if creation fails. Example usage: session, err := NewRawSession(sam,
-&ldquo;my-session&rdquo;, keys, []string{&ldquo;inbound.length=1&rdquo;})</p>
+<p>NewRawSession creates a new raw session for sending and receiving raw datagrams
+using SAMv3 UDP forwarding. It initializes the session with the provided SAM
+connection, session ID, cryptographic keys, and configuration options. It
+automatically creates a UDP listener for receiving forwarded datagrams (SAMv3
+requirement) and configures the session with PORT/HOST parameters. V1/V2
+compatibility (reading from TCP control socket) is no longer supported. Returns
+a RawSession instance that uses UDP forwarding for all raw datagram reception.
+Example usage: session, err := NewRawSession(sam, &ldquo;my-session&rdquo;, keys,
+[]string{&ldquo;inbound.length=1&rdquo;})</p>
 
 <h4 id="func-newrawsessionfromsubsession">func  NewRawSessionFromSubsession</h4>
 
-<pre><code class="language-go">func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error)
+<pre><code class="language-go">func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*RawSession, error)
 </code></pre>
 
 <p>NewRawSessionFromSubsession creates a RawSession for a subsession that has
@@ -309,12 +315,17 @@ registered with the SAM bridge.</p>
 where subsessions are created using SESSION ADD rather than SESSION CREATE
 commands.</p>
 
+<p>For PRIMARY raw subsessions, UDP forwarding is mandatory (SAMv3 requirement).
+The UDP connection must be provided for proper raw datagram reception via UDP
+forwarding.</p>
+
 <p>Parameters:</p>
 
 <pre><code>- sam: SAM connection for data operations (separate from the primary session's control connection)
 - id: The subsession ID that was already registered with SESSION ADD
 - keys: The I2P keys from the primary session (shared across all subsessions)
 - options: Configuration options for the subsession
+- udpConn: UDP connection for receiving forwarded raw datagrams (required, not nil)
 </code></pre>
 
 <p>Returns a RawSession ready for use without attempting to create a new SAM
@@ -334,10 +345,11 @@ session&rsquo;s cryptographic keys. Example usage: addr := session.Addr()</p>
 <pre><code class="language-go">func (s *RawSession) Close() error
 </code></pre>
 
-<p>Close closes the raw session and all associated resources. This method is safe
-to call multiple times and will only perform cleanup once. All readers and
-writers created from this session will become invalid after closing. Example
-usage: defer session.Close()</p>
+<p>Close closes the raw session and all associated resources. This method safely
+terminates the session, closes the UDP listener and underlying connection, and
+cleans up any background goroutines. It&rsquo;s safe to call multiple times. All
+readers and writers created from this session will become invalid after closing.
+Example usage: defer session.Close()</p>
 
 <h4 id="func-rawsession-dial">func (*RawSession) Dial</h4>
 
@@ -449,10 +461,10 @@ Example usage: conn := session.PacketConn(); n, addr, err := conn.ReadFrom(buf)<
 <pre><code class="language-go">func (s *RawSession) ReceiveDatagram() (*RawDatagram, error)
 </code></pre>
 
-<p>ReceiveDatagram receives a single raw datagram from any source. This is a
-convenience method that creates a temporary reader, starts the receive loop,
-gets one datagram, and cleans up the resources automatically. Example usage:
-datagram, err := session.ReceiveDatagram()</p>
+<p>ReceiveDatagram receives a single raw datagram from any source using SAMv3 UDP
+forwarding. This method performs a direct UDP read without creating a reader or
+receive loop. V1/V2 TCP control socket reading is no longer supported. Example
+usage: datagram, err := session.ReceiveDatagram()</p>
 
 <h4 id="func-rawsession-senddatagram">func (*RawSession) SendDatagram</h4>
 
@@ -541,7 +553,7 @@ signature type</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-08 22:11:28 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-08 22:30:56 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

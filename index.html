@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 188 commits
+        📝 189 commits
         
       </div>
     </div>
@@ -60,12 +60,12 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>188 commits</span>
+          <span>📝</span> <span>189 commits</span>
         </div>
         
         
         <div class="repo-stat">
-          <span>📅</span> <span>Last updated: October 7, 2025</span>
+          <span>📅</span> <span>Last updated: October 8, 2025</span>
         </div>
         
         
@@ -84,9 +84,30 @@
 
 <p>A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focused on maintainability and clean architecture. This project is forked from <code>github.com/go-i2p/sam3</code> with reorganized code structure.</p>
 
-<p><strong>WARNING: This is a new package. Streaming works. Repliable datagrams and Raw datagrams work. Primary Sessions, work but are untested. Authenticated Repliable Datagrams(Datagram2), and Unauthenticated Repliable Datagrams(Datagram3) are NOT YET IMPLEMENTED.</strong>
-<strong>The API should not change much.</strong>
-<strong>It needs more people looking at it.</strong></p>
+<h2 id="implementation-status">⚠️ Implementation Status</h2>
+
+<p><strong>Stable &amp; Production-Ready:</strong></p>
+
+<ul>
+<li>✅ <strong>Stream</strong> - TCP-like reliable connections (fully tested)</li>
+<li>✅ <strong>Datagram</strong> - Legacy authenticated repliable datagrams (fully tested)</li>
+<li>✅ <strong>Raw</strong> - Encrypted unauthenticated datagrams (fully tested)</li>
+</ul>
+
+<p><strong>Implemented &amp; Documented (Awaiting I2P Router Support):</strong></p>
+
+<ul>
+<li>⚠️ <strong>Datagram2</strong> - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet)</li>
+<li>⚠️ <strong>Datagram3</strong> - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet)</li>
+</ul>
+
+<p><strong>Partially Implemented:</strong></p>
+
+<ul>
+<li>🔶 <strong>Primary Sessions</strong> - Multi-session management (works but needs more testing)</li>
+</ul>
+
+<p><strong>Note:</strong> DATAGRAM2 and DATAGRAM3 are fully implemented in this library but require I2P router support (Java I2P or i2pd) to function. Check your router&rsquo;s release notes for SAMv3 DATAGRAM2/3 support.</p>
 
 <h2 id="installation">📦 Installation</h2>
 
@@ -188,23 +209,71 @@ n, err := dgram.WriteTo(data, dest)
 n, err := raw.WriteTo(data, dest)
 </code></pre>
 
-<h4 id="datagram2-package-planned-not-implemented"><code>datagram2</code> Package (Planned - Not Implemented)</h4>
+<h4 id="datagram2-package"><code>datagram2</code> Package</h4>
 
-<p>Authenticated repliable datagrams:</p>
+<p>Authenticated repliable datagrams with replay protection:</p>
 
-<pre><code class="language-go">// Will be available in future release - currently not implemented
-// dgram2, err := sam.NewDatagram2Session(&quot;udp&quot;, keys, options, 0)
-// n, err := dgram2.WriteTo(data, dest)
+<pre><code class="language-go">// DATAGRAM2 - Authenticated with replay protection (requires router support)
+// Specification finalized early 2025, awaiting I2P router implementation
+import &quot;github.com/go-i2p/go-sam-go/datagram2&quot;
+
+session, err := datagram2.NewDatagram2Session(sam, &quot;session-id&quot;, keys, options)
+if err != nil {
+    // Handle error - may fail if router doesn't support DATAGRAM2 yet
+    log.Fatal(err)
+}
+defer session.Close()
+
+// Send authenticated datagram
+err = session.SendDatagram(data, destination)
+
+// Receive with full authentication
+conn := session.PacketConn()
+n, addr, err := conn.ReadFrom(buffer)
 </code></pre>
 
-<h4 id="datagram3-package-planned-not-implemented"><code>datagram3</code> Package (Planned - Not Implemented)</h4>
+<p><strong>Security:</strong> Provides cryptographic authentication and replay protection. Recommended for new applications requiring source verification.</p>
 
-<p>Unauthenticated repliable datagrams:</p>
+<p><strong>Status:</strong> Implementation complete. Waiting for I2P router support (Java I2P 0.9.x+ or i2pd 2.x+).</p>
 
-<pre><code class="language-go">// Will be available in future release - currently not implemented
-// dgram3, err := sam.NewDatagram3Session(&quot;udp&quot;, keys, options, 0)
-// n, err := dgram3.WriteTo(data, dest)
+<h4 id="datagram3-package"><code>datagram3</code> Package</h4>
+
+<p>⚠️ <strong>SECURITY WARNING:</strong> Unauthenticated repliable datagrams with hash-based sources:</p>
+
+<pre><code class="language-go">// DATAGRAM3 - UNAUTHENTICATED sources (requires router support + app-layer auth)
+// Sources are 32-byte hashes that can be spoofed - implement your own authentication!
+import &quot;github.com/go-i2p/go-sam-go/datagram3&quot;
+
+session, err := datagram3.NewDatagram3Session(sam, &quot;session-id&quot;, keys, options)
+if err != nil {
+    log.Fatal(err)
+}
+defer session.Close()
+
+// Receive datagram with UNAUTHENTICATED source hash
+reader := session.NewReader()
+datagram, err := reader.ReceiveDatagram()
+
+// ⚠️ Source hash is NOT authenticated - verify at application layer!
+// Resolve hash to destination for reply (requires NAMING LOOKUP)
+err = datagram.ResolveSource(session)
+
+// Send reply
+writer := session.NewWriter()
+err = writer.SendDatagram(replyData, datagram.Source)
 </code></pre>
+
+<p><strong>Security:</strong> ⚠️ <strong>Sources are NOT authenticated and can be spoofed!</strong> Only use when:</p>
+
+<ul>
+<li>Application implements message-level authentication (signatures, HMAC, etc.)</li>
+<li>Source identity is not security-critical</li>
+<li>Lower overhead is essential</li>
+</ul>
+
+<p><strong>Use DATAGRAM2 instead if you need authenticated sources.</strong></p>
+
+<p><strong>Status:</strong> Implementation complete with comprehensive security documentation. Waiting for I2P router support.</p>
 
 <h3 id="configuration">Configuration</h3>
 
@@ -228,7 +297,8 @@ export DEBUG_I2P=error   # Error level
 
 <ul>
 <li>Go 1.24.2 or later (toolchain go1.24.4)</li>
-<li>Running I2P router with SAM enabled (default port: 7656)</li>
+<li>Running I2P router with SAM bridge enabled (default port: 7656)</li>
+<li>For DATAGRAM2/DATAGRAM3: I2P router with SAMv3 DATAGRAM2/3 support (check router release notes)</li>
 </ul>
 
 <h2 id="development">📝 Development</h2>
@@ -236,9 +306,57 @@ export DEBUG_I2P=error   # Error level
 <pre><code class="language-bash"># Format code
 make fmt
 
-# Run tests
+# Run tests (short mode, no I2P required)
+go test -short ./...
+
+# Run full integration tests (requires running I2P router)
+# Note: I2P tests can take 30-150 seconds due to tunnel establishment
 go test ./...
+
+# Run with race detection
+go test -race -short ./...
 </code></pre>
+
+<h2 id="package-documentation">📖 Package Documentation</h2>
+
+<p>Each sub-package has comprehensive documentation:</p>
+
+<ul>
+<li><strong><a href="datagram2/README.md" target="_blank">datagram2/</a></strong> - DATAGRAM2 authenticated datagrams with replay protection</li>
+<li><strong><a href="datagram3/README.md" target="_blank">datagram3/</a></strong> - ⚠️ DATAGRAM3 unauthenticated datagrams (security warnings!)</li>
+<li><strong><a href="stream/" target="_blank">stream/</a></strong> - TCP-like reliable connections</li>
+<li><strong><a href="datagram/" target="_blank">datagram/</a></strong> - Legacy authenticated datagrams</li>
+<li><strong><a href="raw/" target="_blank">raw/</a></strong> - Encrypted unauthenticated datagrams</li>
+<li><strong><a href="primary/" target="_blank">primary/</a></strong> - PRIMARY session management</li>
+</ul>
+
+<h2 id="security-notes">🔒 Security Notes</h2>
+
+<h3 id="datagram3-security-warning">DATAGRAM3 Security Warning</h3>
+
+<p>⚠️ <strong>CRITICAL:</strong> DATAGRAM3 sources are <strong>NOT authenticated</strong>. Any attacker can claim to be any sender by providing a fake hash. Only use DATAGRAM3 when:</p>
+
+<ol>
+<li>You implement application-layer authentication (Ed25519 signatures, HMAC, etc.)</li>
+<li>Source identity is not security-critical</li>
+<li>You understand the security implications</li>
+</ol>
+
+<p><strong>For authenticated sources, use DATAGRAM2 instead.</strong></p>
+
+<p>See <a href="datagram3/AUDIT.md" target="_blank">datagram3/AUDIT.md</a> for comprehensive security analysis including attack scenarios and mitigations.</p>
+
+<h3 id="i2p-timing-considerations">I2P Timing Considerations</h3>
+
+<p>I2P operations have significant latency due to tunnel-based architecture:</p>
+
+<ul>
+<li><strong>Session creation:</strong> 2-5 minutes on initial connection</li>
+<li><strong>Message delivery:</strong> Variable (network-dependent)</li>
+<li><strong>Best practice:</strong> Use generous timeouts (5+ minutes) and exponential backoff retry logic</li>
+</ul>
+
+<p>All tests accommodate I2P timing requirements.</p>
 
 <h2 id="license">📄 License</h2>
 
@@ -267,7 +385,7 @@ go test ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                186 commits
+                187 commits
               </div>
             </div>
           </div>
@@ -294,7 +412,7 @@ go test ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-08 22:11:28 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-08 22:30:56 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

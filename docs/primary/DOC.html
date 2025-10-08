@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 188 commits
+        📝 189 commits
         
       </div>
     </div>
@@ -67,6 +67,64 @@
 </code></pre>
 
 <h2 id="usage">Usage</h2>
+
+<h4 id="type-datagram3subsession">type Datagram3SubSession</h4>
+
+<pre><code class="language-go">type Datagram3SubSession struct {
+	*datagram3.Datagram3Session
+}
+</code></pre>
+
+<p>Datagram3SubSession wraps a datagram3.Datagram3Session to implement the
+SubSession interface. This adapter allows Datagram3Session instances to be
+managed by primary sessions while maintaining their full functionality and
+thread-safe operations.</p>
+
+<p>⚠️ SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
+⚠️ This sub-session type uses hash-based source identification which is
+unauthenticated. ⚠️ Do not trust source addresses without additional
+application-level authentication. ⚠️ If you need authenticated sources, use
+DatagramSubSession (DATAGRAM) instead.</p>
+
+<h4 id="func-newdatagram3subsession">func  NewDatagram3SubSession</h4>
+
+<pre><code class="language-go">func NewDatagram3SubSession(id string, session *datagram3.Datagram3Session) *Datagram3SubSession
+</code></pre>
+
+<p>NewDatagram3SubSession creates a Datagram3SubSession wrapper around a
+Datagram3Session. This constructor initializes the wrapper with proper
+identification and state management to enable primary session integration.</p>
+
+<p>⚠️ SECURITY WARNING: Sources are UNAUTHENTICATED and can be spoofed!</p>
+
+<h4 id="func-datagram3subsession-active">func (*Datagram3SubSession) Active</h4>
+
+<pre><code class="language-go">func (s *Datagram3SubSession) Active() bool
+</code></pre>
+
+<p>Active returns whether this datagram3 sub-session is currently active.</p>
+
+<h4 id="func-datagram3subsession-close">func (*Datagram3SubSession) Close</h4>
+
+<pre><code class="language-go">func (s *Datagram3SubSession) Close() error
+</code></pre>
+
+<p>Close closes the datagram3 sub-session and marks it as inactive.</p>
+
+<h4 id="func-datagram3subsession-id">func (*Datagram3SubSession) ID</h4>
+
+<pre><code class="language-go">func (s *Datagram3SubSession) ID() string
+</code></pre>
+
+<p>ID returns the unique identifier for this datagram3 sub-session.</p>
+
+<h4 id="func-datagram3subsession-type">func (*Datagram3SubSession) Type</h4>
+
+<pre><code class="language-go">func (s *Datagram3SubSession) Type() string
+</code></pre>
+
+<p>Type returns the session type identifier for datagram3 sessions. Returns
+&ldquo;DATAGRAM3&rdquo; to distinguish from authenticated DATAGRAM sessions.</p>
 
 <h4 id="type-datagramsubsession">type DatagramSubSession</h4>
 
@@ -269,6 +327,43 @@ for _, sub := range subSessions {
 }
 </code></pre>
 
+<h4 id="func-primarysession-newdatagram3subsession">func (*PrimarySession) NewDatagram3SubSession</h4>
+
+<pre><code class="language-go">func (p *PrimarySession) NewDatagram3SubSession(id string, options []string) (*Datagram3SubSession, error)
+</code></pre>
+
+<p>NewDatagram3SubSession creates a new datagram3 sub-session within this primary
+session using SAMv3 UDP forwarding. The sub-session shares the primary session&rsquo;s
+I2P identity and tunnel infrastructure while providing full Datagram3Session
+functionality for repliable but UNAUTHENTICATED datagram communication. Each
+sub-session must have a unique identifier within the primary session scope.</p>
+
+<p>⚠️ SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
+⚠️ Do not trust source addresses without additional application-level
+authentication. ⚠️ If you need authenticated sources, use NewDatagramSubSession
+(DATAGRAM) instead.</p>
+
+<p>This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
+the subsession with the primary session&rsquo;s SAM connection, ensuring compliance
+with the I2P SAM protocol specification for PRIMARY session management.</p>
+
+<p>Per SAMv3.3 specification, DATAGRAM3 subsessions REQUIRE UDP forwarding for
+proper operation. Received datagrams contain a 32-byte hash instead of full
+authenticated destination. Use the session&rsquo;s hash resolver to convert hashes to
+destinations for replies.</p>
+
+<p>Example usage:</p>
+
+<pre><code>datagram3Sub, err := primary.NewDatagram3SubSession(&quot;udp3-handler&quot;, []string{&quot;FROM_PORT=8080&quot;})
+reader := datagram3Sub.NewReader()
+writer := datagram3Sub.NewWriter()
+// Receive datagram with UNAUTHENTICATED source hash
+dg, err := reader.ReceiveDatagram()
+// Resolve hash to reply (cached by session)
+err = dg.ResolveSource(datagram3Sub)
+err = writer.SendDatagram([]byte(&quot;reply&quot;), dg.Source)
+</code></pre>
+
 <h4 id="func-primarysession-newdatagramsubsession">func (*PrimarySession) NewDatagramSubSession</h4>
 
 <pre><code class="language-go">func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*DatagramSubSession, error)
@@ -284,9 +379,13 @@ the primary session scope.</p>
 the subsession with the primary session&rsquo;s SAM connection, ensuring compliance
 with the I2P SAM protocol specification for PRIMARY session management.</p>
 
+<p>Per SAMv3.3 specification, DATAGRAM subsessions REQUIRE a PORT parameter. If
+PORT is not included in the options, PORT=0 (any port) will be added
+automatically.</p>
+
 <p>Example usage:</p>
 
-<pre><code>datagramSub, err := primary.NewDatagramSubSession(&quot;udp-handler&quot;, []string{&quot;FROM_PORT=8080&quot;})
+<pre><code>datagramSub, err := primary.NewDatagramSubSession(&quot;udp-handler&quot;, []string{&quot;PORT=8080&quot;, &quot;FROM_PORT=8080&quot;})
 writer := datagramSub.NewWriter()
 reader := datagramSub.NewReader()
 </code></pre>
@@ -296,15 +395,18 @@ reader := datagramSub.NewReader()
 <pre><code class="language-go">func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubSession, error)
 </code></pre>
 
-<p>NewRawSubSession creates a new raw sub-session within this primary session. The
-sub-session shares the primary session&rsquo;s I2P identity and tunnel infrastructure
-while providing full RawSession functionality for unrepliable datagram
-communication. Each sub-session must have a unique identifier within the primary
-session scope.</p>
+<p>NewRawSubSession creates a new raw sub-session within this primary session using
+SAMv3 UDP forwarding. The sub-session shares the primary session&rsquo;s I2P identity
+and tunnel infrastructure while providing full RawSession functionality for
+unrepliable datagram communication. Each sub-session must have a unique
+identifier within the primary session scope.</p>
 
 <p>This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
 the subsession with the primary session&rsquo;s SAM connection, ensuring compliance
 with the I2P SAM protocol specification for PRIMARY session management.</p>
+
+<p>Per SAMv3.3 specification, RAW subsessions REQUIRE UDP forwarding for proper
+operation. V1/V2 TCP control socket reading is no longer supported.</p>
 
 <p>Example usage:</p>
 
@@ -562,7 +664,7 @@ management to enable primary session integration.</p>
 <pre><code class="language-go">type SubSession interface {
 	// ID returns the unique identifier for this sub-session
 	ID() string
-	// Type returns the session type (&quot;STREAM&quot;, &quot;DATAGRAM&quot;, &quot;RAW&quot;)
+	// Type returns the session type (&quot;STREAM&quot;, &quot;DATAGRAM&quot;, &quot;DATAGRAM3&quot;, &quot;RAW&quot;)
 	Type() string
 	// Close closes the sub-session and releases its resources
 	Close() error
@@ -572,8 +674,9 @@ management to enable primary session integration.</p>
 </code></pre>
 
 <p>SubSession represents a generic interface for sub-sessions that can be managed
-by a primary session. All sub-session types (stream, datagram, raw) implement
-this interface to provide unified lifecycle management and identification.</p>
+by a primary session. All sub-session types (stream, datagram, datagram3, raw)
+implement this interface to provide unified lifecycle management and
+identification.</p>
 
 <h4 id="type-subsessionregistry">type SubSessionRegistry</h4>
 
@@ -660,7 +763,7 @@ method is thread-safe and can be called concurrently.</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-08 22:11:28 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-08 22:30:56 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
