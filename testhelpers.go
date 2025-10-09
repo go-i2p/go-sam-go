@@ -294,30 +294,64 @@ func (tl *TestListener) Close() error {
 	}
 	tl.closed = true
 
+	errs := tl.collectCloseErrors()
+	return formatCloseErrors(errs)
+}
+
+// collectCloseErrors attempts to close all resources and collects any errors encountered.
+func (tl *TestListener) collectCloseErrors() []error {
 	var errs []error
 
+	if err := tl.closeListener(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := tl.closeSession(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := tl.closeSAM(); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errs
+}
+
+// closeListener closes the stream listener if it exists.
+func (tl *TestListener) closeListener() error {
 	if tl.listener != nil {
 		if err := tl.listener.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("failed to close listener: %w", err))
+			return fmt.Errorf("failed to close listener: %w", err)
 		}
 	}
+	return nil
+}
 
+// closeSession closes the stream session if it exists.
+func (tl *TestListener) closeSession() error {
 	if tl.session != nil {
 		if err := tl.session.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("failed to close session: %w", err))
+			return fmt.Errorf("failed to close session: %w", err)
 		}
 	}
+	return nil
+}
 
+// closeSAM closes the SAM connection if it exists.
+func (tl *TestListener) closeSAM() error {
 	if tl.sam != nil {
 		if err := tl.sam.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("failed to close SAM: %w", err))
+			return fmt.Errorf("failed to close SAM: %w", err)
 		}
 	}
+	return nil
+}
 
+// formatCloseErrors formats multiple close errors into a single error or returns nil.
+func formatCloseErrors(errs []error) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("multiple close errors: %v", errs)
 	}
-
 	return nil
 }
 
