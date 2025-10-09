@@ -10,15 +10,11 @@ import (
 	"github.com/samber/oops"
 )
 
-// ReadFrom reads an UNAUTHENTICATED datagram from the connection.
-//
-// ⚠️  CRITICAL SECURITY WARNING: Source addresses are NOT authenticated!
-// ⚠️  The returned address contains an UNAUTHENTICATED hash-based source.
-// ⚠️  Do not trust source identity without additional verification.
+// ReadFrom reads a datagram from the connection.
 //
 // This method implements the net.PacketConn interface. It starts the receive loop if not
 // already started and blocks until a datagram is received. The data is copied to the provided
-// buffer p, and the UNAUTHENTICATED source address is returned as a Datagram3Addr.
+// buffer p, and the source address is returned as a Datagram3Addr.
 //
 // The source address contains the 32-byte hash (not full destination). Applications must
 // resolve the hash via ResolveSource() to reply.
@@ -41,11 +37,11 @@ func (c *Datagram3Conn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	// Copy data to the provided buffer
 	n = copy(p, datagram.Data)
 
-	// Create address with UNAUTHENTICATED hash
+	// Create address with hash
 	// Applications can check addr.(*Datagram3Addr).hash for the hash
 	addr = &Datagram3Addr{
 		addr: datagram.Source,     // May be empty if not resolved
-		hash: datagram.SourceHash, // 32-byte UNAUTHENTICATED hash
+		hash: datagram.SourceHash, // 32-byte hash
 	}
 
 	return n, addr, nil
@@ -189,8 +185,6 @@ func (c *Datagram3Conn) SetWriteDeadline(t time.Time) error {
 // When reading, it also updates the remote address of the connection for subsequent
 // Write calls.
 //
-// ⚠️  SECURITY WARNING: Remote address is UNAUTHENTICATED hash-based!
-//
 // Note: This is not typical for datagrams which are connectionless,
 // but provides compatibility with the net.Conn interface.
 func (c *Datagram3Conn) Read(b []byte) (n int, err error) {
@@ -210,10 +204,8 @@ func (c *Datagram3Conn) Read(b []byte) (n int, err error) {
 
 // RemoteAddr returns the remote network address of the connection.
 // This method implements the net.Conn interface. For datagram3 connections,
-// this returns the UNAUTHENTICATED address of the last peer that sent data (set by Read),
+// this returns the address of the last peer that sent data (set by Read),
 // or nil if no data has been received yet.
-//
-// ⚠️  SECURITY WARNING: Remote address is UNAUTHENTICATED!
 func (c *Datagram3Conn) RemoteAddr() net.Addr {
 	if c.remoteAddr != nil {
 		return &Datagram3Addr{addr: *c.remoteAddr}
@@ -266,9 +258,6 @@ func (c *Datagram3Conn) clearCleanup() {
 // the datagram3 session in a PacketConn interface. The returned connection manages
 // its own reader and writer and implements all standard net.PacketConn methods.
 //
-// ⚠️  SECURITY WARNING: All sources are UNAUTHENTICATED!
-// ⚠️  Do not trust addresses received via ReadFrom without verification.
-//
 // The connection is automatically cleaned up by a finalizer if Close() is not called,
 // but explicit Close() calls are strongly recommended to prevent resource leaks.
 //
@@ -277,9 +266,8 @@ func (c *Datagram3Conn) clearCleanup() {
 //	conn := session.PacketConn()
 //	defer conn.Close()
 //
-//	// Receive with UNAUTHENTICATED source
+//	// Receive source
 //	n, addr, err := conn.ReadFrom(buffer)
-//	// addr is UNAUTHENTICATED!
 //
 //	// Send reply
 //	n, err = conn.WriteTo(reply, addr)

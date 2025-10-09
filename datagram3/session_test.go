@@ -410,7 +410,7 @@ func TestDatagram3RoundTrip(t *testing.T) {
 			// Test sending reply
 			t.Logf("Bob sending reply to Alice...")
 			writerB := sessionB.NewWriter()
-			replyMessage := []byte("Reply from Bob! Source verification is YOUR responsibility!")
+			replyMessage := []byte("Reply from Bob!")
 			err = writerB.ReplyToDatagram(replyMessage, dg)
 			if err != nil {
 				t.Errorf("Failed to send reply: %v", err)

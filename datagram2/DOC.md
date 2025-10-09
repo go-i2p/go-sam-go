@@ -2,74 +2,37 @@
 --
     import "github.com/go-i2p/go-sam-go/datagram2"
 
-Package datagram2 provides authenticated datagram2 sessions with replay
+Package datagram2 provides authenticated datagram sessions with replay
 protection for I2P.
 
-DATAGRAM2 is a new format specified in early 2025 that replaces legacy DATAGRAM
-sessions for applications requiring replay protection. It uses the SAMv3
-protocol with STYLE=DATAGRAM2.
+DATAGRAM2 sessions provide authenticated, repliable UDP-like messaging over I2P
+tunnels with replay attack protection. This is the recommended datagram format
+for applications requiring both source authentication and replay protection.
 
-# Key Features
+Key features:
 
     - Authenticated datagrams with signature verification
     - Replay protection (not available in legacy DATAGRAM)
-    - Offline signature support
+    - Repliable (can send replies to sender)
     - UDP-like messaging (unreliable, unordered)
-    - Maximum 31744 bytes (11 KB recommended for reliability)
-    - Compatible with SAMv3.3 PRIMARY sessions
+    - Maximum 31744 bytes per datagram (11 KB recommended)
+    - Implements net.PacketConn interface
 
-# Basic Usage
+Session creation requires 2-5 minutes for I2P tunnel establishment. Use generous
+timeouts and exponential backoff retry logic.
 
-Create a session:
+Basic usage:
 
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-    defer cancel()
     sam, err := common.NewSAM("127.0.0.1:7656")
     session, err := datagram2.NewDatagram2Session(sam, "my-session", keys, []string{"inbound.length=1"})
     defer session.Close()
-
-Send and receive using PacketConn:
-
     conn := session.PacketConn()
-    defer conn.Close()
     n, err := conn.WriteTo(data, destination)
     n, addr, err := conn.ReadFrom(buffer)
 
-# I2P Timing Considerations
-
-Session creation: 2-5 minutes for I2P tunnel establishment
-
-Message delivery: Variable latency (network-dependent)
-
-Recommended: Use generous timeouts (5+ minutes for session creation) and retry
-logic with exponential backoff.
-
-# Implementation Status
-
-DATAGRAM2 specification finalized early 2025. This is one of the first
-implementations. Check I2P router documentation for SAMv3 DATAGRAM2 support
-(Java I2P 0.9.x+, i2pd 2.x+).
-
-Current implementation status:
-
-    - Core session management: ✅ Implemented
-    - UDP forwarding: ✅ Implemented
-    - Send/receive operations: ✅ Implemented
-    - PacketConn interface: ✅ Implemented
-    - Replay protection: ✅ Implemented (handled by I2P router)
-    - PRIMARY session integration: ⏸️ Deferred (low priority)
-
-# See Also
-
-Package datagram: Legacy DATAGRAM sessions (authenticated, no replay protection)
-
-Package datagram3: DATAGRAM3 sessions (unauthenticated, hash-based sources)
-
-Package stream: TCP-like reliable connections
-
-Package raw: Encrypted but unauthenticated datagrams (non-repliable)
-
-Package primary: PRIMARY session management for multiple subsessions
+See also: Package datagram (legacy, no replay protection), datagram3
+(unauthenticated), stream (TCP-like), raw (non-repliable), primary
+(multi-session management).
 
 ## Usage
 
@@ -362,30 +325,11 @@ Example usage:
 func NewDatagram2Session(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*Datagram2Session, error)
 ```
 NewDatagram2Session creates a new datagram2 session with replay protection for
-UDP-like I2P messaging. This function establishes a new DATAGRAM2 session with
-the provided SAM connection, session ID, cryptographic keys, and configuration
-options. It automatically creates a UDP listener for receiving forwarded
-datagrams (SAMv3 requirement) and configures the session with PORT/HOST
-parameters.
-
-DATAGRAM2 provides enhanced security compared to legacy DATAGRAM:
-
-    - Replay protection prevents replay attacks (not available in DATAGRAM)
-    - Offline signature support for advanced key management
-    - Identical SAM API for easy migration from DATAGRAM
-
-I2P Timing Considerations:
-
-    - Session creation can take 2-5 minutes for I2P tunnel establishment
-    - Use context.WithTimeout with generous timeouts (5+ minutes recommended)
-    - Implement exponential backoff retry logic for connection attempts
-    - Distinguish between I2P timing delays and actual failures
-
-Example usage:
-
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-    defer cancel()
-    session, err := NewDatagram2Session(sam, "my-session", keys, []string{"inbound.length=1"})
+UDP-like I2P messaging. It initializes the session with the provided SAM
+connection, session ID, cryptographic keys, and configuration options. The
+session automatically creates a UDP listener for receiving forwarded datagrams
+per SAMv3 requirements. Example usage: session, err := NewDatagram2Session(sam,
+"my-session", keys, []string{"inbound.length=1"})
 
 #### func  NewDatagram2SessionFromSubsession
 
@@ -397,34 +341,11 @@ that has already been registered with a PRIMARY session using SESSION ADD. This
 constructor skips the session creation step since the subsession is already
 registered with the SAM bridge.
 
-This function is specifically designed for use with SAMv3.3 PRIMARY sessions
-where subsessions are created using SESSION ADD rather than SESSION CREATE
-commands.
-
 For PRIMARY datagram2 subsessions, UDP forwarding is mandatory (SAMv3
-requirement). The UDP connection must be provided for proper datagram reception
-via UDP forwarding.
+requirement). The UDP connection must be provided for proper datagram reception.
 
-DATAGRAM2 subsessions share the same cryptographic keys and I2P tunnels as the
-PRIMARY session, but can be differentiated using LISTEN_PORT for incoming
-datagram routing.
-
-Parameters:
-
-    - sam: SAM connection for data operations (separate from the primary session's control connection)
-    - id: The subsession ID that was already registered with SESSION ADD
-    - keys: The I2P keys from the primary session (shared across all subsessions)
-    - options: Configuration options for the subsession
-    - udpConn: UDP connection for receiving forwarded datagrams (required, not nil)
-
-Returns a Datagram2Session ready for use without attempting to create a new SAM
-session.
-
-Example usage with PRIMARY session:
-
-    primary, err := sam.NewPrimarySession("main", keys, options)
-    udpConn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
-    sub, err := NewDatagram2SessionFromSubsession(sam, "sub1", keys, options, udpConn)
+Example usage: session, err := NewDatagram2SessionFromSubsession(sam, "sub1",
+keys, options, udpConn)
 
 #### func (*Datagram2Session) Addr
 
@@ -434,12 +355,8 @@ func (s *Datagram2Session) Addr() i2pkeys.I2PAddr
 Addr returns the I2P address of this datagram2 session. This address represents
 the session's identity on the I2P network and can be used by other nodes to send
 authenticated datagrams with replay protection to this session. The address is
-derived from the session's cryptographic keys.
-
-Example usage:
-
-    myAddr := session.Addr()
-    fmt.Println("My I2P address:", myAddr.Base32())
+derived from the session's cryptographic keys. Example usage: myAddr :=
+session.Addr(); fmt.Println("My I2P address:", myAddr.Base32())
 
 #### func (*Datagram2Session) Close
 
@@ -449,11 +366,7 @@ func (s *Datagram2Session) Close() error
 Close closes the datagram2 session and all associated resources. This method
 safely terminates the session, closes the UDP listener and underlying
 connection, and cleans up any background goroutines. It's safe to call multiple
-times.
-
-Example usage:
-
-    defer session.Close()
+times. Example usage: defer session.Close()
 
 #### func (*Datagram2Session) NewReader
 
@@ -463,24 +376,9 @@ func (s *Datagram2Session) NewReader() *Datagram2Reader
 NewReader creates a Datagram2Reader for receiving authenticated datagrams with
 replay protection. This method initializes a new reader with buffered channels
 for asynchronous datagram reception. The reader must be started manually with
-receiveLoop() for continuous operation.
-
-All datagrams received through this reader are authenticated by the I2P router
-with signature verification performed internally. DATAGRAM2 provides replay
-protection, preventing replay attacks that are possible with legacy DATAGRAM
-sessions.
-
-Example usage:
-
-    reader := session.NewReader()
-    go reader.receiveLoop()
-    for {
-        datagram, err := reader.ReceiveDatagram()
-        if err != nil {
-            // Handle error
-        }
-        // Process datagram.Data from datagram.Source
-    }
+receiveLoop() for continuous operation. Example usage: reader :=
+session.NewReader(); go reader.receiveLoop(); datagram, err :=
+reader.ReceiveDatagram()
 
 #### func (*Datagram2Session) NewWriter
 
@@ -490,16 +388,9 @@ func (s *Datagram2Session) NewWriter() *Datagram2Writer
 NewWriter creates a Datagram2Writer for sending authenticated datagrams with
 replay protection. This method initializes a new writer with a default timeout
 of 30 seconds for send operations. The timeout can be customized using the
-SetTimeout method on the returned writer.
-
-All datagrams sent through this writer are authenticated and provide replay
-protection. Maximum datagram size is 31744 bytes total (including headers), with
-11 KB recommended for best reliability across the I2P network.
-
-Example usage:
-
-    writer := session.NewWriter().SetTimeout(60*time.Second)
-    err := writer.SendDatagram(data, destination)
+SetTimeout method on the returned writer. Example usage: writer :=
+session.NewWriter().SetTimeout(60*time.Second); err := writer.SendDatagram(data,
+dest)
 
 #### func (*Datagram2Session) PacketConn
 
@@ -525,18 +416,8 @@ func (s *Datagram2Session) ReceiveDatagram() (*Datagram2, error)
 ReceiveDatagram receives a single authenticated datagram from the I2P network.
 This method is a convenience wrapper that performs a direct single read
 operation without starting a continuous receive loop. For continuous reception,
-use NewReader() and manage the reader lifecycle manually.
-
-All datagrams are authenticated by the I2P router with signature verification
-performed internally. DATAGRAM2 provides replay protection.
-
-Example usage:
-
-    datagram, err := session.ReceiveDatagram()
-    if err != nil {
-        // Handle error
-    }
-    // Process datagram.Data from datagram.Source
+use NewReader() and manage the reader lifecycle manually. Example usage:
+datagram, err := session.ReceiveDatagram()
 
 #### func (*Datagram2Session) SendDatagram
 
@@ -546,15 +427,8 @@ func (s *Datagram2Session) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
 SendDatagram sends an authenticated datagram with replay protection to the
 specified destination. This is a convenience method that creates a temporary
 writer and sends the datagram immediately. For multiple sends, it's more
-efficient to create a writer once and reuse it.
-
-Maximum datagram size is 31744 bytes total (including headers), with 11 KB
-recommended for best reliability across the I2P network. The datagram is
-authenticated and provides replay protection.
-
-Example usage:
-
-    err := session.SendDatagram([]byte("hello"), destinationAddr)
+efficient to create a writer once and reuse it. Example usage: err :=
+session.SendDatagram([]byte("hello"), destinationAddr)
 
 #### type Datagram2Writer
 
@@ -584,18 +458,10 @@ Example usage:
 func (w *Datagram2Writer) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error
 ```
 SendDatagram sends an authenticated datagram with replay protection to the
-specified I2P destination. This method uses the SAMv3 UDP approach: sending via
-UDP socket to port 7655 with DATAGRAM2 format. The datagram is authenticated by
-the I2P router and provides replay protection not available in legacy DATAGRAM
-sessions.
-
-Maximum datagram size is 31744 bytes total (including headers), with 11 KB
-recommended for best reliability across the I2P network. It blocks until the
-datagram is sent or an error occurs, respecting the configured timeout.
-
-Example usage:
-
-    err := writer.SendDatagram([]byte("hello world"), destinationAddr)
+specified I2P destination. It uses the SAMv3 UDP approach by sending to port
+7655 with DATAGRAM2 format. Maximum datagram size is 31744 bytes (11 KB
+recommended for reliability). Example usage: err :=
+writer.SendDatagram([]byte("hello world"), destinationAddr)
 
 #### func (*Datagram2Writer) SetTimeout
 
@@ -604,13 +470,8 @@ func (w *Datagram2Writer) SetTimeout(timeout time.Duration) *Datagram2Writer
 ```
 SetTimeout sets the timeout for datagram2 write operations. This method
 configures the maximum time to wait for authenticated datagram send operations
-to complete. The timeout prevents indefinite blocking during network congestion
-or connection issues. Returns the writer instance for method chaining
-convenience.
-
-Example usage:
-
-    writer.SetTimeout(30*time.Second).SendDatagram(data, destination)
+to complete. Returns the writer instance for method chaining convenience.
+Example usage: writer.SetTimeout(30*time.Second).SendDatagram(data, destination)
 
 #### type SAM
 

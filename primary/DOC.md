@@ -2,6 +2,36 @@
 --
     import "github.com/go-i2p/go-sam-go/primary"
 
+Package primary provides PRIMARY session management for sharing I2P tunnels
+across multiple subsessions.
+
+PRIMARY sessions allow multiple subsessions (stream, datagram, datagram2,
+datagram3, raw) to share a single set of I2P tunnels, reducing resource usage
+and tunnel setup overhead. Each subsession operates independently while using
+the master session's tunnels.
+
+Key features:
+
+    - Single tunnel setup for multiple subsessions
+    - Mixed subsession types (stream, datagram, raw)
+    - Independent subsession lifecycle management
+    - Reduced resource usage and setup time
+    - SAMv3.3 PRIMARY protocol compliance
+
+Primary session creation requires 2-5 minutes for I2P tunnel establishment.
+Subsessions attach quickly since tunnels are already established. Use generous
+timeouts for initial PRIMARY session creation.
+
+Basic usage:
+
+    sam, err := common.NewSAM("127.0.0.1:7656")
+    primary, err := primary.NewPrimarySession(sam, "master", keys, []string{"inbound.length=1"})
+    defer primary.Close()
+    streamSub, err := primary.NewStreamSubsession("stream-1")
+    datagramSub, err := primary.NewDatagramSubsession("dgram-1")
+
+See also: Package stream, datagram, datagram2, datagram3, raw for individual
+session types.
 
 ## Usage
 
@@ -122,38 +152,20 @@ type PrimarySession struct {
 }
 ```
 
-PrimarySession provides master session capabilities for managing multiple
-sub-sessions of different types (stream, datagram, raw) within a single I2P
-session context. It enables complex applications with multiple communication
-patterns while sharing the same I2P identity and tunnel infrastructure for
-enhanced efficiency and anonymity.
-
-The primary session manages the lifecycle of all sub-sessions, ensures proper
-cleanup cascading when the primary session is closed, and provides thread-safe
-operations for creating, managing, and terminating sub-sessions across different
-protocols.
+PrimarySession manages multiple sub-sessions sharing the same I2P identity and
+tunnels.
 
 #### func  NewPrimarySession
 
 ```go
 func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error)
 ```
-NewPrimarySession creates a new primary session with the provided SAM
-connection, session ID, cryptographic keys, and configuration options. The
-primary session acts as a master container that can create and manage multiple
-sub-sessions of different types while sharing the same I2P identity and tunnel
-infrastructure.
-
-The session uses PRIMARY session type in the SAM protocol, which allows multiple
-sub-sessions to be created using the same underlying I2P destination and keys.
-This provides better resource efficiency and maintains consistent identity
-across different communication patterns within the same application.
-
-Example usage:
-
-    session, err := NewPrimarySession(sam, "my-primary", keys, []string{"inbound.length=2"})
-    streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
-    datagramSub, err := session.NewDatagramSubSession("datagram-1", datagramOptions)
+NewPrimarySession creates a new primary session for managing multiple
+sub-sessions. It initializes the session with the provided SAM connection,
+session ID, cryptographic keys, and configuration options. The primary session
+allows creating multiple sub-sessions of different types (stream, datagram, raw)
+while sharing the same I2P identity and tunnels. Example usage: session, err :=
+NewPrimarySession(sam, "my-primary", keys, []string{"inbound.length=2"})
 
 #### func  NewPrimarySessionWithSignature
 
@@ -161,20 +173,10 @@ Example usage:
 func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error)
 ```
 NewPrimarySessionWithSignature creates a new primary session with the specified
-signature type. This is a package-level function that provides direct access to
-signature-aware session creation without requiring wrapper types. It delegates
-to the common package for session creation while maintaining the same primary
-session functionality and sub-session management capabilities.
-
-The signature type allows specifying custom cryptographic parameters for
-enhanced security or compatibility with specific I2P network configurations.
-Different signature types provide various security levels, performance
-characteristics, and compatibility options.
-
-Example usage:
-
-    session, err := NewPrimarySessionWithSignature(sam, "secure-primary", keys, options, "EdDSA_SHA512_Ed25519")
-    streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
+signature type. This method allows specifying custom cryptographic parameters
+for enhanced security or compatibility with specific I2P network configurations.
+Example usage: session, err := NewPrimarySessionWithSignature(sam,
+"secure-primary", keys, options, "EdDSA_SHA512_Ed25519")
 
 #### func (*PrimarySession) Addr
 
@@ -354,17 +356,8 @@ NewStreamSubSession creates a new stream sub-session within this primary
 session. The sub-session shares the primary session's I2P identity and tunnel
 infrastructure while providing full StreamSession functionality for TCP-like
 reliable connections. Each sub-session must have a unique identifier within the
-primary session scope.
-
-This implementation uses the SAMv3.3 SESSION ADD protocol to properly register
-the subsession with the primary session's SAM connection, ensuring compliance
-with the I2P SAM protocol specification for PRIMARY session management.
-
-Example usage:
-
-    streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"FROM_PORT=8080"})
-    listener, err := streamSub.Listen()
-    conn, err := streamSub.Dial("destination.b32.i2p")
+primary session scope. Example usage: streamSub, err :=
+primary.NewStreamSubSession("tcp-handler", []string{"FROM_PORT=8080"})
 
 #### func (*PrimarySession) NewUniqueStreamSubSession
 

@@ -141,6 +141,6 @@ func (w *Datagram3Writer) ReplyToDatagram(data []byte, original *Datagram3) erro
 		}
 	}
 
-	// Send to resolved source (still UNAUTHENTICATED!)
+	// Send to resolved source
 	return w.SendDatagram(data, original.Source)
 }

@@ -1,13 +1,11 @@
 // Package datagram3 provides repliable datagram sessions with hash-based source identification for I2P.
 //
 // DATAGRAM3 sessions provide repliable UDP-like messaging with hash-based source identification
-// instead of full destinations. Sources are not cryptographically authenticated; applications
-// requiring authenticated sources should use datagram2 instead.
+// instead of full destinations.
 //
 // Key features:
 //   - Repliable (can send replies to sender)
 //   - Hash-based source identification (32-byte hash)
-//   - No source authentication (spoofable)
 //   - Requires NAMING LOOKUP for replies
 //   - UDP-like messaging (unreliable, unordered)
 //   - Maximum 31744 bytes per datagram (11 KB recommended)
@@ -25,6 +23,5 @@
 //	if err := dg.ResolveSource(session); err != nil { log.Error(err) }
 //	session.NewWriter().SendDatagram([]byte("reply"), dg.Source)
 //
-// See also: Package datagram (legacy, authenticated), datagram2 (authenticated with replay
-// protection), stream (TCP-like), raw (non-repliable), primary (multi-session management).
+// See also: Package datagram, datagram2, stream, raw, primary.
 package datagram3

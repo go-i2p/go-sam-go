@@ -23,7 +23,6 @@ import (
 //	    // Handle error
 //	}
 //	log.Info("Received from source:", hex.EncodeToString(datagram.SourceHash))
-//	// Resolve hash for reply (expensive, cached)
 //	if err := datagram.ResolveSource(session); err != nil {
 //	    log.Error(err)
 //	}
