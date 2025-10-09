@@ -38,37 +38,37 @@ See also: Package datagram, datagram2, stream, raw, primary.
 ```go
 type Datagram3 struct {
 	Data       []byte          // Raw datagram payload (up to ~31KB)
-	SourceHash []byte          // 32-byte UNAUTHENTICATED hash (spoofable!)
+	SourceHash []byte          // 32-byte hash (hash-based!)
 	Source     i2pkeys.I2PAddr // Resolved destination (nil until ResolveSource)
 	Local      i2pkeys.I2PAddr // Local destination (this session)
 }
 ```
 
-Datagram3 represents an I2P datagram3 message with UNAUTHENTICATED source.
+Datagram3 represents an I2P datagram3 message with source.
 
-This structure encapsulates the payload data along with the unauthenticated
-source hash and optional resolved destination. The SourceHash is always present
-(32 bytes), while Source is only populated after calling ResolveSource() to
-perform NAMING LOOKUP.
+This structure encapsulates the payload data along with the source hash and
+optional resolved destination. The SourceHash is always present (32 bytes),
+while Source is only populated after calling ResolveSource() to perform NAMING
+LOOKUP.
 
 Fields:
 
     - Data: Raw datagram payload (up to ~31KB)
-    - SourceHash: 32-byte UNAUTHENTICATED hash of sender (spoofable!)
+    - SourceHash: 32-byte hash of sender (hash-based!)
     - Source: Resolved full destination (nil until ResolveSource() called)
     - Local: Local destination (this session)
 
 Example usage:
 
     // Received datagram has only hash, not full source
-    log.Warn("Received from UNAUTHENTICATED hash:", hex.EncodeToString(dg.SourceHash))
+    log.Warn("Received from hash:", hex.EncodeToString(dg.SourceHash))
 
     // Resolve hash to full destination for reply
     if err := dg.ResolveSource(session); err != nil {
         return err
     }
 
-    // Now can reply using resolved source (still unverified!)
+    // Now can reply using resolved source (resolved!)
     writer.SendDatagram(reply, dg.Source)
 
 #### func (*Datagram3) GetSourceB32
@@ -177,7 +177,7 @@ Example usage:
 
     conn := session.PacketConn()
     n, addr, err := conn.ReadFrom(buffer)
-    // addr represents UNAUTHENTICATED source!
+    // addr represents source!
     n, err = conn.WriteTo(data, destination)
 
 #### func (*Datagram3Conn) Close
@@ -297,7 +297,7 @@ type Datagram3Reader struct {
 }
 ```
 
-Datagram3Reader handles incoming UNAUTHENTICATED datagram3 reception from I2P.
+Datagram3Reader handles incoming hash-based datagram3 reception from I2P.
 
 The reader provides asynchronous datagram reception through buffered channels,
 allowing applications to receive datagrams without blocking. It manages its own
@@ -317,7 +317,6 @@ Example usage:
         if err != nil {
             // Handle error
         }
-        // SECURITY: datagram.SourceHash is UNAUTHENTICATED!
         // Verify using application-layer authentication before trusting
         if err := datagram.ResolveSource(session); err != nil {
             // Handle resolution error
@@ -373,19 +372,19 @@ type Datagram3Session struct {
 }
 ```
 
-Datagram3Session represents a repliable but UNAUTHENTICATED datagram3 session.
+Datagram3Session represents a repliable but hash-based datagram3 session.
 
 DATAGRAM3 provides UDP-like messaging with hash-based source identification
-instead of full authenticated destinations. This reduces overhead at the cost of
-source verification. Received datagrams contain a 32-byte hash that requires
-NAMING LOOKUP to resolve for replies.
+instead of full with full destinations destinations. This reduces overhead at
+the cost of full destination verification. Received datagrams contain a 32-byte
+hash that requires NAMING LOOKUP to resolve for replies.
 
 Key differences from DATAGRAM/DATAGRAM2:
 
     - Repliable: Can reply to sender (like DATAGRAM/DATAGRAM2)
-    - Unauthenticated: Source is NOT verified (unlike DATAGRAM/DATAGRAM2)
+    - Unwith full destinations: Source uses hash-based identification (unlike DATAGRAM/DATAGRAM2)
     - Hash-based source: 32-byte hash instead of full destination
-    - Lower overhead: No signature verification required
+    - Lower overhead: Hash-based identification required
     - Reply overhead: Requires NAMING LOOKUP to resolve hash
 
 The session manages I2P tunnels and provides methods for creating readers and
@@ -408,7 +407,6 @@ Example usage:
     session, err := NewDatagram3Session(sam, "my-session", keys, options)
     reader := session.NewReader()
     dg, err := reader.ReceiveDatagram()
-    // dg.SourceHash is UNAUTHENTICATED - verify separately if needed!
     if err := dg.ResolveSource(session); err != nil {
         log.Fatal(err)
     }
@@ -424,9 +422,9 @@ identification. It initializes the session with the provided SAM connection,
 session ID, cryptographic keys, and configuration options. The session
 automatically creates a UDP listener for receiving forwarded datagrams per SAMv3
 requirements and initializes a hash resolver for source lookups. Note: DATAGRAM3
-sources are not authenticated; use datagram2 if authentication is required.
-Example usage: session, err := NewDatagram3Session(sam, "my-session", keys,
-[]string{"inbound.length=1"})
+sources are not with full destinations; use datagram2 if authentication is
+required. Example usage: session, err := NewDatagram3Session(sam, "my-session",
+keys, []string{"inbound.length=1"})
 
 #### func  NewDatagram3SessionFromSubsession
 
@@ -440,8 +438,8 @@ registered with the SAM bridge.
 
 For PRIMARY datagram3 subsessions, UDP forwarding is mandatory (SAMv3
 requirement). The UDP connection must be provided for proper datagram reception.
-Note: Sources are not authenticated; use NewDatagramSubSession if authentication
-is required.
+Note: Sources are not with full destinations; use NewDatagramSubSession if
+authentication is required.
 
 Example usage: sub, err := NewDatagram3SessionFromSubsession(sam, "sub1", keys,
 options, udpConn)
@@ -614,10 +612,6 @@ HashResolver provides caching for hash-to-destination lookups via NAMING LOOKUP.
 This prevents repeated network queries for the same hash, which is critical for
 DATAGRAM3 performance since every received datagram contains only a hash.
 
-⚠️ SECURITY WARNING: Resolving hashes does NOT authenticate sources! ⚠️ Even
-with cached full destinations, sources remain UNAUTHENTICATED. ⚠️ Cache entries
-are based on hash values which can be spoofed.
-
 The resolver maintains an in-memory cache mapping b32.i2p addresses to full I2P
 destinations. This cache is thread-safe using RWMutex and grows unbounded
 (applications should monitor memory usage for long-running sessions receiving
@@ -675,10 +669,6 @@ Clear removes all cached entries. This is useful for testing, memory management
 in long-running sessions, or when you want to force fresh NAMING LOOKUP
 operations.
 
-⚠️ WARNING: Clearing cache will cause subsequent resolutions to perform network
-I/O. ⚠️ Only clear cache if necessary (testing, memory pressure, or security
-concerns).
-
 Applications with memory constraints may want to implement periodic cache
 clearing or LRU eviction policies on top of this basic cache.
 
@@ -730,10 +720,6 @@ func (r *HashResolver) ResolveHash(hash []byte) (i2pkeys.I2PAddr, error)
 ResolveHash converts a 32-byte hash to a full I2P destination using NAMING
 LOOKUP.
 
-⚠️ SECURITY WARNING: This does NOT authenticate the source! ⚠️ Resolution only
-enables replies, it does NOT verify identity. ⚠️ Malicious actors can provide
-hashes that resolve to attacker-controlled destinations.
-
 Process:
 
     1. Validate hash is exactly 32 bytes
@@ -761,7 +747,7 @@ Example usage:
         log.Error("Failed to resolve hash:", err)
         return err
     }
-    // dest contains full I2P destination (still unverified!)
+    // dest contains full I2P destination (resolved!)
     writer.SendDatagram(reply, dest)
 
 #### type SAM
@@ -775,14 +761,10 @@ type SAM struct {
 SAM wraps common.SAM to provide datagram3-specific functionality for I2P
 messaging. This type extends the base SAM functionality with methods
 specifically designed for DATAGRAM3 communication, providing repliable but
-UNAUTHENTICATED datagrams with hash-based source identification.
-
-⚠️ SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
-⚠️ Do not trust source addresses without additional application-level
-authentication. ⚠️ If you need authenticated sources, use DATAGRAM2 instead.
+datagrams with hash-based source identification.
 
 DATAGRAM3 uses 32-byte hashes instead of full destinations for source
-identification, reducing overhead at the cost of source verification.
+identification, reducing overhead at the cost of full destination verification.
 Applications requiring source authentication MUST implement their own
 authentication layer.
 
@@ -794,25 +776,22 @@ sam.NewDatagram3Session(id, keys, options)
 ```go
 func (s *SAM) NewDatagram3Session(id string, keys i2pkeys.I2PKeys, options []string) (*Datagram3Session, error)
 ```
-NewDatagram3Session creates a new repliable but UNAUTHENTICATED datagram3
-session. This method establishes a new DATAGRAM3 session for UDP-like messaging
-over I2P with hash-based source identification. Session creation can take 2-5
-minutes due to I2P tunnel establishment, so generous timeouts are recommended.
-
-⚠️ SECURITY WARNING: DATAGRAM3 sources are NOT authenticated and can be spoofed!
-⚠️ Applications requiring source authentication should use DATAGRAM2 instead.
+NewDatagram3Session creates a new repliable but hash-based datagram3 session.
+This method establishes a new DATAGRAM3 session for UDP-like messaging over I2P
+with hash-based source identification. Session creation can take 2-5 minutes due
+to I2P tunnel establishment, so generous timeouts are recommended.
 
 DATAGRAM3 provides repliable datagrams with minimal overhead by using hash-based
-source identification instead of full authenticated destinations. Received
-datagrams contain a 32-byte hash that must be resolved via NAMING LOOKUP to
-reply. The session maintains a cache to avoid repeated lookups.
+source identification instead of full with full destinations destinations.
+Received datagrams contain a 32-byte hash that must be resolved via NAMING
+LOOKUP to reply. The session maintains a cache to avoid repeated lookups.
 
 Key differences from DATAGRAM and DATAGRAM2:
 
     - Repliable: Can reply to sender (like DATAGRAM/DATAGRAM2)
-    - Unauthenticated: Source is NOT verified (unlike DATAGRAM/DATAGRAM2)
+    - Unwith full destinations: Source uses hash-based identification (unlike DATAGRAM/DATAGRAM2)
     - Hash-based: Source is 32-byte hash, NOT full destination
-    - Lower overhead: No signature verification required
+    - Lower overhead: Hash-based identification required
     - Reply requires NAMING LOOKUP: Hash must be resolved to full destination
 
 Example usage:
@@ -834,9 +813,6 @@ requiring specific port mappings or PRIMARY session subsessions. This function
 automatically creates a UDP listener for SAMv3 UDP forwarding (required for v3
 mode).
 
-⚠️ SECURITY WARNING: Port configuration does NOT add source authentication to
-DATAGRAM3! ⚠️ Sources remain unauthenticated regardless of port settings.
-
 The FROM_PORT and TO_PORT parameters specify I2CP ports for protocol-level
 communication, distinct from the UDP forwarding port which is auto-assigned by
 the OS.
@@ -855,10 +831,6 @@ signature type. This method allows specifying a custom cryptographic signature
 type for the session, enabling advanced security configurations beyond the
 default Ed25519 algorithm. DATAGRAM3 supports offline signatures, allowing
 pre-signed destinations for enhanced privacy and key management flexibility.
-
-⚠️ SECURITY WARNING: Custom signature types do NOT add source authentication to
-DATAGRAM3! ⚠️ Sources remain unauthenticated regardless of signature
-configuration.
 
 Different signature types provide various security levels for the local
 destination:

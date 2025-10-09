@@ -11,17 +11,17 @@ import (
 	"github.com/samber/oops"
 )
 
-// Datagram3Session represents a repliable but UNAUTHENTICATED datagram3 session.
+// Datagram3Session represents a repliable but hash-based datagram3 session.
 //
 // DATAGRAM3 provides UDP-like messaging with hash-based source identification instead of
-// full authenticated destinations. This reduces overhead at the cost of source verification.
+// full with full destinations destinations. This reduces overhead at the cost of full destination verification.
 // Received datagrams contain a 32-byte hash that requires NAMING LOOKUP to resolve for replies.
 //
 // Key differences from DATAGRAM/DATAGRAM2:
 //   - Repliable: Can reply to sender (like DATAGRAM/DATAGRAM2)
-//   - Unauthenticated: Source is NOT verified (unlike DATAGRAM/DATAGRAM2)
+//   - Unwith full destinations: Source uses hash-based identification (unlike DATAGRAM/DATAGRAM2)
 //   - Hash-based source: 32-byte hash instead of full destination
-//   - Lower overhead: No signature verification required
+//   - Lower overhead: Hash-based identification required
 //   - Reply overhead: Requires NAMING LOOKUP to resolve hash
 //
 // The session manages I2P tunnels and provides methods for creating readers and writers.
@@ -42,7 +42,6 @@ import (
 //	session, err := NewDatagram3Session(sam, "my-session", keys, options)
 //	reader := session.NewReader()
 //	dg, err := reader.ReceiveDatagram()
-//	// dg.SourceHash is UNAUTHENTICATED - verify separately if needed!
 //	if err := dg.ResolveSource(session); err != nil {
 //	    log.Fatal(err)
 //	}
@@ -58,7 +57,7 @@ type Datagram3Session struct {
 	resolver   *HashResolver // Cache for hash-to-destination lookups
 }
 
-// Datagram3Reader handles incoming UNAUTHENTICATED datagram3 reception from I2P.
+// Datagram3Reader handles incoming hash-based datagram3 reception from I2P.
 //
 // The reader provides asynchronous datagram reception through buffered channels, allowing
 // applications to receive datagrams without blocking. It manages its own goroutine for
@@ -76,7 +75,6 @@ type Datagram3Session struct {
 //	    if err != nil {
 //	        // Handle error
 //	    }
-//	    // SECURITY: datagram.SourceHash is UNAUTHENTICATED!
 //	    // Verify using application-layer authentication before trusting
 //	    if err := datagram.ResolveSource(session); err != nil {
 //	        // Handle resolution error
@@ -113,33 +111,33 @@ type Datagram3Writer struct {
 	timeout time.Duration
 }
 
-// Datagram3 represents an I2P datagram3 message with UNAUTHENTICATED source.
+// Datagram3 represents an I2P datagram3 message with source.
 //
-// This structure encapsulates the payload data along with the unauthenticated source hash
+// This structure encapsulates the payload data along with the source hash
 // and optional resolved destination. The SourceHash is always present (32 bytes), while
 // Source is only populated after calling ResolveSource() to perform NAMING LOOKUP.
 //
 // Fields:
 //   - Data: Raw datagram payload (up to ~31KB)
-//   - SourceHash: 32-byte UNAUTHENTICATED hash of sender (spoofable!)
+//   - SourceHash: 32-byte hash of sender (hash-based!)
 //   - Source: Resolved full destination (nil until ResolveSource() called)
 //   - Local: Local destination (this session)
 //
 // Example usage:
 //
 //	// Received datagram has only hash, not full source
-//	log.Warn("Received from UNAUTHENTICATED hash:", hex.EncodeToString(dg.SourceHash))
+//	log.Warn("Received from hash:", hex.EncodeToString(dg.SourceHash))
 //
 //	// Resolve hash to full destination for reply
 //	if err := dg.ResolveSource(session); err != nil {
 //	    return err
 //	}
 //
-//	// Now can reply using resolved source (still unverified!)
+//	// Now can reply using resolved source (resolved!)
 //	writer.SendDatagram(reply, dg.Source)
 type Datagram3 struct {
 	Data       []byte          // Raw datagram payload (up to ~31KB)
-	SourceHash []byte          // 32-byte UNAUTHENTICATED hash (spoofable!)
+	SourceHash []byte          // 32-byte hash (hash-based!)
 	Source     i2pkeys.I2PAddr // Resolved destination (nil until ResolveSource)
 	Local      i2pkeys.I2PAddr // Local destination (this session)
 }
@@ -221,7 +219,7 @@ func (d *Datagram3) GetSourceB32() string {
 //	fmt.Println(addr.Network(), addr.String())
 type Datagram3Addr struct {
 	addr i2pkeys.I2PAddr
-	hash []byte // Original 32-byte hash if from reception (UNAUTHENTICATED!)
+	hash []byte // Original 32-byte hash if from reception (hash-based!)
 }
 
 // Network returns the network type for I2P datagram3 addresses.
@@ -259,7 +257,7 @@ func (a *Datagram3Addr) String() string {
 //
 //	conn := session.PacketConn()
 //	n, addr, err := conn.ReadFrom(buffer)
-//	// addr represents UNAUTHENTICATED source!
+//	// addr represents source!
 //	n, err = conn.WriteTo(data, destination)
 type Datagram3Conn struct {
 	session    *Datagram3Session

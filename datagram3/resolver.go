@@ -14,9 +14,6 @@ import (
 // This prevents repeated network queries for the same hash, which is critical for
 // DATAGRAM3 performance since every received datagram contains only a hash.
 //
-// ⚠️  SECURITY WARNING: Resolving hashes does NOT authenticate sources!
-// ⚠️  Even with cached full destinations, sources remain UNAUTHENTICATED.
-// ⚠️  Cache entries are based on hash values which can be spoofed.
 //
 // The resolver maintains an in-memory cache mapping b32.i2p addresses to full I2P
 // destinations. This cache is thread-safe using RWMutex and grows unbounded (applications
@@ -59,9 +56,6 @@ func NewHashResolver(sam *common.SAM) *HashResolver {
 
 // ResolveHash converts a 32-byte hash to a full I2P destination using NAMING LOOKUP.
 //
-// ⚠️  SECURITY WARNING: This does NOT authenticate the source!
-// ⚠️  Resolution only enables replies, it does NOT verify identity.
-// ⚠️  Malicious actors can provide hashes that resolve to attacker-controlled destinations.
 //
 // Process:
 //  1. Validate hash is exactly 32 bytes
@@ -88,7 +82,7 @@ func NewHashResolver(sam *common.SAM) *HashResolver {
 //	    log.Error("Failed to resolve hash:", err)
 //	    return err
 //	}
-//	// dest contains full I2P destination (still unverified!)
+//	// dest contains full I2P destination (resolved!)
 //	writer.SendDatagram(reply, dest)
 func (r *HashResolver) ResolveHash(hash []byte) (i2pkeys.I2PAddr, error) {
 	// Validate hash length (CRITICAL: must be exactly 32 bytes)
@@ -168,8 +162,6 @@ func (r *HashResolver) GetCached(hash []byte) (i2pkeys.I2PAddr, bool) {
 // This is useful for testing, memory management in long-running sessions, or when
 // you want to force fresh NAMING LOOKUP operations.
 //
-// ⚠️  WARNING: Clearing cache will cause subsequent resolutions to perform network I/O.
-// ⚠️  Only clear cache if necessary (testing, memory pressure, or security concerns).
 //
 // Applications with memory constraints may want to implement periodic cache clearing
 // or LRU eviction policies on top of this basic cache.

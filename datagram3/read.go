@@ -36,7 +36,7 @@ func (s *Datagram3Session) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram3
 	log.WithFields(logrus.Fields{
 		"bytes_read": n,
 		"style":      "DATAGRAM3",
-	}).Debug("Received UDP datagram3 message with UNAUTHENTICATED hash source")
+	}).Debug("Received UDP datagram3 message with hash source")
 
 	// Parse the UDP datagram format per SAMv3.md
 	response := string(buffer[:n])
@@ -84,7 +84,7 @@ func (s *Datagram3Session) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram3
 	log.WithFields(logrus.Fields{
 		"hash_base64": hashBase64,
 		"hash_len":    len(hashBytes),
-	}).Debug("Parsed UNAUTHENTICATED source hash")
+	}).Debug("Parsed source hash")
 
 	// Everything after the first newline is the payload
 	data := response[firstNewline+1:]
