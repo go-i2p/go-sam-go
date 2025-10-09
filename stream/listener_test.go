@@ -13,7 +13,7 @@ func TestStreamSession_Listen(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_listen", keys, []string{
+	session, err := NewStreamSession(sam, "stream_test_listen", keys, []string{
 		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
@@ -41,7 +41,7 @@ func TestStreamSession_NewDialer(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_dialer", keys, nil)
+	session, err := NewStreamSession(sam, "stream_test_dialer", keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}

@@ -99,7 +99,7 @@ func TestStreamSession_Close(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_close", keys, nil)
+	session, err := NewStreamSession(sam, "stream_test_close", keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestStreamSession_Addr(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_addr", keys, nil)
+	session, err := NewStreamSession(sam, "stream_test_addr", keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestStreamSession_ConcurrentOperations(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_concurrent", keys, nil)
+	session, err := NewStreamSession(sam, "stream_test_concurrent", keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}

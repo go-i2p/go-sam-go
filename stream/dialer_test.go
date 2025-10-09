@@ -19,7 +19,7 @@ func TestStreamSession_Dial(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_dial", keys, []string{
+	session, err := NewStreamSession(sam, "stream_test_dial", keys, []string{
 		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
@@ -98,7 +98,7 @@ func TestStreamSession_DialI2P(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_dial_i2p", keys, []string{
+	session, err := NewStreamSession(sam, "stream_test_dial_i2p", keys, []string{
 		"inbound.length=1", "outbound.length=1",
 	})
 	if err != nil {
@@ -177,7 +177,7 @@ func TestStreamSession_DialContext(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_dial_context", keys, nil)
+	session, err := NewStreamSession(sam, "stream_test_dial_context", keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}

@@ -12,7 +12,7 @@ func TestSessionListenerLifecycle(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_lifecycle", keys, nil)
+	session, err := NewStreamSession(sam, "stream_test_lifecycle", keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestExplicitListenerClose(t *testing.T) {
 	sam, keys := setupTestSAM(t)
 	defer sam.Close()
 
-	session, err := NewStreamSession(sam, "test_explicit_close", keys, nil)
+	session, err := NewStreamSession(sam, "stream_test_explicit_close", keys, nil)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
