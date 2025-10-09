@@ -16,10 +16,8 @@ import (
 // It initializes the session with the provided SAM connection, session ID, cryptographic keys,
 // and configuration options. The session automatically creates a UDP listener for receiving
 // forwarded datagrams per SAMv3 requirements and initializes a hash resolver for source lookups.
-// Note: DATAGRAM3 sources are not with full destinations; use datagram2 if authentication is required.
 // Example usage: session, err := NewDatagram3Session(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewDatagram3Session(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*Datagram3Session, error) {
-	// Log session creation with SECURITY WARNING
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
 		"style":   "DATAGRAM3",

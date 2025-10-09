@@ -421,10 +421,9 @@ NewDatagram3Session creates a new datagram3 session with hash-based source
 identification. It initializes the session with the provided SAM connection,
 session ID, cryptographic keys, and configuration options. The session
 automatically creates a UDP listener for receiving forwarded datagrams per SAMv3
-requirements and initializes a hash resolver for source lookups. Note: DATAGRAM3
-sources are not with full destinations; use datagram2 if authentication is
-required. Example usage: session, err := NewDatagram3Session(sam, "my-session",
-keys, []string{"inbound.length=1"})
+requirements and initializes a hash resolver for source lookups. Example usage:
+session, err := NewDatagram3Session(sam, "my-session", keys,
+[]string{"inbound.length=1"})
 
 #### func  NewDatagram3SessionFromSubsession
 

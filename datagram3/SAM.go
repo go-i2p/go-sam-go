@@ -69,7 +69,6 @@ func (s *SAM) NewDatagram3Session(id string, keys i2pkeys.I2PKeys, options []str
 //
 //	session, err := sam.NewDatagram3SessionWithSignature(id, keys, options, "EdDSA_SHA512_Ed25519")
 func (s *SAM) NewDatagram3SessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*Datagram3Session, error) {
-	// Log session creation with security warning
 	logger := log.WithFields(logrus.Fields{
 		"id":      id,
 		"options": options,
@@ -120,7 +119,6 @@ func (s *SAM) NewDatagram3SessionWithSignature(id string, keys i2pkeys.I2PKeys, 
 //
 //	session, err := sam.NewDatagram3SessionWithPorts(id, "8080", "8081", keys, options)
 func (s *SAM) NewDatagram3SessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*Datagram3Session, error) {
-	// Log session creation with security warning
 	logger := log.WithFields(logrus.Fields{
 		"id":       id,
 		"fromPort": fromPort,
