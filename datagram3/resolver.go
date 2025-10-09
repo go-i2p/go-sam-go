@@ -14,7 +14,6 @@ import (
 // This prevents repeated network queries for the same hash, which is critical for
 // DATAGRAM3 performance since every received datagram contains only a hash.
 //
-//
 // The resolver maintains an in-memory cache mapping b32.i2p addresses to full I2P
 // destinations. This cache is thread-safe using RWMutex and grows unbounded (applications
 // should monitor memory usage for long-running sessions receiving from many sources).
@@ -55,7 +54,6 @@ func NewHashResolver(sam *common.SAM) *HashResolver {
 }
 
 // ResolveHash converts a 32-byte hash to a full I2P destination using NAMING LOOKUP.
-//
 //
 // Process:
 //  1. Validate hash is exactly 32 bytes
@@ -161,7 +159,6 @@ func (r *HashResolver) GetCached(hash []byte) (i2pkeys.I2PAddr, bool) {
 // Clear removes all cached entries.
 // This is useful for testing, memory management in long-running sessions, or when
 // you want to force fresh NAMING LOOKUP operations.
-//
 //
 // Applications with memory constraints may want to implement periodic cache clearing
 // or LRU eviction policies on top of this basic cache.

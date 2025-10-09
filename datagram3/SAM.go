@@ -14,7 +14,6 @@ import (
 // DATAGRAM3 communication, providing repliable but datagrams with hash-based
 // source identification.
 //
-//
 // DATAGRAM3 uses 32-byte hashes instead of full destinations for source identification,
 // reducing overhead at the cost of full destination verification. Applications requiring source
 // authentication MUST implement their own authentication layer.
@@ -28,7 +27,6 @@ type SAM struct {
 // This method establishes a new DATAGRAM3 session for UDP-like messaging over I2P with
 // hash-based source identification. Session creation can take 2-5 minutes due to I2P tunnel
 // establishment, so generous timeouts are recommended.
-//
 //
 // DATAGRAM3 provides repliable datagrams with minimal overhead by using hash-based source
 // identification instead of full with full destinations destinations. Received datagrams contain a
@@ -59,7 +57,6 @@ func (s *SAM) NewDatagram3Session(id string, keys i2pkeys.I2PKeys, options []str
 // DATAGRAM3 supports offline signatures, allowing pre-signed destinations for enhanced
 // privacy and key management flexibility.
 //
-//
 // Different signature types provide various security levels for the local destination:
 //   - Ed25519 (type 7) - Recommended for most applications
 //   - ECDSA (types 1-3) - Legacy compatibility
@@ -74,7 +71,7 @@ func (s *SAM) NewDatagram3SessionWithSignature(id string, keys i2pkeys.I2PKeys, 
 		"options": options,
 		"sigType": sigType,
 	})
-	
+
 	logger.Debug("Creating new Datagram3Session with signature")
 
 	// Create the base session using the common package with custom signature
@@ -111,7 +108,6 @@ func (s *SAM) NewDatagram3SessionWithSignature(id string, keys i2pkeys.I2PKeys, 
 // is useful for applications requiring specific port mappings or PRIMARY session subsessions.
 // This function automatically creates a UDP listener for SAMv3 UDP forwarding (required for v3 mode).
 //
-//
 // The FROM_PORT and TO_PORT parameters specify I2CP ports for protocol-level communication,
 // distinct from the UDP forwarding port which is auto-assigned by the OS.
 //
@@ -125,7 +121,7 @@ func (s *SAM) NewDatagram3SessionWithPorts(id, fromPort, toPort string, keys i2p
 		"toPort":   toPort,
 		"options":  options,
 	})
-	
+
 	logger.Debug("Creating new Datagram3Session with ports")
 
 	// Create UDP listener for receiving forwarded datagrams (SAMv3 requirement)
