@@ -169,16 +169,27 @@ func (tl *TestListener) handleConnection(conn net.Conn, httpResponse string, t *
 // waitForReady waits for the test listener to be available for connections.
 // This implements proper I2P timing considerations where tunnel establishment can take time.
 func (tl *TestListener) waitForReady(ctx context.Context, t *testing.T) error {
-	// Create a test client to verify the listener is reachable
+	clientSession, cleanup, err := tl.createTestClient()
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	return tl.retryConnection(ctx, t, clientSession)
+}
+
+// createTestClient creates a test client SAM connection and session for verifying listener readiness.
+// Returns the session, a cleanup function, and any error encountered.
+func (tl *TestListener) createTestClient() (*StreamSession, func(), error) {
 	clientSAM, err := NewSAM(SAMDefaultAddr(""))
 	if err != nil {
-		return fmt.Errorf("failed to create test client SAM: %w", err)
+		return nil, nil, fmt.Errorf("failed to create test client SAM: %w", err)
 	}
-	defer clientSAM.Close()
 
 	clientKeys, err := clientSAM.NewKeys()
 	if err != nil {
-		return fmt.Errorf("failed to generate test client keys: %w", err)
+		clientSAM.Close()
+		return nil, nil, fmt.Errorf("failed to generate test client keys: %w", err)
 	}
 
 	clientSession, err := clientSAM.NewStreamSession("test_client_"+tl.session.ID(), clientKeys, []string{
@@ -190,45 +201,87 @@ func (tl *TestListener) waitForReady(ctx context.Context, t *testing.T) error {
 		"outbound.quantity=1",
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create test client session: %w", err)
+		clientSAM.Close()
+		return nil, nil, fmt.Errorf("failed to create test client session: %w", err)
 	}
-	defer clientSession.Close()
 
-	// Try to connect with exponential backoff
+	cleanup := func() {
+		clientSession.Close()
+		clientSAM.Close()
+	}
+
+	return clientSession, cleanup, nil
+}
+
+// retryConnection attempts to connect to the test listener with exponential backoff.
+// Returns nil on successful connection, or an error if the context times out.
+func (tl *TestListener) retryConnection(ctx context.Context, t *testing.T, clientSession *StreamSession) error {
 	backoff := 1 * time.Second
 	maxBackoff := 30 * time.Second
 
 	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for test listener to be ready: %w", ctx.Err())
-		default:
+		if err := checkContextDone(ctx); err != nil {
+			return err
 		}
 
-		t.Logf("Attempting to connect to test listener...")
-		conn, err := clientSession.DialI2P(tl.addr)
-		if err != nil {
-			t.Logf("Test listener not ready yet: %v (retrying in %v)", err, backoff)
-
-			select {
-			case <-ctx.Done():
-				return fmt.Errorf("timeout waiting for test listener to be ready: %w", ctx.Err())
-			case <-time.After(backoff):
+		if err := tl.attemptConnection(ctx, t, clientSession, &backoff, maxBackoff); err != nil {
+			if err == errConnectionFailed {
+				continue
 			}
-
-			// Exponential backoff with jitter
-			backoff = backoff * 2
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-			continue
+			return err
 		}
 
-		// Successfully connected, verify basic communication
-		conn.Close()
 		t.Logf("Test listener is ready")
 		return nil
 	}
+}
+
+// errConnectionFailed is a sentinel error indicating a connection attempt failed but should be retried.
+var errConnectionFailed = fmt.Errorf("connection attempt failed")
+
+// attemptConnection tries to establish a connection to the test listener.
+// Returns nil on success, errConnectionFailed if the attempt should be retried,
+// or a context error if the context is done.
+func (tl *TestListener) attemptConnection(ctx context.Context, t *testing.T, clientSession *StreamSession, backoff *time.Duration, maxBackoff time.Duration) error {
+	t.Logf("Attempting to connect to test listener...")
+	conn, err := clientSession.DialI2P(tl.addr)
+	if err != nil {
+		t.Logf("Test listener not ready yet: %v (retrying in %v)", err, *backoff)
+
+		if err := waitWithBackoff(ctx, backoff, maxBackoff); err != nil {
+			return err
+		}
+		return errConnectionFailed
+	}
+
+	conn.Close()
+	return nil
+}
+
+// checkContextDone checks if the context is done and returns an appropriate error.
+func checkContextDone(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("timeout waiting for test listener to be ready: %w", ctx.Err())
+	default:
+		return nil
+	}
+}
+
+// waitWithBackoff waits for the current backoff duration and increases it exponentially.
+// Returns an error if the context is cancelled during the wait.
+func waitWithBackoff(ctx context.Context, backoff *time.Duration, maxBackoff time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("timeout waiting for test listener to be ready: %w", ctx.Err())
+	case <-time.After(*backoff):
+	}
+
+	*backoff = *backoff * 2
+	if *backoff > maxBackoff {
+		*backoff = maxBackoff
+	}
+	return nil
 }
 
 // Close shuts down the test listener and cleans up resources.
