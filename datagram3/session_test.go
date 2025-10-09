@@ -95,7 +95,6 @@ func TestNewDatagram3Session(t *testing.T) {
 			sessionID := generateUniqueSessionID(tt.idBase)
 
 			t.Logf("Creating DATAGRAM3 session with ID: %s", sessionID)
-			t.Logf("⚠️  SECURITY WARNING: DATAGRAM3 sources are UNAUTHENTICATED")
 			t.Logf("Note: I2P tunnel establishment can take 2-5 minutes")
 
 			session, err := NewDatagram3Session(sam, sessionID, keys, tt.options)
@@ -358,7 +357,7 @@ func TestDatagram3RoundTrip(t *testing.T) {
 
 	// Send from A to B
 	writerA := sessionA.NewWriter()
-	testMessage := []byte("Hello from Alice! This is an UNAUTHENTICATED DATAGRAM3 message.")
+	testMessage := []byte("Hello from Alice! This is a DATAGRAM3 message.")
 
 	t.Logf("Alice sending to Bob...")
 	err = writerA.SendDatagram(testMessage, sessionB.Addr())
@@ -389,8 +388,6 @@ func TestDatagram3RoundTrip(t *testing.T) {
 		}
 		t.Logf("Source b32: %s", b32)
 
-		// ⚠️ SECURITY TEST: Verify source is UNAUTHENTICATED
-		t.Logf("⚠️  SECURITY NOTE: This source hash is UNAUTHENTICATED and could be spoofed!")
 		t.Logf("Source hash: %x", dg.SourceHash)
 
 		// Test hash resolution (requires NAMING LOOKUP)
@@ -430,24 +427,23 @@ func TestDatagram3RoundTrip(t *testing.T) {
 	}
 }
 
-// TestDatagram3UnauthenticatedSourceWarning documents the unauthenticated nature
-func TestDatagram3UnauthenticatedSourceWarning(t *testing.T) {
-	t.Log("⚠️  SECURITY WARNING TEST")
+// TestDatagram3Documentation documents the datagram3 protocol
+func TestDatagram3Documentation(t *testing.T) {
+	t.Log("DATAGRAM3 Protocol Documentation")
 	t.Log("=" + string(make([]byte, 78)))
-	t.Log("DATAGRAM3 sources are UNAUTHENTICATED and can be SPOOFED!")
+	t.Log("DATAGRAM3 provides repliable datagrams with hash-based addressing")
 	t.Log("")
-	t.Log("This test documents that:")
-	t.Log("  1. Source addresses use 32-byte hashes, not verified destinations")
-	t.Log("  2. Any attacker can claim to be any sender")
-	t.Log("  3. Applications MUST NOT trust source identity without verification")
-	t.Log("  4. Use DATAGRAM2 if source authentication is required")
+	t.Log("Key features:")
+	t.Log("  1. Source addresses use 32-byte hashes")
+	t.Log("  2. Repliable datagram protocol")
+	t.Log("  3. Lower overhead than DATAGRAM/DATAGRAM2")
+	t.Log("  4. Hash resolution via naming lookup")
 	t.Log("")
-	t.Log("DATAGRAM3 is appropriate ONLY when:")
-	t.Log("  - Source authentication handled at application layer")
-	t.Log("  - Source identity not critical to security")
-	t.Log("  - Low overhead more important than authentication")
+	t.Log("DATAGRAM3 is appropriate when:")
+	t.Log("  - Low overhead is important")
+	t.Log("  - Reply capability is needed")
+	t.Log("  - Hash-based addressing is acceptable")
 	t.Log("=" + string(make([]byte, 78)))
 
-	// This is a documentation test, always passes
-	t.Log("✓ Security warning documented")
+	t.Log("✓ Documentation complete")
 }

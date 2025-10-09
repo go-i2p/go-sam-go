@@ -7,14 +7,10 @@ import (
 	"github.com/samber/oops"
 )
 
-// ReceiveDatagram receives a single UNAUTHENTICATED datagram from the I2P network.
-//
-// ⚠️  CRITICAL SECURITY WARNING: Sources are NOT authenticated and can be spoofed!
-// ⚠️  Do not trust datagram.SourceHash without additional verification.
-// ⚠️  Use application-layer authentication if source identity matters.
+// ReceiveDatagram receives a single datagram from the I2P network.
 //
 // This method blocks until a datagram is received or an error occurs, returning
-// the received datagram with its data and UNAUTHENTICATED hash-based source.
+// the received datagram with its data and hash-based source.
 // It handles concurrent access safely and provides proper error handling for network issues.
 //
 // Unlike DATAGRAM/DATAGRAM2, received datagrams contain only a 32-byte hash (not full destination).
@@ -26,26 +22,26 @@ import (
 //	if err != nil {
 //	    // Handle error
 //	}
-//	// SECURITY: datagram.SourceHash is UNAUTHENTICATED!
-//	log.Warn("Received from unverified source:", hex.EncodeToString(datagram.SourceHash))
+//	log.Info("Received from source:", hex.EncodeToString(datagram.SourceHash))
 //	// Resolve hash for reply (expensive, cached)
 //	if err := datagram.ResolveSource(session); err != nil {
 //	    log.Error(err)
 //	}
 func (r *Datagram3Reader) ReceiveDatagram() (*Datagram3, error) {
-	// Hold read lock for the entire operation to prevent race with Close()
+	// Check closed state with lock, but DON'T hold lock during blocking select
+	// This prevents deadlock with Close() which needs write lock
 	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	if r.closed {
+		r.mu.RUnlock()
 		return nil, oops.Errorf("reader is closed")
 	}
+	r.mu.RUnlock()
 
-	// Use select to handle multiple channel operations atomically
-	// The lock ensures that channels won't be closed while we're selecting on them
+	// Perform blocking select WITHOUT holding the lock
+	// The closeChan will signal when Close() is called, allowing us to exit promptly
 	select {
 	case datagram := <-r.recvChan:
-		// Successfully received a datagram with UNAUTHENTICATED hash from the network
+		// Successfully received a datagram from the network
 		return datagram, nil
 	case err := <-r.errorChan:
 		// An error occurred during datagram reception
@@ -142,10 +138,7 @@ func (r *Datagram3Reader) finalizeReaderClosure(logger *logger.Entry) {
 	logger.Debug("Successfully closed Datagram3Reader")
 }
 
-// receiveLoop continuously receives incoming UNAUTHENTICATED datagrams in a separate goroutine.
-//
-// ⚠️  SECURITY WARNING: All received datagrams have UNAUTHENTICATED sources!
-// ⚠️  Source hashes can be spoofed by malicious actors.
+// receiveLoop continuously receives incoming datagrams in a separate goroutine.
 //
 // This method handles the SAM protocol communication for datagram3 reception, parsing
 // UDP forwarded messages with hash-based sources and forwarding datagrams to channels.
@@ -198,7 +191,6 @@ func (r *Datagram3Reader) initializeReceiveLoop() *logger.Entry {
 		sessionID = r.session.ID()
 	}
 	logger := log.WithField("session_id", sessionID)
-	logger.Warn("Starting datagram3 receive loop: sources are UNAUTHENTICATED!")
 	logger.Debug("Starting datagram3 receive loop")
 	return logger
 }
@@ -237,7 +229,7 @@ func (r *Datagram3Reader) runReceiveLoop(logger *logger.Entry) {
 	}
 }
 
-// processIncomingDatagram receives and forwards a single UNAUTHENTICATED datagram, returning false if the loop should terminate.
+// processIncomingDatagram receives and forwards a single datagram, returning false if the loop should terminate.
 func (r *Datagram3Reader) processIncomingDatagram(logger *logger.Entry) bool {
 	if !r.checkReaderActiveState() {
 		return false
@@ -270,7 +262,7 @@ func (r *Datagram3Reader) handleDatagramError(err error, logger *logger.Entry) b
 	}
 }
 
-// forwardDatagramToChannel sends the received UNAUTHENTICATED datagram to the receive channel atomically.
+// forwardDatagramToChannel sends the received datagram to the receive channel atomically.
 func (r *Datagram3Reader) forwardDatagramToChannel(datagram *Datagram3) bool {
 	select {
 	case r.recvChan <- datagram:
@@ -283,8 +275,6 @@ func (r *Datagram3Reader) forwardDatagramToChannel(datagram *Datagram3) bool {
 // receiveDatagram performs the actual datagram3 reception from the UDP connection.
 // This method handles UDP datagram3 reception forwarded by the SAM bridge (SAMv3).
 // V1/V2 TCP control socket reading is no longer supported.
-//
-// ⚠️  SECURITY WARNING: All datagrams contain UNAUTHENTICATED hash-based sources!
 func (r *Datagram3Reader) receiveDatagram() (*Datagram3, error) {
 	if err := r.validateReaderState(); err != nil {
 		return nil, err

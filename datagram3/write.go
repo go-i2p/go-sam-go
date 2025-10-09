@@ -121,9 +121,6 @@ func (w *Datagram3Writer) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error 
 // This automatically resolves the source hash if not already resolved, then sends the reply.
 // The source hash is resolved via NAMING LOOKUP and cached to avoid repeated lookups.
 //
-// ⚠️  SECURITY WARNING: Even after resolution, the source is still UNAUTHENTICATED!
-// ⚠️  Do not trust the reply destination without additional verification.
-//
 // Example usage:
 //
 //	// Receive datagram

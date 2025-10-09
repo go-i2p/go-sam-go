@@ -13,10 +13,6 @@ import (
 
 // Datagram3Session represents a repliable but UNAUTHENTICATED datagram3 session.
 //
-// ⚠️  CRITICAL SECURITY WARNING: Source addresses are NOT authenticated and can be spoofed!
-// ⚠️  Applications requiring source authentication MUST use DATAGRAM2 instead.
-// ⚠️  Do NOT trust source identity without additional application-level authentication.
-//
 // DATAGRAM3 provides UDP-like messaging with hash-based source identification instead of
 // full authenticated destinations. This reduces overhead at the cost of source verification.
 // Received datagrams contain a 32-byte hash that requires NAMING LOOKUP to resolve for replies.
@@ -63,10 +59,6 @@ type Datagram3Session struct {
 }
 
 // Datagram3Reader handles incoming UNAUTHENTICATED datagram3 reception from I2P.
-//
-// ⚠️  SECURITY WARNING: All received datagrams have UNAUTHENTICATED sources!
-// ⚠️  The SourceHash field in received datagrams can be spoofed by attackers.
-// ⚠️  Do not trust source identity without additional verification.
 //
 // The reader provides asynchronous datagram reception through buffered channels, allowing
 // applications to receive datagrams without blocking. It manages its own goroutine for
@@ -123,11 +115,6 @@ type Datagram3Writer struct {
 
 // Datagram3 represents an I2P datagram3 message with UNAUTHENTICATED source.
 //
-// ⚠️  CRITICAL SECURITY WARNING: SourceHash is NOT authenticated and can be spoofed!
-// ⚠️  Any malicious actor can claim to be any source by providing a fake hash.
-// ⚠️  Applications MUST implement their own authentication if source identity matters.
-// ⚠️  Use DATAGRAM2 if you need cryptographically authenticated sources.
-//
 // This structure encapsulates the payload data along with the unauthenticated source hash
 // and optional resolved destination. The SourceHash is always present (32 bytes), while
 // Source is only populated after calling ResolveSource() to perform NAMING LOOKUP.
@@ -160,10 +147,6 @@ type Datagram3 struct {
 // ResolveSource resolves the source hash to a full I2P destination for replying.
 // This performs a NAMING LOOKUP to convert the 32-byte hash into a full destination
 // address. The operation is cached in the session's resolver to avoid repeated lookups.
-//
-// ⚠️  SECURITY WARNING: Resolving the hash does NOT authenticate the source!
-// ⚠️  Even with full destination, the source can still be spoofed.
-// ⚠️  This method only enables replies, it does NOT verify identity.
 //
 // Process:
 //  1. Check if already resolved (Source not nil)
@@ -212,9 +195,6 @@ func (d *Datagram3) ResolveSource(session *Datagram3Session) error {
 // performing NAMING LOOKUP. This is faster than full resolution and sufficient for
 // display, logging, or caching purposes.
 //
-// ⚠️  SECURITY WARNING: The returned address is still UNAUTHENTICATED!
-// ⚠️  This method does not add source verification.
-//
 // Returns empty string if SourceHash is invalid (not 32 bytes).
 //
 // Example usage:
@@ -230,9 +210,6 @@ func (d *Datagram3) GetSourceB32() string {
 }
 
 // Datagram3Addr implements net.Addr interface for I2P datagram3 addresses.
-//
-// ⚠️  SECURITY WARNING: If constructed from received hash, this address is UNAUTHENTICATED!
-// ⚠️  Do not trust the address for security-critical operations without additional verification.
 //
 // This type provides standard Go networking address representation for I2P destinations,
 // allowing seamless integration with existing Go networking code that expects net.Addr.
@@ -256,8 +233,6 @@ func (a *Datagram3Addr) Network() string {
 // String returns the string representation of the I2P address.
 // This implements the net.Addr interface. If a full address is available, returns base32
 // representation. If only hash is available, returns the b32.i2p derived address.
-//
-// ⚠️  SECURITY WARNING: Hash-derived addresses are UNAUTHENTICATED!
 func (a *Datagram3Addr) String() string {
 	// Return full address if available (I2PAddr is a string type, empty = not available)
 	if a.addr != "" {
@@ -271,9 +246,6 @@ func (a *Datagram3Addr) String() string {
 }
 
 // Datagram3Conn implements net.PacketConn interface for I2P datagram3 communication.
-//
-// ⚠️  SECURITY WARNING: All sources received via this connection are UNAUTHENTICATED!
-// ⚠️  Applications MUST implement their own authentication layer if source identity matters.
 //
 // This type provides compatibility with standard Go networking patterns by wrapping
 // datagram3 session functionality in a familiar PacketConn interface. It manages
