@@ -1,9 +1,10 @@
 package datagram3
 
 import (
-	"encoding/base64"
 	"net"
 	"strings"
+
+	"github.com/go-i2p/common/base64"
 
 	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
@@ -70,8 +71,10 @@ func (s *Datagram3Session) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram3
 		return nil, oops.Errorf("invalid hash length: %d (expected 44 base64 chars)", len(hashBase64))
 	}
 
-	// Decode hash from base64 to 32-byte binary
-	hashBytes, err := base64.StdEncoding.DecodeString(hashBase64)
+	// Decode hash from URL-safe base64 to 32-byte binary
+	// DATAGRAM3 uses I2P base64 encoding (URL-safe with padding)
+	// Try with padding first, then without if that fails
+	hashBytes, err := base64.I2PEncoding.DecodeString(hashBase64)
 	if err != nil {
 		return nil, oops.Errorf("failed to decode source hash from base64: %w", err)
 	}

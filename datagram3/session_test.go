@@ -340,6 +340,9 @@ func TestDatagram3RoundTrip(t *testing.T) {
 	readerB := sessionB.NewReader()
 	defer readerB.Close()
 
+	// CRITICAL: Start the receive loop to handle incoming datagrams
+	go readerB.receiveLoop()
+
 	receivedChan := make(chan *Datagram3, 1)
 	errorChan := make(chan error, 1)
 
