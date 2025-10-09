@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 189 commits
+        📝 197 commits
         
       </div>
     </div>
@@ -65,6 +65,37 @@
 
 <pre><code>import &quot;github.com/go-i2p/go-sam-go/common&quot;
 </code></pre>
+
+<p>Package common provides core SAM protocol implementation and shared utilities
+for I2P.</p>
+
+<p>This package implements the foundational SAMv3.3 protocol communication layer,
+including session management, configuration options, I2P name resolution, and
+shared abstractions used by all session types (stream, datagram, raw).</p>
+
+<p>Core types:</p>
+
+<pre><code>- SAM: Base connection to I2P SAM bridge (default port 7656)
+- Session: Base session interface with lifecycle management
+- I2PConfig: Configuration builder for tunnel parameters
+- SAMEmit: SAM protocol command formatter
+</code></pre>
+
+<p>Session creation requires 2-5 minutes for I2P tunnel establishment; use generous
+timeouts and exponential backoff retry logic. All network operations should use
+context.Context for cancellation and timeout control.</p>
+
+<p>Basic usage:</p>
+
+<pre><code>sam, err := common.NewSAM(&quot;127.0.0.1:7656&quot;)
+if err != nil { log.Fatal(err) }
+defer sam.Close()
+session, err := sam.NewGenericSession(&quot;STREAM&quot;, &quot;my-session&quot;, keys, []string{&quot;inbound.length=1&quot;})
+defer session.Close()
+</code></pre>
+
+<p>This package is primarily used as a foundation by higher-level packages (stream,
+datagram, raw, primary) rather than being used directly by applications.</p>
 
 <h2 id="usage">Usage</h2>
 
@@ -1388,7 +1419,7 @@ datagram, raw) must implement this interface.</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-09 18:17:48 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-09 18:48:09 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

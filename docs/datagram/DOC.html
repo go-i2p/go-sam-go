@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 189 commits
+        📝 197 commits
         
       </div>
     </div>
@@ -65,6 +65,40 @@
 
 <pre><code>import &quot;github.com/go-i2p/go-sam-go/datagram&quot;
 </code></pre>
+
+<p>Package datagram provides legacy authenticated datagram sessions for I2P using
+SAMv3 DATAGRAM.</p>
+
+<p>DATAGRAM sessions provide authenticated, repliable UDP-like messaging over I2P
+tunnels. This is the legacy format without replay protection. For new
+applications requiring replay protection, use package datagram2 instead.</p>
+
+<p>Key features:</p>
+
+<pre><code>- Authenticated datagrams with signature verification
+- Repliable (can send replies to sender)
+- No replay protection (use datagram2 if needed)
+- UDP-like messaging (unreliable, unordered)
+- Maximum 31744 bytes per datagram (11 KB recommended)
+- Implements net.PacketConn interface
+</code></pre>
+
+<p>Session creation requires 2-5 minutes for I2P tunnel establishment. Use generous
+timeouts and exponential backoff retry logic.</p>
+
+<p>Basic usage:</p>
+
+<pre><code>sam, err := common.NewSAM(&quot;127.0.0.1:7656&quot;)
+session, err := datagram.NewDatagramSession(sam, &quot;my-session&quot;, keys, []string{&quot;inbound.length=1&quot;})
+defer session.Close()
+conn := session.PacketConn()
+n, err := conn.WriteTo(data, destination)
+n, addr, err := conn.ReadFrom(buffer)
+</code></pre>
+
+<p>See also: Package datagram2 (with replay protection), datagram3
+(unauthenticated), stream (TCP-like), raw (non-repliable), primary
+(multi-session management).</p>
 
 <h2 id="usage">Usage</h2>
 
@@ -670,7 +704,7 @@ sam.NewDatagramSessionWithSignature(id, keys, options, &ldquo;EdDSA_SHA512_Ed255
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-09 18:17:48 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-09 18:48:09 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

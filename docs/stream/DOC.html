@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 189 commits
+        📝 197 commits
         
       </div>
     </div>
@@ -65,6 +65,40 @@
 
 <pre><code>import &quot;github.com/go-i2p/go-sam-go/stream&quot;
 </code></pre>
+
+<p>Package stream provides TCP-like reliable connections for I2P using SAMv3 STREAM
+sessions.</p>
+
+<p>STREAM sessions provide ordered, reliable, bidirectional byte streams over I2P
+tunnels, implementing standard net.Conn and net.Listener interfaces. Ideal for
+applications requiring TCP-like semantics (HTTP servers, file transfers,
+persistent connections).</p>
+
+<p>Key features:</p>
+
+<pre><code>- Ordered, reliable delivery
+- Bidirectional communication
+- Standard net.Conn/net.Listener interfaces
+- Automatic connection management
+- Compatible with io.Reader/io.Writer
+</code></pre>
+
+<p>Session creation requires 2-5 minutes for I2P tunnel establishment. Individual
+connections (Accept/Dial) require additional time for circuit building. Use
+generous timeouts and exponential backoff retry logic.</p>
+
+<p>Basic usage:</p>
+
+<pre><code>sam, err := common.NewSAM(&quot;127.0.0.1:7656&quot;)
+session, err := stream.NewStreamSession(sam, &quot;my-session&quot;, keys, []string{&quot;inbound.length=1&quot;})
+defer session.Close()
+listener, err := session.Listen()
+conn, err := listener.Accept()
+defer conn.Close()
+</code></pre>
+
+<p>See also: Package datagram (UDP-like messaging), raw (unrepliable datagrams),
+primary (multi-session management).</p>
 
 <h2 id="usage">Usage</h2>
 
@@ -541,7 +575,7 @@ session.NewDialer().SetTimeout(60*time.Second)</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-09 18:17:48 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-09 18:48:09 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>

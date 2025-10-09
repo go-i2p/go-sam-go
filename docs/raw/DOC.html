@@ -13,7 +13,7 @@
         <a href="../index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 189 commits
+        📝 197 commits
         
       </div>
     </div>
@@ -65,6 +65,39 @@
 
 <pre><code>import &quot;github.com/go-i2p/go-sam-go/raw&quot;
 </code></pre>
+
+<p>Package raw provides encrypted but unauthenticated, non-repliable datagram
+sessions for I2P.</p>
+
+<p>RAW sessions send encrypted datagrams without source authentication or reply
+capability. Recipients cannot verify sender identity or send replies. Suitable
+for one-way broadcast scenarios (logging, metrics, announcements) where reply
+capability is not needed.</p>
+
+<p>Key features:</p>
+
+<pre><code>- Encrypted transmission (confidentiality)
+- No source authentication (spoofable)
+- Non-repliable (recipient cannot reply)
+- UDP-like messaging (unreliable, unordered)
+- Maximum 31744 bytes per datagram (11 KB recommended)
+</code></pre>
+
+<p>Session creation requires 2-5 minutes for I2P tunnel establishment. Use generous
+timeouts and exponential backoff retry logic.</p>
+
+<p>Basic usage:</p>
+
+<pre><code>sam, err := common.NewSAM(&quot;127.0.0.1:7656&quot;)
+session, err := raw.NewRawSession(sam, &quot;my-session&quot;, keys, []string{&quot;inbound.length=1&quot;})
+defer session.Close()
+conn := session.PacketConn()
+n, err := conn.WriteTo(data, destination)
+</code></pre>
+
+<p>See also: Package datagram (authenticated, repliable), datagram2 (with replay
+protection), datagram3 (hash-based sources), stream (TCP-like), primary
+(multi-session management).</p>
 
 <h2 id="usage">Usage</h2>
 
@@ -553,7 +586,7 @@ signature type</p>
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-09 18:17:48 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-09 18:48:09 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
