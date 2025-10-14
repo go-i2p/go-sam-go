@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
 	"github.com/sirupsen/logrus"
 )
@@ -48,71 +49,115 @@ func (w *Datagram3Writer) SetTimeout(timeout time.Duration) *Datagram3Writer {
 //	}
 //	err := writer.SendDatagram([]byte("reply"), receivedDatagram.Source)
 func (w *Datagram3Writer) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
-	// Check if the session is closed before attempting to send
-	w.session.mu.RLock()
-	if w.session.closed {
-		w.session.mu.RUnlock()
-		return oops.Errorf("session is closed")
+	// Validate session state before attempting send
+	if err := w.validateSessionState(); err != nil {
+		return err
 	}
-	w.session.mu.RUnlock()
 
-	// Create detailed logging context for debugging send operations
-	logger := log.WithFields(logrus.Fields{
-		"session_id":  w.session.ID(),
-		"destination": dest.Base32(),
-		"size":        len(data),
-		"style":       "DATAGRAM3",
-	})
+	// Create logging context for debugging
+	logger := w.createSendLogger(dest, len(data))
 	logger.Debug("Sending datagram3 message via UDP socket")
 
-	// Use UDP socket approach (SAMv3 method) to send DATAGRAM3 messages
-	// Connect to SAM's UDP port (default 7655) for datagram3 transmission
-	samHost := w.session.sam.SAMEmit.I2PConfig.SamHost
-	if samHost == "" {
-		samHost = "127.0.0.1" // Default SAM host
-	}
-	samUDPPort := "7655" // Default SAM UDP port for datagram3 transmission
-
-	udpAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(samHost, samUDPPort))
+	// Establish UDP connection to SAM bridge
+	udpConn, err := w.connectToSAMUDP(logger)
 	if err != nil {
-		logger.WithError(err).Error("Failed to resolve SAM UDP address")
-		return oops.Errorf("failed to resolve SAM UDP address: %w", err)
-	}
-
-	udpConn, err := net.DialUDP("udp", nil, udpAddr)
-	if err != nil {
-		logger.WithError(err).Error("Failed to connect to SAM UDP port")
-		return oops.Errorf("failed to connect to SAM UDP port: %w", err)
+		return err
 	}
 	defer udpConn.Close()
 
-	// Construct the SAMv3 UDP datagram3 format:
-	// First line: "3.3 <session_id> <destination> [options]\n"
-	// Remaining data: the actual message payload
-	sessionID := w.session.ID()
-	destination := dest.Base64()
-
-	// Create the header line according to SAMv3 specification
-	// DATAGRAM3 uses same format as DATAGRAM/DATAGRAM2 for sending
-	// Only reception format differs (hash-based source)
-	headerLine := fmt.Sprintf("3.3 %s %s\n", sessionID, destination)
-
-	// Combine header and data into final UDP packet
-	udpMessage := append([]byte(headerLine), data...)
-
+	// Build and send the datagram3 message
+	udpMessage := w.buildDatagram3Message(dest, data)
+	
 	logger.WithFields(logrus.Fields{
-		"header":     headerLine,
 		"total_size": len(udpMessage),
 	}).Debug("Sending UDP datagram3 to SAM")
 
-	// Send the datagram3 message via UDP to SAM bridge
-	_, err = udpConn.Write(udpMessage)
+	// Transmit the datagram3 message via UDP to SAM bridge
+	if err := w.writeDatagram(udpConn, udpMessage, logger); err != nil {
+		return err
+	}
+
+	logger.Debug("Successfully sent datagram3 message via UDP")
+	return nil
+}
+
+// validateSessionState checks if the session is closed before attempting operations.
+// This method verifies the session state with appropriate mutex locking to prevent
+// operations on closed sessions. Returns an error if the session is closed.
+func (w *Datagram3Writer) validateSessionState() error {
+	w.session.mu.RLock()
+	defer w.session.mu.RUnlock()
+	
+	if w.session.closed {
+		return oops.Errorf("session is closed")
+	}
+	return nil
+}
+
+// createSendLogger creates a structured logger with datagram3 send operation context.
+// This method configures logging fields including session ID, destination, message size,
+// and protocol style for comprehensive debugging of send operations.
+func (w *Datagram3Writer) createSendLogger(dest i2pkeys.I2PAddr, dataSize int) *logger.Entry {
+	return log.WithFields(logrus.Fields{
+		"session_id":  w.session.ID(),
+		"destination": dest.Base32(),
+		"size":        dataSize,
+		"style":       "DATAGRAM3",
+	})
+}
+
+// connectToSAMUDP establishes a UDP connection to the SAM bridge for datagram3 transmission.
+// This method resolves the SAM host and UDP port (default 7655), creates the UDP address,
+// and establishes the connection. Returns the UDP connection and any error encountered.
+func (w *Datagram3Writer) connectToSAMUDP(logger *logger.Entry) (*net.UDPConn, error) {
+	// Determine SAM host from configuration or use default
+	samHost := w.session.sam.SAMEmit.I2PConfig.SamHost
+	if samHost == "" {
+		samHost = "127.0.0.1"
+	}
+	samUDPPort := "7655" // Default SAM UDP port for datagram3
+
+	// Resolve the UDP address for SAM bridge
+	udpAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(samHost, samUDPPort))
+	if err != nil {
+		logger.WithError(err).Error("Failed to resolve SAM UDP address")
+		return nil, oops.Errorf("failed to resolve SAM UDP address: %w", err)
+	}
+
+	// Establish UDP connection to SAM bridge
+	udpConn, err := net.DialUDP("udp", nil, udpAddr)
+	if err != nil {
+		logger.WithError(err).Error("Failed to connect to SAM UDP port")
+		return nil, oops.Errorf("failed to connect to SAM UDP port: %w", err)
+	}
+
+	return udpConn, nil
+}
+
+// buildDatagram3Message constructs the SAMv3 UDP datagram3 message format.
+// This method creates the protocol header and combines it with the data payload.
+// The header format is: "3.3 <session_id> <destination>\n" followed by the message data.
+// Returns the complete UDP message ready for transmission.
+func (w *Datagram3Writer) buildDatagram3Message(dest i2pkeys.I2PAddr, data []byte) []byte {
+	sessionID := w.session.ID()
+	destination := dest.Base64()
+
+	// Create SAMv3 DATAGRAM3 header line
+	headerLine := fmt.Sprintf("3.3 %s %s\n", sessionID, destination)
+
+	// Combine header and data into final UDP packet
+	return append([]byte(headerLine), data...)
+}
+
+// writeDatagram transmits the datagram3 message via UDP to the SAM bridge.
+// This method writes the complete UDP message to the connection and handles
+// any transmission errors with appropriate logging.
+func (w *Datagram3Writer) writeDatagram(udpConn *net.UDPConn, udpMessage []byte, logger *logger.Entry) error {
+	_, err := udpConn.Write(udpMessage)
 	if err != nil {
 		logger.WithError(err).Error("Failed to send UDP datagram3 to SAM")
 		return oops.Errorf("failed to send UDP datagram3 to SAM: %w", err)
 	}
-
-	logger.Debug("Successfully sent datagram3 message via UDP")
 	return nil
 }
 
