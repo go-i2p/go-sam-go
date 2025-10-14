@@ -166,14 +166,7 @@ writer := session.NewWriter()
 err = writer.SendDatagram(replyData, datagram.Source)
 ```
 
-**Security:** ⚠️ **Sources are NOT authenticated and can be spoofed!** Only use when:
-- Application implements message-level authentication (signatures, HMAC, etc.)
-- Source identity is not security-critical
-- Lower overhead is essential
-
-**Use DATAGRAM2 instead if you need authenticated sources.**
-
-**Status:** Implementation complete with comprehensive security documentation. Waiting for I2P router support.
+**Status:** Implementation complete with documentation. Waiting for I2P router support.
 
 ### Configuration
 
@@ -221,25 +214,11 @@ go test -race -short ./...
 Each sub-package has comprehensive documentation:
 
 - **[datagram2/](datagram2/README.md)** - DATAGRAM2 authenticated datagrams with replay protection
-- **[datagram3/](datagram3/README.md)** - ⚠️ DATAGRAM3 unauthenticated datagrams (security warnings!)
+- **[datagram3/](datagram3/README.md)** - DATAGRAM3 unauthenticated datagrams
 - **[stream/](stream/)** - TCP-like reliable connections
 - **[datagram/](datagram/)** - Legacy authenticated datagrams
 - **[raw/](raw/)** - Encrypted unauthenticated datagrams
 - **[primary/](primary/)** - PRIMARY session management
-
-## 🔒 Security Notes
-
-### DATAGRAM3 Security Warning
-
-⚠️ **CRITICAL:** DATAGRAM3 sources are **NOT authenticated**. Any attacker can claim to be any sender by providing a fake hash. Only use DATAGRAM3 when:
-
-1. You implement application-layer authentication (Ed25519 signatures, HMAC, etc.)
-2. Source identity is not security-critical
-3. You understand the security implications
-
-**For authenticated sources, use DATAGRAM2 instead.**
-
-See [datagram3/AUDIT.md](datagram3/AUDIT.md) for comprehensive security analysis including attack scenarios and mitigations.
 
 ### I2P Timing Considerations
 

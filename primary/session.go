@@ -175,6 +175,70 @@ func (p *PrimarySession) NewUniqueStreamSubSession(s string) (*StreamSubSession,
 	return p.NewStreamSubSession(randomId, nil)
 }
 
+// setupUDPListenerForDatagram creates and binds a UDP listener for DATAGRAM forwarding.
+// Returns the UDP connection and assigned port number. This helper isolates the network
+// setup logic from the main session creation flow, improving testability and code clarity.
+func setupUDPListenerForDatagram() (*net.UDPConn, int, error) {
+	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0") // Port 0 = let OS choose
+	if err != nil {
+		return nil, 0, oops.Errorf("failed to resolve UDP address: %w", err)
+	}
+
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return nil, 0, oops.Errorf("failed to create UDP listener: %w", err)
+	}
+
+	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
+	return udpConn, udpPort, nil
+}
+
+// registerDatagramSubsession registers a DATAGRAM subsession with the SAM bridge and creates
+// a new sub-SAM connection for data operations. Returns the sub-SAM connection or error.
+// Closes the UDP connection and performs cleanup on failure.
+func (p *PrimarySession) registerDatagramSubsession(id string, options []string, udpConn *net.UDPConn, logger *logrus.Entry) (*common.SAM, error) {
+	if err := p.sam.AddSubSession("DATAGRAM", id, options); err != nil {
+		logger.WithError(err).Error("Failed to add datagram subsession")
+		udpConn.Close()
+		return nil, oops.Errorf("failed to create datagram sub-session: %w", err)
+	}
+
+	subSAM, err := p.createSubSAMConnection()
+	if err != nil {
+		logger.WithError(err).Error("Failed to create sub-SAM connection")
+		udpConn.Close()
+		p.sam.RemoveSubSession(id)
+		return nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
+	}
+
+	return subSAM, nil
+}
+
+// createAndRegisterDatagramWrapper creates a datagram session wrapper from the subsession components
+// and registers it with the primary session registry. Returns the configured sub-session or error.
+// Performs complete cleanup of all resources on failure.
+func (p *PrimarySession) createAndRegisterDatagramWrapper(id string, options []string, subSAM *common.SAM, udpConn *net.UDPConn, logger *logrus.Entry) (*DatagramSubSession, error) {
+	datagramSession, err := datagram.NewDatagramSessionFromSubsession(subSAM, id, p.Keys(), options, udpConn)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create datagram session wrapper")
+		subSAM.Close()
+		udpConn.Close()
+		p.sam.RemoveSubSession(id)
+		return nil, oops.Errorf("failed to create datagram sub-session: %w", err)
+	}
+
+	subSession := NewDatagramSubSession(id, datagramSession)
+
+	if err := p.registry.Register(id, subSession); err != nil {
+		logger.WithError(err).Error("Failed to register datagram sub-session")
+		datagramSession.Close()
+		p.sam.RemoveSubSession(id)
+		return nil, oops.Errorf("failed to register datagram sub-session: %w", err)
+	}
+
+	return subSession, nil
+}
+
 // NewDatagramSubSession creates a new datagram sub-session within this primary session.
 // The sub-session shares the primary session's I2P identity and tunnel infrastructure
 // while providing full DatagramSession functionality for UDP-like authenticated messaging.
@@ -193,8 +257,6 @@ func (p *PrimarySession) NewUniqueStreamSubSession(s string) (*StreamSubSession,
 //	writer := datagramSub.NewWriter()
 //	reader := datagramSub.NewReader()
 func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*DatagramSubSession, error) {
-	// Use write lock to ensure atomic sub-session creation and prevent race conditions
-	// during concurrent session creation operations in I2P SAM protocol
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -209,63 +271,23 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 	})
 	logger.Debug("Creating datagram sub-session with UDP forwarding")
 
-	// PRIMARY datagram subsessions MUST use UDP forwarding because the control socket
-	// is already used by the PRIMARY session. Per SAMv3.md: "If $port is not set,
-	// datagrams will NOT be forwarded, they will be received on the control socket"
-	// Setup UDP listener for receiving forwarded datagrams
-	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0") // Port 0 = let OS choose
+	udpConn, udpPort, err := setupUDPListenerForDatagram()
 	if err != nil {
-		return nil, oops.Errorf("failed to resolve UDP address: %w", err)
+		return nil, err
 	}
 
-	udpConn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return nil, oops.Errorf("failed to create UDP listener: %w", err)
-	}
-
-	// Get the actual port assigned by the OS
-	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
 	logger.WithField("udp_port", udpPort).Debug("Created UDP listener for datagram forwarding")
 
-	// Ensure PORT parameter is present and add UDP forwarding parameters
-	// This tells SAM bridge to forward datagrams to our UDP port instead of control socket
 	finalOptions := ensureDatagramForwardingParameters(options, udpPort)
 
-	// Add the subsession to the primary session using SESSION ADD
-	if err := p.sam.AddSubSession("DATAGRAM", id, finalOptions); err != nil {
-		logger.WithError(err).Error("Failed to add datagram subsession")
-		udpConn.Close()
-		return nil, oops.Errorf("failed to create datagram sub-session: %w", err)
-	}
-
-	// Create a new SAM connection for the sub-session data operations (for sending)
-	subSAM, err := p.createSubSAMConnection()
+	subSAM, err := p.registerDatagramSubsession(id, finalOptions, udpConn, logger)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create sub-SAM connection")
-		udpConn.Close()
-		p.sam.RemoveSubSession(id)
-		return nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
+		return nil, err
 	}
 
-	// Create the datagram session with UDP connection for receiving forwarded datagrams
-	datagramSession, err := datagram.NewDatagramSessionFromSubsession(subSAM, id, p.Keys(), options, udpConn)
+	subSession, err := p.createAndRegisterDatagramWrapper(id, options, subSAM, udpConn, logger)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create datagram session wrapper")
-		subSAM.Close()
-		udpConn.Close()
-		p.sam.RemoveSubSession(id)
-		return nil, oops.Errorf("failed to create datagram sub-session: %w", err)
-	}
-
-	// Wrap the datagram session in a sub-session adapter
-	subSession := NewDatagramSubSession(id, datagramSession)
-
-	// Register the sub-session with the primary session registry
-	if err := p.registry.Register(id, subSession); err != nil {
-		logger.WithError(err).Error("Failed to register datagram sub-session")
-		datagramSession.Close()
-		p.sam.RemoveSubSession(id)
-		return nil, oops.Errorf("failed to register datagram sub-session: %w", err)
+		return nil, err
 	}
 
 	logger.WithField("udp_port", udpPort).Debug("Successfully created datagram sub-session with UDP forwarding")
