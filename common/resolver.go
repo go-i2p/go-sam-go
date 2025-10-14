@@ -152,45 +152,60 @@ func (sam *SAMResolver) sendLookupRequest(name string, options bool) error {
 // Uses dynamic buffer allocation to handle large naming responses with service options.
 // It handles reading errors and connection cleanup on failure.
 func (sam *SAMResolver) readLookupResponse() ([]byte, error) {
+	initialData, n, err := sam.readInitialBuffer()
+	if err != nil {
+		return nil, err
+	}
+
+	// If buffer was completely filled, there might be more data
+	if n == len(initialData) {
+		return sam.readAdditionalData(initialData, n)
+	}
+
+	return initialData[:n], nil
+}
+
+// readInitialBuffer reads the first chunk of data from the SAM connection.
+// Returns the buffer, bytes read, and any error encountered.
+func (sam *SAMResolver) readInitialBuffer() ([]byte, int, error) {
 	buf := make([]byte, 4096) // Initial buffer size for typical responses
 	n, err := sam.Conn.Read(buf)
 	if err != nil {
 		log.WithError(err).Error("Failed to read from SAM connection")
 		sam.Close()
-		return nil, err
+		return nil, 0, err
 	}
+	return buf, n, nil
+}
 
-	// If buffer was completely filled, there might be more data
-	if n == len(buf) {
-		// Use a growing buffer to read remaining data
-		response := make([]byte, n, len(buf)*2)
-		copy(response, buf[:n])
+// readAdditionalData continues reading when initial buffer was filled.
+// Uses a growing buffer to accumulate all remaining response data.
+func (sam *SAMResolver) readAdditionalData(initialBuf []byte, initialN int) ([]byte, error) {
+	response := make([]byte, initialN, len(initialBuf)*2)
+	copy(response, initialBuf[:initialN])
 
-		for {
-			additionalBuf := make([]byte, 2048)
-			additionalN, err := sam.Conn.Read(additionalBuf)
-			if err != nil {
-				if additionalN == 0 {
-					// Connection closed or no more data
-					break
-				}
-				log.WithError(err).Error("Failed to read additional SAM response data")
-				sam.Close()
-				return nil, err
-			}
-
-			response = append(response, additionalBuf[:additionalN]...)
-
-			// If we didn't fill the additional buffer, we're done
-			if additionalN < len(additionalBuf) {
+	for {
+		additionalBuf := make([]byte, 2048)
+		additionalN, err := sam.Conn.Read(additionalBuf)
+		if err != nil {
+			if additionalN == 0 {
+				// Connection closed or no more data
 				break
 			}
+			log.WithError(err).Error("Failed to read additional SAM response data")
+			sam.Close()
+			return nil, err
 		}
 
-		return response, nil
+		response = append(response, additionalBuf[:additionalN]...)
+
+		// If we didn't fill the additional buffer, we're done
+		if additionalN < len(additionalBuf) {
+			break
+		}
 	}
 
-	return buf[:n], nil
+	return response, nil
 }
 
 // prepareLookupScanner validates the response format and creates a scanner.
