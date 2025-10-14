@@ -172,43 +172,59 @@ func (sam *SAM) sendDestGenerateCommand(sigType string) error {
 // It uses dynamic buffer allocation to handle large destination keys and I2CP options.
 // The function grows the buffer as needed to prevent response truncation.
 func (sam *SAM) readKeyGenerationResponse() ([]byte, error) {
-	buf := make([]byte, 8192) // Initial buffer size for typical responses
-	n, err := sam.Conn.Read(buf)
+	buf, n, err := sam.readInitialSAMResponse()
 	if err != nil {
-		log.WithError(err).Error("Failed to read SAM response for key generation")
-		return nil, oops.Errorf("error with reading in SAM: %w", err)
+		return nil, err
 	}
 
 	// If buffer was completely filled, there might be more data
 	if n == len(buf) {
-		// Use a growing buffer to read remaining data
-		response := make([]byte, n, len(buf)*2)
-		copy(response, buf[:n])
-
-		for {
-			additionalBuf := make([]byte, 4096)
-			additionalN, err := sam.Conn.Read(additionalBuf)
-			if err != nil {
-				if additionalN == 0 {
-					// Connection closed or no more data
-					break
-				}
-				log.WithError(err).Error("Failed to read additional SAM response data")
-				return nil, oops.Errorf("error reading additional SAM data: %w", err)
-			}
-
-			response = append(response, additionalBuf[:additionalN]...)
-
-			// If we didn't fill the additional buffer, we're done
-			if additionalN < len(additionalBuf) {
-				break
-			}
-		}
-
-		return response, nil
+		return sam.readAdditionalSAMData(buf, n)
 	}
 
 	return buf[:n], nil
+}
+
+// readInitialSAMResponse reads the initial response buffer from the SAM connection.
+// Returns the buffer, bytes read, and any error encountered.
+func (sam *SAM) readInitialSAMResponse() ([]byte, int, error) {
+	buf := make([]byte, 8192) // Initial buffer size for typical responses
+	n, err := sam.Conn.Read(buf)
+	if err != nil {
+		log.WithError(err).Error("Failed to read SAM response for key generation")
+		return nil, 0, oops.Errorf("error with reading in SAM: %w", err)
+	}
+	return buf, n, nil
+}
+
+// readAdditionalSAMData handles reading additional data when the initial buffer is full.
+// It grows the response buffer dynamically until all data is received.
+func (sam *SAM) readAdditionalSAMData(initialBuf []byte, initialN int) ([]byte, error) {
+	// Use a growing buffer to read remaining data
+	response := make([]byte, initialN, len(initialBuf)*2)
+	copy(response, initialBuf[:initialN])
+
+	for {
+		additionalBuf := make([]byte, 4096)
+		additionalN, err := sam.Conn.Read(additionalBuf)
+		if err != nil {
+			if additionalN == 0 {
+				// Connection closed or no more data
+				break
+			}
+			log.WithError(err).Error("Failed to read additional SAM response data")
+			return nil, oops.Errorf("error reading additional SAM data: %w", err)
+		}
+
+		response = append(response, additionalBuf[:additionalN]...)
+
+		// If we didn't fill the additional buffer, we're done
+		if additionalN < len(additionalBuf) {
+			break
+		}
+	}
+
+	return response, nil
 }
 
 // parseKeyResponse parses the SAM response to extract public and private keys.
