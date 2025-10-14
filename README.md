@@ -13,8 +13,8 @@ A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focuse
 - ✅ **Raw** - Encrypted unauthenticated datagrams (fully tested)
 
 **Implemented & Documented (Awaiting I2P Router Support):**
-- ⚠️ **Datagram2** - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet)
-- ⚠️ **Datagram3** - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet)
+- ⚠️ **Datagram2** - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet, available in dev builds)
+- ⚠️ **Datagram3** - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet, available in dev builds)
 
 **Partially Implemented:**
 - 🔶 **Primary Sessions** - Multi-session management (works but needs more testing)

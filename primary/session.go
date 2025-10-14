@@ -328,59 +328,101 @@ func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubS
 	})
 	logger.Debug("Creating raw sub-session with UDP forwarding")
 
-	// PRIMARY raw subsessions MUST use UDP forwarding because the control socket
-	// is already used by the PRIMARY session. Setup UDP listener for receiving forwarded raw datagrams
+	// Setup UDP listener and configure options for raw datagram forwarding
+	udpConn, udpPort, finalOptions, err := p.setupRawUDPForwarding(options, logger)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			udpConn.Close()
+		}
+	}()
+
+	// Add subsession to primary session registry
+	if err = p.addRawSubSession(id, finalOptions, logger); err != nil {
+		return nil, err
+	}
+
+	// Create SAM connection and raw session wrapper
+	rawSession, subSAM, err := p.createRawSessionWrapper(id, options, udpConn, logger)
+	if err != nil {
+		p.sam.RemoveSubSession(id)
+		return nil, err
+	}
+
+	// Register and return the completed sub-session
+	subSession, err := p.registerRawSubSession(id, rawSession, udpPort, logger)
+	if err != nil {
+		subSAM.Close()
+		rawSession.Close()
+		p.sam.RemoveSubSession(id)
+		return nil, err
+	}
+
+	return subSession, nil
+}
+
+// setupRawUDPForwarding creates and configures a UDP listener for raw datagram forwarding.
+// Returns the UDP connection, assigned port number, and finalized options with forwarding parameters.
+// This helper isolates network setup and option configuration for improved testability.
+func (p *PrimarySession) setupRawUDPForwarding(options []string, logger *logrus.Entry) (*net.UDPConn, int, []string, error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0") // Port 0 = let OS choose
 	if err != nil {
-		return nil, oops.Errorf("failed to resolve UDP address: %w", err)
+		return nil, 0, nil, oops.Errorf("failed to resolve UDP address: %w", err)
 	}
 
 	udpConn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		return nil, oops.Errorf("failed to create UDP listener: %w", err)
+		return nil, 0, nil, oops.Errorf("failed to create UDP listener: %w", err)
 	}
 
-	// Get the actual port assigned by the OS
 	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
 	logger.WithField("udp_port", udpPort).Debug("Created UDP listener for raw datagram forwarding")
 
-	// Ensure PORT parameter and UDP forwarding parameters are present
 	finalOptions := ensureRawForwardingParameters(options, udpPort)
+	return udpConn, udpPort, finalOptions, nil
+}
 
-	// Add the subsession to the primary session using SESSION ADD
+// addRawSubSession adds a raw subsession to the primary session using SESSION ADD command.
+// Handles SAM protocol communication and error logging for subsession registration.
+func (p *PrimarySession) addRawSubSession(id string, finalOptions []string, logger *logrus.Entry) error {
 	if err := p.sam.AddSubSession("RAW", id, finalOptions); err != nil {
 		logger.WithError(err).Error("Failed to add raw subsession")
-		udpConn.Close()
-		return nil, oops.Errorf("failed to create raw sub-session: %w", err)
+		return oops.Errorf("failed to create raw sub-session: %w", err)
 	}
+	return nil
+}
 
-	// Create a new SAM connection for the sub-session data operations (for sending)
+// createRawSessionWrapper creates a SAM connection and wraps it in a raw session.
+// Returns the raw session and SAM connection for proper resource management and cleanup.
+func (p *PrimarySession) createRawSessionWrapper(id string, options []string, udpConn *net.UDPConn, logger *logrus.Entry) (*raw.RawSession, *common.SAM, error) {
 	subSAM, err := p.createSubSAMConnection()
 	if err != nil {
 		logger.WithError(err).Error("Failed to create sub-SAM connection")
 		udpConn.Close()
-		p.sam.RemoveSubSession(id)
-		return nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
+		return nil, nil, oops.Errorf("failed to create sub-SAM connection: %w", err)
 	}
 
-	// Create the raw session with UDP connection for receiving forwarded raw datagrams
 	rawSession, err := raw.NewRawSessionFromSubsession(subSAM, id, p.Keys(), options, udpConn)
 	if err != nil {
 		logger.WithError(err).Error("Failed to create raw session wrapper")
 		subSAM.Close()
 		udpConn.Close()
-		p.sam.RemoveSubSession(id)
-		return nil, oops.Errorf("failed to create raw sub-session: %w", err)
+		return nil, nil, oops.Errorf("failed to create raw sub-session: %w", err)
 	}
 
-	// Wrap the raw session in a sub-session adapter
+	return rawSession, subSAM, nil
+}
+
+// registerRawSubSession wraps and registers a raw session with the primary session registry.
+// Returns the completed sub-session adapter ready for use.
+func (p *PrimarySession) registerRawSubSession(id string, rawSession *raw.RawSession, udpPort int, logger *logrus.Entry) (*RawSubSession, error) {
 	subSession := NewRawSubSession(id, rawSession)
 
-	// Register the sub-session with the primary session registry
 	if err := p.registry.Register(id, subSession); err != nil {
 		logger.WithError(err).Error("Failed to register raw sub-session")
 		rawSession.Close()
-		p.sam.RemoveSubSession(id)
 		return nil, oops.Errorf("failed to register raw sub-session: %w", err)
 	}
 
