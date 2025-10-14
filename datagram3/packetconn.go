@@ -19,12 +19,9 @@ import (
 // The source address contains the 32-byte hash (not full destination). Applications must
 // resolve the hash via ResolveSource() to reply.
 func (c *Datagram3Conn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
-	c.mu.RLock()
-	if c.closed {
-		c.mu.RUnlock()
-		return 0, nil, oops.Errorf("connection is closed")
+	if err := c.checkConnectionOpen(); err != nil {
+		return 0, nil, err
 	}
-	c.mu.RUnlock()
 
 	// Start receive loop if not already started
 	go c.reader.receiveLoop()
@@ -47,6 +44,56 @@ func (c *Datagram3Conn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	return n, addr, nil
 }
 
+// checkConnectionOpen verifies that the connection is not closed and returns an error if it is.
+// This helper function centralizes the connection state validation logic used by multiple methods.
+func (c *Datagram3Conn) checkConnectionOpen() error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return oops.Errorf("connection is closed")
+	}
+	return nil
+}
+
+// convertToI2PAddr converts a net.Addr to an I2P address, handling both Datagram3Addr and I2PAddr types.
+// For Datagram3Addr with only a hash, it automatically resolves the hash using the session's resolver.
+// Returns the converted I2P address or an error if the address type is invalid or resolution fails.
+func (c *Datagram3Conn) convertToI2PAddr(addr net.Addr) (i2pkeys.I2PAddr, error) {
+	switch a := addr.(type) {
+	case *Datagram3Addr:
+		return c.handleDatagram3Addr(a)
+	case *i2pkeys.I2PAddr:
+		return *a, nil
+	case i2pkeys.I2PAddr:
+		return a, nil
+	default:
+		return "", oops.Errorf("address must be Datagram3Addr or I2PAddr")
+	}
+}
+
+// handleDatagram3Addr processes a Datagram3Addr and returns the corresponding I2P address.
+// If the address contains a full destination, it is used directly. If only a hash is available,
+// the hash is resolved using the session's resolver before returning the I2P address.
+func (c *Datagram3Conn) handleDatagram3Addr(a *Datagram3Addr) (i2pkeys.I2PAddr, error) {
+	// If address has full destination, use it
+	if a.addr != "" {
+		return a.addr, nil
+	}
+
+	// Only hash available - resolve it
+	if len(a.hash) == 32 {
+		log.Debug("Resolving hash for WriteTo")
+		resolved, err := c.session.resolver.ResolveHash(a.hash)
+		if err != nil {
+			return "", oops.Errorf("failed to resolve hash: %w", err)
+		}
+		return resolved, nil
+	}
+
+	return "", oops.Errorf("address has neither full destination nor valid hash")
+}
+
 // WriteTo writes a datagram to the specified address.
 // This method implements the net.PacketConn interface. The address must be a Datagram3Addr
 // or i2pkeys.I2PAddr containing a valid I2P destination. The entire byte slice p is sent
@@ -55,38 +102,13 @@ func (c *Datagram3Conn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 // If the address is a Datagram3Addr with only a hash (not resolved), the hash will be
 // resolved automatically before sending.
 func (c *Datagram3Conn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
-	c.mu.RLock()
-	if c.closed {
-		c.mu.RUnlock()
-		return 0, oops.Errorf("connection is closed")
+	if err := c.checkConnectionOpen(); err != nil {
+		return 0, err
 	}
-	c.mu.RUnlock()
 
-	// Convert address to I2P address
-	var i2pAddr i2pkeys.I2PAddr
-
-	switch a := addr.(type) {
-	case *Datagram3Addr:
-		// If address has full destination, use it
-		if a.addr != "" {
-			i2pAddr = a.addr
-		} else if len(a.hash) == 32 {
-			// Only hash available - resolve it
-			log.Debug("Resolving hash for WriteTo")
-			resolved, err := c.session.resolver.ResolveHash(a.hash)
-			if err != nil {
-				return 0, oops.Errorf("failed to resolve hash: %w", err)
-			}
-			i2pAddr = resolved
-		} else {
-			return 0, oops.Errorf("address has neither full destination nor valid hash")
-		}
-	case *i2pkeys.I2PAddr:
-		i2pAddr = *a
-	case i2pkeys.I2PAddr:
-		i2pAddr = a
-	default:
-		return 0, oops.Errorf("address must be Datagram3Addr or I2PAddr")
+	i2pAddr, err := c.convertToI2PAddr(addr)
+	if err != nil {
+		return 0, err
 	}
 
 	err = c.writer.SendDatagram(p, i2pAddr)
