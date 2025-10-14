@@ -67,7 +67,7 @@ func (w *Datagram3Writer) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error 
 
 	// Build and send the datagram3 message
 	udpMessage := w.buildDatagram3Message(dest, data)
-	
+
 	logger.WithFields(logrus.Fields{
 		"total_size": len(udpMessage),
 	}).Debug("Sending UDP datagram3 to SAM")
@@ -87,7 +87,7 @@ func (w *Datagram3Writer) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error 
 func (w *Datagram3Writer) validateSessionState() error {
 	w.session.mu.RLock()
 	defer w.session.mu.RUnlock()
-	
+
 	if w.session.closed {
 		return oops.Errorf("session is closed")
 	}
