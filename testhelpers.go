@@ -50,21 +50,42 @@ func SetupTestListener(t *testing.T, config *TestListenerConfig) *TestListener {
 		config = DefaultTestListenerConfig("test_listener")
 	}
 
-	// Create SAM connection
+	sam := createSAMConnection(t)
+	keys := generateListenerKeys(t, sam)
+	session := createStreamSession(t, sam, config.SessionID, keys)
+	listener := createListener(t, session, sam)
+
+	testListener := initializeTestListener(sam, session, listener, keys)
+	go testListener.serve(t, config.HTTPResponse)
+
+	waitForListenerReady(t, testListener, config.Timeout)
+
+	t.Logf("Test listener ready at %s", testListener.addr.Base32())
+	return testListener
+}
+
+// createSAMConnection establishes a SAM connection for the test listener.
+func createSAMConnection(t *testing.T) *SAM {
 	sam, err := NewSAM(SAMDefaultAddr(""))
 	if err != nil {
 		t.Fatalf("Failed to create SAM connection for test listener: %v", err)
 	}
+	return sam
+}
 
-	// Generate keys for the listener
+// generateListenerKeys creates cryptographic keys for the test listener identity.
+func generateListenerKeys(t *testing.T, sam *SAM) i2pkeys.I2PKeys {
 	keys, err := sam.NewKeys()
 	if err != nil {
 		sam.Close()
 		t.Fatalf("Failed to generate keys for test listener: %v", err)
 	}
+	return keys
+}
 
-	// Create stream session with minimal 1-hop configuration for faster testing
-	session, err := sam.NewStreamSession(config.SessionID, keys, []string{
+// createStreamSession establishes a minimal 1-hop I2P session for faster testing.
+func createStreamSession(t *testing.T, sam *SAM, sessionID string, keys i2pkeys.I2PKeys) *StreamSession {
+	session, err := sam.NewStreamSession(sessionID, keys, []string{
 		"inbound.length=1",
 		"outbound.length=1",
 		"inbound.lengthVariance=0",
@@ -76,36 +97,39 @@ func SetupTestListener(t *testing.T, config *TestListenerConfig) *TestListener {
 		sam.Close()
 		t.Fatalf("Failed to create stream session for test listener: %v", err)
 	}
+	return session
+}
 
-	// Create listener
+// createListener establishes an I2P listener on the session for accepting connections.
+func createListener(t *testing.T, session *StreamSession, sam *SAM) *StreamListener {
 	listener, err := session.Listen()
 	if err != nil {
 		session.Close()
 		sam.Close()
 		t.Fatalf("Failed to create listener for test listener: %v", err)
 	}
+	return listener
+}
 
-	testListener := &TestListener{
+// initializeTestListener constructs the TestListener structure with all required components.
+func initializeTestListener(sam *SAM, session *StreamSession, listener *StreamListener, keys i2pkeys.I2PKeys) *TestListener {
+	return &TestListener{
 		sam:      sam,
 		session:  session,
 		listener: listener,
 		addr:     keys.Addr(),
 	}
+}
 
-	// Start serving in background
-	go testListener.serve(t, config.HTTPResponse)
-
-	// Wait for listener to be ready with proper I2P timing
-	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+// waitForListenerReady blocks until the listener is accepting connections or times out.
+func waitForListenerReady(t *testing.T, testListener *TestListener, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	if err := testListener.waitForReady(ctx, t); err != nil {
 		testListener.Close()
 		t.Fatalf("Test listener failed to become ready: %v", err)
 	}
-
-	t.Logf("Test listener ready at %s", testListener.addr.Base32())
-	return testListener
 }
 
 // Addr returns the I2P address of the test listener.
