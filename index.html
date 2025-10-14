@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 199 commits
+        📝 211 commits
         
       </div>
     </div>
@@ -60,12 +60,12 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>199 commits</span>
+          <span>📝</span> <span>211 commits</span>
         </div>
         
         
         <div class="repo-stat">
-          <span>📅</span> <span>Last updated: October 9, 2025</span>
+          <span>📅</span> <span>Last updated: October 14, 2025</span>
         </div>
         
         
@@ -97,8 +97,8 @@
 <p><strong>Implemented &amp; Documented (Awaiting I2P Router Support):</strong></p>
 
 <ul>
-<li>⚠️ <strong>Datagram2</strong> - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet)</li>
-<li>⚠️ <strong>Datagram3</strong> - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet)</li>
+<li>⚠️ <strong>Datagram2</strong> - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet, available in dev builds)</li>
+<li>⚠️ <strong>Datagram3</strong> - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet, available in dev builds)</li>
 </ul>
 
 <p><strong>Partially Implemented:</strong></p>
@@ -263,17 +263,7 @@ writer := session.NewWriter()
 err = writer.SendDatagram(replyData, datagram.Source)
 </code></pre>
 
-<p><strong>Security:</strong> ⚠️ <strong>Sources are NOT authenticated and can be spoofed!</strong> Only use when:</p>
-
-<ul>
-<li>Application implements message-level authentication (signatures, HMAC, etc.)</li>
-<li>Source identity is not security-critical</li>
-<li>Lower overhead is essential</li>
-</ul>
-
-<p><strong>Use DATAGRAM2 instead if you need authenticated sources.</strong></p>
-
-<p><strong>Status:</strong> Implementation complete with comprehensive security documentation. Waiting for I2P router support.</p>
+<p><strong>Status:</strong> Implementation complete with documentation. Waiting for I2P router support.</p>
 
 <h3 id="configuration">Configuration</h3>
 
@@ -323,28 +313,12 @@ go test -race -short ./...
 
 <ul>
 <li><strong><a href="datagram2/README.md" target="_blank">datagram2/</a></strong> - DATAGRAM2 authenticated datagrams with replay protection</li>
-<li><strong><a href="datagram3/README.md" target="_blank">datagram3/</a></strong> - ⚠️ DATAGRAM3 unauthenticated datagrams (security warnings!)</li>
+<li><strong><a href="datagram3/README.md" target="_blank">datagram3/</a></strong> - DATAGRAM3 unauthenticated datagrams</li>
 <li><strong><a href="stream/" target="_blank">stream/</a></strong> - TCP-like reliable connections</li>
 <li><strong><a href="datagram/" target="_blank">datagram/</a></strong> - Legacy authenticated datagrams</li>
 <li><strong><a href="raw/" target="_blank">raw/</a></strong> - Encrypted unauthenticated datagrams</li>
 <li><strong><a href="primary/" target="_blank">primary/</a></strong> - PRIMARY session management</li>
 </ul>
-
-<h2 id="security-notes">🔒 Security Notes</h2>
-
-<h3 id="datagram3-security-warning">DATAGRAM3 Security Warning</h3>
-
-<p>⚠️ <strong>CRITICAL:</strong> DATAGRAM3 sources are <strong>NOT authenticated</strong>. Any attacker can claim to be any sender by providing a fake hash. Only use DATAGRAM3 when:</p>
-
-<ol>
-<li>You implement application-layer authentication (Ed25519 signatures, HMAC, etc.)</li>
-<li>Source identity is not security-critical</li>
-<li>You understand the security implications</li>
-</ol>
-
-<p><strong>For authenticated sources, use DATAGRAM2 instead.</strong></p>
-
-<p>See <a href="datagram3/AUDIT.md" target="_blank">datagram3/AUDIT.md</a> for comprehensive security analysis including attack scenarios and mitigations.</p>
 
 <h3 id="i2p-timing-considerations">I2P Timing Considerations</h3>
 
@@ -385,7 +359,7 @@ go test -race -short ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                197 commits
+                209 commits
               </div>
             </div>
           </div>
@@ -412,7 +386,7 @@ go test -race -short ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-14 23:11:12 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-14 23:14:06 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
