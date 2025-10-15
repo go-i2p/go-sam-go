@@ -122,8 +122,9 @@ var (
 	// Defaults to 7656, the standard SAM bridge port.
 	SAM_PORT = getEnv("sam_port", "7656")
 
-	// PrimarySessionSwitch enables primary session functionality.
-	// This is used internally to enable multi-session capabilities.
+	// PrimarySessionSwitch is a constant string identifier for PRIMARY session style.
+	// This is exported for compatibility but serves primarily as a string constant.
+	// Value is always "PRIMARY" and is used in SAM protocol commands.
 	PrimarySessionSwitch = PrimarySessionString()
 )
 
@@ -138,11 +139,10 @@ func getEnv(key, defaultValue string) string {
 	return strings.TrimSpace(value)
 }
 
-// PrimarySessionString returns the primary session configuration identifier.
-// This function provides compatibility with the sam3 library's primary session
-// switch mechanism for enabling advanced session management features.
+// PrimarySessionString returns the primary session style identifier used in SAM protocol.
+// This function returns the constant "PRIMARY" which is used when creating PRIMARY-style
+// sessions via the SAM bridge protocol. The value is used in SESSION CREATE commands
+// to specify the session style that enables multi-subsession management.
 func PrimarySessionString() string {
-	// Return a basic primary session identifier
-	// This will be enhanced when the primary package is implemented
 	return "PRIMARY"
 }

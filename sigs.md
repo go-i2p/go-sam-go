@@ -865,14 +865,6 @@ func (sam *PrimarySession) NewStreamSubSession(id string) (*StreamSession, error
 Creates a new StreamSession with the I2CP- and streaminglib options as
 specified. See the I2P documentation for a full list of options.
 
-#### func (*PrimarySession) NewStreamSubSessionWithPorts
-
-```go
-func (sam *PrimarySession) NewStreamSubSessionWithPorts(id, from, to string) (*StreamSession, error)
-```
-Creates a new StreamSession with the I2CP- and streaminglib options as
-specified. See the I2P documentation for a full list of options.
-
 #### func (*PrimarySession) NewUniqueStreamSubSession
 
 ```go

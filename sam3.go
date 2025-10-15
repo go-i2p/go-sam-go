@@ -270,12 +270,12 @@ func NewFullSAMResolver(address string) (*SAMResolver, error) {
 //	    return err
 //	}
 //
-//	session, err := NewPrimarySession(sam, "my-primary", keys, []string{"inbound.length=2"})
+//	primary, err := sam.NewPrimarySession("my-primary", keys, Options_Default)
 //	if err != nil {
 //	    return err
 //	}
-//	defer session.Close()
+//	defer primary.Close()
 //
 //	// Create sub-sessions
-//	streamSub, err := session.NewStreamSubSession("stream-1", streamOptions)
-//	datagramSub, err := session.NewDatagramSubSession("datagram-1", datagramOptions)
+//	streamSub, err := primary.NewStreamSubSession("stream-1", []string{})
+//	datagramSub, err := primary.NewDatagramSubSession("datagram-1", []string{})

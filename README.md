@@ -9,15 +9,13 @@ A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focuse
 
 **Stable & Production-Ready:**
 - ✅ **Stream** - TCP-like reliable connections (fully tested)
-- ✅ **Datagram** - Legacy authenticated repliable datagrams (fully tested)
-- ✅ **Raw** - Encrypted unauthenticated datagrams (fully tested)
+- ✅ **Datagram** - Legacy authenticated repliable datagrams (fully tested, SAMv3 UDP forwarding required)
+- ✅ **Raw** - Encrypted unauthenticated datagrams (fully tested, SAMv3 UDP forwarding required)
+- ✅ **Primary Sessions** - Multi-session management (fully implemented with comprehensive lifecycle management)
 
 **Implemented & Documented (Awaiting I2P Router Support):**
 - ⚠️ **Datagram2** - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet, available in dev builds)
-- ⚠️ **Datagram3** - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet, available in dev builds)
-
-**Partially Implemented:**
-- 🔶 **Primary Sessions** - Multi-session management (works but needs more testing)
+- ⚠️ **Datagram3** - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet, available in dev builds, requires direct package import)
 
 **Note:** DATAGRAM2 and DATAGRAM3 are fully implemented in this library but require I2P router support (Java I2P or i2pd) to function. Check your router's release notes for SAMv3 DATAGRAM2/3 support.
 
@@ -95,24 +93,36 @@ sub2, err := primary.NewDatagramSubSession("chat")
 TCP-like reliable connections:
 ```go
 listener, err := session.Listen()
+conn, err := listener.Accept()  // Reuse listener for multiple connections
+// or for single connection (creates new listener each time - less efficient)
 conn, err := session.Accept()
-// or
+// or dial outbound
 conn, err := session.DialI2P(remote)
 ```
 
+**Performance Note:** For servers accepting multiple connections, use `Listen()` once and call `Accept()` on the listener. The `session.Accept()` method creates and destroys a new listener for each call, which is inefficient for high-traffic scenarios.
+
 #### `datagram` Package
-UDP-like message delivery:
+UDP-like message delivery with SAMv3 UDP forwarding:
 ```go
-dgram, err := sam.NewDatagramSession("udp", keys, options, 0) // 0 = use default UDP port
+// SAMv3 UDP forwarding is mandatory - creates local UDP listener automatically
+// Port parameter: 0 = OS-assigned port for local UDP listener (not SAM bridge port 7655)
+dgram, err := sam.NewDatagramSession("udp", keys, options, 0)
 n, err := dgram.WriteTo(data, dest)
 ```
 
+**Important:** All datagram sessions in this library use SAMv3 UDP forwarding. A local UDP listener is automatically created for receiving forwarded datagrams from the I2P router. The port parameter specifies the local listener port (0 for auto-assignment), NOT the SAM bridge's UDP port (which defaults to 7655).
+
 #### `raw` Package
-Low-level datagram access:
+Low-level datagram access with SAMv3 UDP forwarding:
 ```go
-raw, err := sam.NewRawSession("raw", keys, options, 0) // 0 = auto-assign UDP port
+// SAMv3 UDP forwarding is mandatory - creates local UDP listener automatically
+// Port parameter: 0 = OS-assigned port for local UDP listener (not SAM bridge port 7655)
+raw, err := sam.NewRawSession("raw", keys, options, 0)
 n, err := raw.WriteTo(data, dest)
 ```
+
+**Important:** All raw sessions in this library use SAMv3 UDP forwarding. A local UDP listener is automatically created for receiving forwarded datagrams from the I2P router. The port parameter specifies the local listener port (0 for auto-assignment), NOT the SAM bridge's UDP port.
 
 #### `datagram2` Package
 Authenticated repliable datagrams with replay protection:
@@ -142,12 +152,22 @@ n, addr, err := conn.ReadFrom(buffer)
 
 #### `datagram3` Package
 ⚠️ **SECURITY WARNING:** Unauthenticated repliable datagrams with hash-based sources:
+
+**Note:** Datagram3 is not integrated into the root `sam3` package API. You must import and use the `datagram3` package directly.
+
 ```go
 // DATAGRAM3 - UNAUTHENTICATED sources (requires router support + app-layer auth)
 // Sources are 32-byte hashes that can be spoofed - implement your own authentication!
 import "github.com/go-i2p/go-sam-go/datagram3"
+import "github.com/go-i2p/go-sam-go/common"
 
-session, err := datagram3.NewDatagram3Session(sam, "session-id", keys, options)
+// Create SAM connection using common package
+samCommon, err := common.NewSAM("127.0.0.1:7656")
+if err != nil {
+    log.Fatal(err)
+}
+
+session, err := datagram3.NewDatagram3Session(samCommon, "session-id", keys, options)
 if err != nil {
     log.Fatal(err)
 }
