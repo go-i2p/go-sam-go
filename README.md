@@ -213,10 +213,10 @@ go test -race -short ./...
 
 Each sub-package has comprehensive documentation:
 
-- **[datagram2/](datagram2/README.md)** - DATAGRAM2 authenticated datagrams with replay protection
-- **[datagram3/](datagram3/README.md)** - DATAGRAM3 unauthenticated datagrams
 - **[stream/](stream/)** - TCP-like reliable connections
 - **[datagram/](datagram/)** - Legacy authenticated datagrams
+- **[datagram2/](datagram2/)** - DATAGRAM2 authenticated datagrams with replay protection
+- **[datagram3/](datagram3/)** - DATAGRAM3 unauthenticated datagrams
 - **[raw/](raw/)** - Encrypted unauthenticated datagrams
 - **[primary/](primary/)** - PRIMARY session management
 

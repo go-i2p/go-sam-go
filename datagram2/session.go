@@ -18,53 +18,23 @@ import (
 // forwarded datagrams per SAMv3 requirements.
 // Example usage: session, err := NewDatagram2Session(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewDatagram2Session(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*Datagram2Session, error) {
-	// Log session creation with detailed parameters for debugging
-	logger := log.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{
 		"id":      id,
 		"style":   "DATAGRAM2",
 		"options": options,
-	})
-	logger.Debug("Creating new Datagram2Session with SAMv3 UDP forwarding")
+	}).Debug("Creating new Datagram2Session with SAMv3 UDP forwarding")
 
-	// Create UDP listener for receiving forwarded datagrams (SAMv3 requirement)
-	// The SAM bridge will forward incoming DATAGRAM2 messages to this local UDP port
-	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	// Create UDP listener and inject forwarding parameters
+	udpConn, options, err := setupUDPForwardingListener(options)
 	if err != nil {
-		logger.WithError(err).Error("Failed to resolve UDP address")
-		return nil, oops.Errorf("failed to resolve UDP address: %w", err)
+		return nil, err
 	}
 
-	udpConn, err := net.ListenUDP("udp", udpAddr)
+	// Create the base session for datagram2
+	baseSession, err := createGenericDatagram2Session(sam, id, keys, options)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create UDP listener")
-		return nil, oops.Errorf("failed to create UDP listener: %w", err)
-	}
-
-	// Get the actual port assigned by the OS
-	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
-	logger.WithField("udp_port", udpPort).Debug("Created UDP listener for datagram2 forwarding")
-
-	// Inject UDP forwarding parameters into session options (SAMv3 requirement)
-	// PORT/HOST tell the SAM bridge where to forward received datagrams
-	options = ensureUDPForwardingParameters(options, udpPort)
-
-	// CRITICAL: Use STYLE=DATAGRAM2 (not DATAGRAM) for replay protection
-	// Create the base session using the common package for session management
-	// This handles the underlying SAM protocol communication and session establishment
-	session, err := sam.NewGenericSession("DATAGRAM2", id, keys, options)
-	if err != nil {
-		logger.WithError(err).Error("Failed to create generic session")
-		udpConn.Close() // Clean up UDP listener on error
-		return nil, oops.Errorf("failed to create datagram2 session: %w", err)
-	}
-
-	// Ensure the session is of the correct type for datagram2 operations
-	baseSession, ok := session.(*common.BaseSession)
-	if !ok {
-		logger.Error("Session is not a BaseSession")
-		session.Close()
-		udpConn.Close() // Clean up UDP listener on error
-		return nil, oops.Errorf("invalid session type")
+		udpConn.Close()
+		return nil, err
 	}
 
 	// Initialize the datagram2 session with UDP forwarding enabled
@@ -76,8 +46,59 @@ func NewDatagram2Session(sam *common.SAM, id string, keys i2pkeys.I2PKeys, optio
 		udpEnabled:  true, // Always true for SAMv3
 	}
 
-	logger.Debug("Successfully created Datagram2Session with UDP forwarding and replay protection")
+	log.Debug("Successfully created Datagram2Session with UDP forwarding and replay protection")
 	return ds, nil
+}
+
+// setupUDPForwardingListener creates a UDP listener and injects forwarding parameters.
+// This helper creates a UDP listener for SAMv3 datagram forwarding and automatically configures
+// the session options to include the HOST and PORT parameters required by the SAM bridge.
+// Returns the UDP connection, updated options slice, and any error encountered.
+func setupUDPForwardingListener(options []string) (*net.UDPConn, []string, error) {
+	// Create UDP listener for receiving forwarded datagrams
+	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		log.WithError(err).Error("Failed to resolve UDP address")
+		return nil, nil, oops.Errorf("failed to resolve UDP address: %w", err)
+	}
+
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		log.WithError(err).Error("Failed to create UDP listener")
+		return nil, nil, oops.Errorf("failed to create UDP listener: %w", err)
+	}
+
+	// Get the actual port assigned by the OS
+	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
+	log.WithField("udp_port", udpPort).Debug("Created UDP listener for datagram2 forwarding")
+
+	// Inject UDP forwarding parameters into session options
+	options = ensureUDPForwardingParameters(options, udpPort)
+
+	return udpConn, options, nil
+}
+
+// createGenericDatagram2Session creates a validated BaseSession for datagram2.
+// This helper creates the generic session through the SAM bridge using STYLE=DATAGRAM2,
+// validates the session type, and ensures proper cleanup on error. It uses DATAGRAM2
+// for replay protection.
+func createGenericDatagram2Session(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*common.BaseSession, error) {
+	// Create the base session using DATAGRAM2 style for replay protection
+	session, err := sam.NewGenericSession("DATAGRAM2", id, keys, options)
+	if err != nil {
+		log.WithError(err).Error("Failed to create generic session")
+		return nil, oops.Errorf("failed to create datagram2 session: %w", err)
+	}
+
+	// Validate session type
+	baseSession, ok := session.(*common.BaseSession)
+	if !ok {
+		log.Error("Session is not a BaseSession")
+		session.Close()
+		return nil, oops.Errorf("invalid session type")
+	}
+
+	return baseSession, nil
 }
 
 // ensureUDPForwardingParameters injects UDP forwarding parameters into session options if not already present.

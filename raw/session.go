@@ -51,46 +51,22 @@ func ensureRawUDPForwardingParameters(options []string, udpPort int) []string {
 // Returns a RawSession instance that uses UDP forwarding for all raw datagram reception.
 // Example usage: session, err := NewRawSession(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{
 		"id":      id,
 		"options": options,
-	})
-	logger.Debug("Creating new RawSession with SAMv3 UDP forwarding")
+	}).Debug("Creating new RawSession with SAMv3 UDP forwarding")
 
-	// Create UDP listener for receiving forwarded raw datagrams (SAMv3 requirement)
-	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	// Create UDP listener and inject forwarding parameters
+	udpConn, options, err := setupRawUDPForwarding(options)
 	if err != nil {
-		logger.WithError(err).Error("Failed to resolve UDP address")
-		return nil, oops.Errorf("failed to resolve UDP address: %w", err)
+		return nil, err
 	}
 
-	udpConn, err := net.ListenUDP("udp", udpAddr)
+	// Create the base session for raw datagrams
+	baseSession, err := createGenericRawSession(sam, id, keys, options)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create UDP listener")
-		return nil, oops.Errorf("failed to create UDP listener: %w", err)
-	}
-
-	// Get the actual port assigned by the OS
-	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
-	logger.WithField("udp_port", udpPort).Debug("Created UDP listener for raw datagram forwarding")
-
-	// Inject UDP forwarding parameters into session options (SAMv3 requirement)
-	options = ensureRawUDPForwardingParameters(options, udpPort)
-
-	// Create the base session using the common package
-	session, err := sam.NewGenericSession("RAW", id, keys, options)
-	if err != nil {
-		logger.WithError(err).Error("Failed to create generic session")
-		udpConn.Close() // Clean up UDP listener on error
-		return nil, oops.Errorf("failed to create raw session: %w", err)
-	}
-
-	baseSession, ok := session.(*common.BaseSession)
-	if !ok {
-		logger.Error("Session is not a BaseSession")
-		session.Close()
-		udpConn.Close() // Clean up UDP listener on error
-		return nil, oops.Errorf("invalid session type")
+		udpConn.Close()
+		return nil, err
 	}
 
 	rs := &RawSession{
@@ -101,8 +77,58 @@ func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []s
 		udpEnabled:  true,
 	}
 
-	logger.Debug("Successfully created RawSession with UDP forwarding")
+	log.Debug("Successfully created RawSession with UDP forwarding")
 	return rs, nil
+}
+
+// setupRawUDPForwarding creates a UDP listener and injects forwarding parameters.
+// This helper creates a UDP listener for SAMv3 raw datagram forwarding and automatically
+// configures the session options to include the HOST and PORT parameters required by the SAM bridge.
+// Returns the UDP connection, updated options slice, and any error encountered.
+func setupRawUDPForwarding(options []string) (*net.UDPConn, []string, error) {
+	// Create UDP listener for receiving forwarded raw datagrams
+	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		log.WithError(err).Error("Failed to resolve UDP address")
+		return nil, nil, oops.Errorf("failed to resolve UDP address: %w", err)
+	}
+
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		log.WithError(err).Error("Failed to create UDP listener")
+		return nil, nil, oops.Errorf("failed to create UDP listener: %w", err)
+	}
+
+	// Get the actual port assigned by the OS
+	udpPort := udpConn.LocalAddr().(*net.UDPAddr).Port
+	log.WithField("udp_port", udpPort).Debug("Created UDP listener for raw datagram forwarding")
+
+	// Inject UDP forwarding parameters into session options
+	options = ensureRawUDPForwardingParameters(options, udpPort)
+
+	return udpConn, options, nil
+}
+
+// createGenericRawSession creates a validated BaseSession for raw datagrams.
+// This helper creates the generic session through the SAM bridge using STYLE=RAW,
+// validates the session type, and ensures proper cleanup on error.
+func createGenericRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*common.BaseSession, error) {
+	// Create the base session using RAW style
+	session, err := sam.NewGenericSession("RAW", id, keys, options)
+	if err != nil {
+		log.WithError(err).Error("Failed to create generic session")
+		return nil, oops.Errorf("failed to create raw session: %w", err)
+	}
+
+	// Validate session type
+	baseSession, ok := session.(*common.BaseSession)
+	if !ok {
+		log.Error("Session is not a BaseSession")
+		session.Close()
+		return nil, oops.Errorf("invalid session type")
+	}
+
+	return baseSession, nil
 }
 
 // NewRawSessionFromSubsession creates a RawSession for a subsession that has already been
