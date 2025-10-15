@@ -132,7 +132,7 @@ func (sam *SAMResolver) sendLookupRequest(name string, options bool) error {
 	if options {
 		cmd += " OPTIONS=true"
 	}
-	cmd += "\r\n"
+	cmd += "\n"
 
 	log.WithFields(logrus.Fields{
 		"name":    name,
