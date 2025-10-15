@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 213 commits
+        📝 214 commits
         
       </div>
     </div>
@@ -60,7 +60,7 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>213 commits</span>
+          <span>📝</span> <span>214 commits</span>
         </div>
         
         
@@ -90,21 +90,16 @@
 
 <ul>
 <li>✅ <strong>Stream</strong> - TCP-like reliable connections (fully tested)</li>
-<li>✅ <strong>Datagram</strong> - Legacy authenticated repliable datagrams (fully tested)</li>
-<li>✅ <strong>Raw</strong> - Encrypted unauthenticated datagrams (fully tested)</li>
+<li>✅ <strong>Datagram</strong> - Legacy authenticated repliable datagrams (fully tested, SAMv3 UDP forwarding required)</li>
+<li>✅ <strong>Raw</strong> - Encrypted unauthenticated datagrams (fully tested, SAMv3 UDP forwarding required)</li>
+<li>✅ <strong>Primary Sessions</strong> - Multi-session management (fully implemented with comprehensive lifecycle management)</li>
 </ul>
 
 <p><strong>Implemented &amp; Documented (Awaiting I2P Router Support):</strong></p>
 
 <ul>
 <li>⚠️ <strong>Datagram2</strong> - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet, available in dev builds)</li>
-<li>⚠️ <strong>Datagram3</strong> - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet, available in dev builds)</li>
-</ul>
-
-<p><strong>Partially Implemented:</strong></p>
-
-<ul>
-<li>🔶 <strong>Primary Sessions</strong> - Multi-session management (works but needs more testing)</li>
+<li>⚠️ <strong>Datagram3</strong> - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet, available in dev builds, requires direct package import)</li>
 </ul>
 
 <p><strong>Note:</strong> DATAGRAM2 and DATAGRAM3 are fully implemented in this library but require I2P router support (Java I2P or i2pd) to function. Check your router&rsquo;s release notes for SAMv3 DATAGRAM2/3 support.</p>
@@ -188,26 +183,38 @@ sub2, err := primary.NewDatagramSubSession(&quot;chat&quot;)
 <p>TCP-like reliable connections:</p>
 
 <pre><code class="language-go">listener, err := session.Listen()
+conn, err := listener.Accept()  // Reuse listener for multiple connections
+// or for single connection (creates new listener each time - less efficient)
 conn, err := session.Accept()
-// or
+// or dial outbound
 conn, err := session.DialI2P(remote)
 </code></pre>
 
+<p><strong>Performance Note:</strong> For servers accepting multiple connections, use <code>Listen()</code> once and call <code>Accept()</code> on the listener. The <code>session.Accept()</code> method creates and destroys a new listener for each call, which is inefficient for high-traffic scenarios.</p>
+
 <h4 id="datagram-package"><code>datagram</code> Package</h4>
 
-<p>UDP-like message delivery:</p>
+<p>UDP-like message delivery with SAMv3 UDP forwarding:</p>
 
-<pre><code class="language-go">dgram, err := sam.NewDatagramSession(&quot;udp&quot;, keys, options, 0) // 0 = use default UDP port
+<pre><code class="language-go">// SAMv3 UDP forwarding is mandatory - creates local UDP listener automatically
+// Port parameter: 0 = OS-assigned port for local UDP listener (not SAM bridge port 7655)
+dgram, err := sam.NewDatagramSession(&quot;udp&quot;, keys, options, 0)
 n, err := dgram.WriteTo(data, dest)
 </code></pre>
 
+<p><strong>Important:</strong> All datagram sessions in this library use SAMv3 UDP forwarding. A local UDP listener is automatically created for receiving forwarded datagrams from the I2P router. The port parameter specifies the local listener port (0 for auto-assignment), NOT the SAM bridge&rsquo;s UDP port (which defaults to 7655).</p>
+
 <h4 id="raw-package"><code>raw</code> Package</h4>
 
-<p>Low-level datagram access:</p>
+<p>Low-level datagram access with SAMv3 UDP forwarding:</p>
 
-<pre><code class="language-go">raw, err := sam.NewRawSession(&quot;raw&quot;, keys, options, 0) // 0 = auto-assign UDP port
+<pre><code class="language-go">// SAMv3 UDP forwarding is mandatory - creates local UDP listener automatically
+// Port parameter: 0 = OS-assigned port for local UDP listener (not SAM bridge port 7655)
+raw, err := sam.NewRawSession(&quot;raw&quot;, keys, options, 0)
 n, err := raw.WriteTo(data, dest)
 </code></pre>
+
+<p><strong>Important:</strong> All raw sessions in this library use SAMv3 UDP forwarding. A local UDP listener is automatically created for receiving forwarded datagrams from the I2P router. The port parameter specifies the local listener port (0 for auto-assignment), NOT the SAM bridge&rsquo;s UDP port.</p>
 
 <h4 id="datagram2-package"><code>datagram2</code> Package</h4>
 
@@ -240,11 +247,20 @@ n, addr, err := conn.ReadFrom(buffer)
 
 <p>⚠️ <strong>SECURITY WARNING:</strong> Unauthenticated repliable datagrams with hash-based sources:</p>
 
+<p><strong>Note:</strong> Datagram3 is not integrated into the root <code>sam3</code> package API. You must import and use the <code>datagram3</code> package directly.</p>
+
 <pre><code class="language-go">// DATAGRAM3 - UNAUTHENTICATED sources (requires router support + app-layer auth)
 // Sources are 32-byte hashes that can be spoofed - implement your own authentication!
 import &quot;github.com/go-i2p/go-sam-go/datagram3&quot;
+import &quot;github.com/go-i2p/go-sam-go/common&quot;
 
-session, err := datagram3.NewDatagram3Session(sam, &quot;session-id&quot;, keys, options)
+// Create SAM connection using common package
+samCommon, err := common.NewSAM(&quot;127.0.0.1:7656&quot;)
+if err != nil {
+    log.Fatal(err)
+}
+
+session, err := datagram3.NewDatagram3Session(samCommon, &quot;session-id&quot;, keys, options)
 if err != nil {
     log.Fatal(err)
 }
@@ -359,7 +375,7 @@ go test -race -short ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                211 commits
+                212 commits
               </div>
             </div>
           </div>
@@ -386,7 +402,7 @@ go test -race -short ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-15 23:11:15 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-15 23:26:22 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
