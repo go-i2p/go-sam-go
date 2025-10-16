@@ -44,6 +44,9 @@ func NewFullSAMResolver(address string) (*SAMResolver, error) {
 func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error) {
 	log.WithField("name", name).Debug("Resolving name")
 
+	// Trim away the port, if it appears
+	name = strings.Split(name, ":")[0]
+
 	if err := sam.sendLookupRequest(name, false); err != nil {
 		return i2pkeys.I2PAddr(""), err
 	}
@@ -107,6 +110,9 @@ func (sam *SAMResolver) ResolveWithOptions(name string, options bool) (i2pkeys.I
 		"name":    name,
 		"options": options,
 	}).Debug("Resolving name with options")
+
+	// Trim away the port, if it appears
+	name = strings.Split(name, ":")[0]
 
 	if err := sam.sendLookupRequest(name, options); err != nil {
 		return i2pkeys.I2PAddr(""), nil, err
