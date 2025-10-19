@@ -72,7 +72,10 @@ func (sam *SAM) configureSessionParameters(style, id, from, to string, keys i2pk
 func (sam *SAM) buildSessionCreateMessage(extras []string) ([]byte, error) {
 	baseMsg := strings.TrimSuffix(sam.SAMEmit.Create(), " \n")
 
-	extraStr := strings.Join(extras, " ")
+	// Validate extras for signature type conflicts and clean them if needed
+	cleanedExtras := validateAndCleanOptions(sam.SAMEmit.I2PConfig.SigType, extras)
+
+	extraStr := strings.Join(cleanedExtras, " ")
 	if extraStr != "" {
 		baseMsg += " " + extraStr
 	}
