@@ -260,3 +260,73 @@ func TestSignatureTypeConflictResolution(t *testing.T) {
 		}
 	})
 }
+
+// TestValidateSubSessionOptions tests that SESSION ADD properly removes
+// SIGNATURE_TYPE entries according to SAMv3.3 specification.
+func TestValidateSubSessionOptions(t *testing.T) {
+	tests := []struct {
+		name            string
+		options         []string
+		expectedOptions []string
+		expectWarning   bool
+	}{
+		{
+			name:            "NoSignatureType",
+			options:         []string{"PORT=7000", "inbound.length=2"},
+			expectedOptions: []string{"PORT=7000", "inbound.length=2"},
+			expectWarning:   false,
+		},
+		{
+			name:            "WithSignatureType",
+			options:         []string{"SIGNATURE_TYPE=EdDSA_SHA512_Ed25519", "PORT=7000"},
+			expectedOptions: []string{"PORT=7000"},
+			expectWarning:   true,
+		},
+		{
+			name:            "MultipleSignatureTypes",
+			options:         []string{"SIGNATURE_TYPE=ECDSA_SHA256_P256", "PORT=7000", "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"},
+			expectedOptions: []string{"PORT=7000"},
+			expectWarning:   true,
+		},
+		{
+			name:            "OnlySignatureTypes",
+			options:         []string{"SIGNATURE_TYPE=DSA_SHA1", "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"},
+			expectedOptions: []string{},
+			expectWarning:   true,
+		},
+		{
+			name:            "EmptyOptions",
+			options:         []string{},
+			expectedOptions: []string{},
+			expectWarning:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateSubSessionOptions(tt.options)
+
+			// Check result length
+			if len(result) != len(tt.expectedOptions) {
+				t.Errorf("Expected %d options, got %d", len(tt.expectedOptions), len(result))
+				t.Errorf("Expected: %v", tt.expectedOptions)
+				t.Errorf("Got: %v", result)
+				return
+			}
+
+			// Check each option
+			for i, expected := range tt.expectedOptions {
+				if result[i] != expected {
+					t.Errorf("Option %d: expected %q, got %q", i, expected, result[i])
+				}
+			}
+
+			// Ensure no SIGNATURE_TYPE remains
+			for _, opt := range result {
+				if strings.HasPrefix(opt, "SIGNATURE_TYPE=") {
+					t.Errorf("Found unexpected SIGNATURE_TYPE in result: %q", opt)
+				}
+			}
+		})
+	}
+}

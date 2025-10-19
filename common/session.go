@@ -310,7 +310,13 @@ func (sam *SAM) RemoveSubSession(id string) error {
 func (sam *SAM) buildSessionAddMessage(style, id string, options []string) ([]byte, error) {
 	baseMsg := "SESSION ADD STYLE=" + style + " ID=" + id
 
-	extraStr := strings.Join(options, " ")
+	// Validate and clean options - SESSION ADD should not contain SIGNATURE_TYPE
+	// Per SAMv3.3 spec: "Do not set the DESTINATION option on a SESSION ADD.
+	// The subsession will use the destination specified in the primary session."
+	// This also applies to SIGNATURE_TYPE since it's part of the destination.
+	cleanedOptions := validateSubSessionOptions(options)
+
+	extraStr := strings.Join(cleanedOptions, " ")
 	if extraStr != "" {
 		baseMsg += " " + extraStr
 	}

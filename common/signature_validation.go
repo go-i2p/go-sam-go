@@ -92,3 +92,31 @@ func ExtractSignatureType(options []string) (string, []string) {
 func EnsureSignatureType(sigType string, options []string) []string {
 	return validateAndCleanOptions(sigType, options)
 }
+
+// validateSubSessionOptions validates and cleans options for SESSION ADD commands.
+// Per SAMv3.3 spec: "Do not set the DESTINATION option on a SESSION ADD.
+// The subsession will use the destination specified in the primary session."
+// This also applies to SIGNATURE_TYPE since it's part of the destination.
+// Removes any SIGNATURE_TYPE entries and logs warnings about spec violations.
+func validateSubSessionOptions(options []string) []string {
+	var cleanedOptions []string
+	var removedEntries []string
+
+	for _, opt := range options {
+		if strings.HasPrefix(opt, "SIGNATURE_TYPE=") {
+			removedEntries = append(removedEntries, opt)
+			logrus.WithField("removedOption", opt).Warn("Removing SIGNATURE_TYPE from SESSION ADD - subsessions inherit signature type from primary session per SAMv3.3 spec")
+			continue
+		}
+		cleanedOptions = append(cleanedOptions, opt)
+	}
+
+	if len(removedEntries) > 0 {
+		logrus.WithFields(logrus.Fields{
+			"removedOptions":   removedEntries,
+			"remainingOptions": cleanedOptions,
+		}).Warn("SESSION ADD signature type entries removed - subsessions inherit from primary session")
+	}
+
+	return cleanedOptions
+}
