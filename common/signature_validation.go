@@ -96,26 +96,149 @@ func EnsureSignatureType(sigType string, options []string) []string {
 // validateSubSessionOptions validates and cleans options for SESSION ADD commands.
 // Per SAMv3.3 spec: "Do not set the DESTINATION option on a SESSION ADD.
 // The subsession will use the destination specified in the primary session."
-// This also applies to SIGNATURE_TYPE since it's part of the destination.
-// Removes any SIGNATURE_TYPE entries and logs warnings about spec violations.
+// Also removes other options that are invalid for subsessions according to SAMv3.3:
+// - SIGNATURE_TYPE (part of destination, inherited from primary)
+// - i2cp.leaseSetEncType (lease set config, belongs to primary session)
+// - Tunnel configuration options (inbound/outbound lengths, quantities, etc.)
+// - Primary session specific options (sam.udp.host, sam.udp.port for primary)
 func validateSubSessionOptions(options []string) []string {
 	var cleanedOptions []string
 	var removedEntries []string
 
+	// Define options that are invalid for subsessions
+	invalidPrefixes := []string{
+		"SIGNATURE_TYPE=",
+		"DESTINATION=",
+		"i2cp.leaseSetEncType=",
+		"inbound.length=",
+		"outbound.length=",
+		"inbound.quantity=",
+		"outbound.quantity=",
+		"inbound.lengthVariance=",
+		"outbound.lengthVariance=",
+		"inbound.backupQuantity=",
+		"outbound.backupQuantity=",
+	}
+
 	for _, opt := range options {
-		if strings.HasPrefix(opt, "SIGNATURE_TYPE=") {
-			removedEntries = append(removedEntries, opt)
-			logrus.WithField("removedOption", opt).Warn("Removing SIGNATURE_TYPE from SESSION ADD - subsessions inherit signature type from primary session per SAMv3.3 spec")
-			continue
+		shouldRemove := false
+		var reason string
+
+		// Check against known invalid prefixes
+		for _, prefix := range invalidPrefixes {
+			if strings.HasPrefix(opt, prefix) {
+				shouldRemove = true
+				switch {
+				case strings.HasPrefix(prefix, "SIGNATURE_TYPE="):
+					reason = "subsessions inherit signature type from primary session"
+				case strings.HasPrefix(prefix, "DESTINATION="):
+					reason = "subsessions use destination from primary session"
+				case strings.HasPrefix(prefix, "i2cp.leaseSetEncType="):
+					reason = "lease set encryption is configured at primary session level"
+				case strings.HasPrefix(prefix, "inbound.") || strings.HasPrefix(prefix, "outbound."):
+					reason = "tunnel configuration belongs to primary session"
+				default:
+					reason = "option not valid for subsessions"
+				}
+				break
+			}
 		}
-		cleanedOptions = append(cleanedOptions, opt)
+
+		// Additional check for duplicate i2cp.leaseSetEncType entries
+		if strings.HasPrefix(opt, "i2cp.leaseSetEncType=") {
+			// Check if we already have this option type in cleaned options
+			for _, existing := range cleanedOptions {
+				if strings.HasPrefix(existing, "i2cp.leaseSetEncType=") {
+					logrus.WithFields(logrus.Fields{
+						"existing":  existing,
+						"duplicate": opt,
+					}).Warn("Duplicate i2cp.leaseSetEncType detected in subsession options")
+					shouldRemove = true
+					reason = "duplicate lease set encryption type"
+					break
+				}
+			}
+		}
+
+		if shouldRemove {
+			removedEntries = append(removedEntries, opt)
+			logrus.WithFields(logrus.Fields{
+				"removedOption": opt,
+				"reason":        reason,
+			}).Warn("Removing invalid option from SESSION ADD per SAMv3.3 spec")
+		} else {
+			cleanedOptions = append(cleanedOptions, opt)
+		}
 	}
 
 	if len(removedEntries) > 0 {
 		logrus.WithFields(logrus.Fields{
 			"removedOptions":   removedEntries,
 			"remainingOptions": cleanedOptions,
-		}).Warn("SESSION ADD signature type entries removed - subsessions inherit from primary session")
+		}).Warn("SESSION ADD invalid options removed - subsessions inherit configuration from primary session per SAMv3.3 spec")
+	}
+
+	return cleanedOptions
+}
+
+// validatePrimarySessionOptions validates options for SESSION CREATE (primary sessions).
+// Detects and handles duplicate options, especially i2cp.leaseSetEncType which can
+// cause ambiguity in encryption type selection.
+// Returns cleaned options with duplicates resolved and logs warnings for conflicts.
+func validatePrimarySessionOptions(options []string) []string {
+	var cleanedOptions []string
+	optionCounts := make(map[string][]string)
+
+	// Group options by their key (prefix before '=')
+	for _, opt := range options {
+		parts := strings.SplitN(opt, "=", 2)
+		if len(parts) == 2 {
+			key := parts[0]
+			optionCounts[key] = append(optionCounts[key], opt)
+		} else {
+			// Options without '=' are passed through as-is
+			cleanedOptions = append(cleanedOptions, opt)
+		}
+	}
+
+	// Process each option type
+	for key, values := range optionCounts {
+		if len(values) > 1 {
+			// Handle duplicates
+			switch key {
+			case "i2cp.leaseSetEncType":
+				// For encryption types, use the last specified value
+				lastValue := values[len(values)-1]
+				cleanedOptions = append(cleanedOptions, lastValue)
+				logrus.WithFields(logrus.Fields{
+					"duplicates": values,
+					"resolvedTo": lastValue,
+					"optionType": key,
+				}).Warn("Multiple i2cp.leaseSetEncType entries detected - using last specified value")
+
+			case "SIGNATURE_TYPE":
+				// This should be handled by validateAndCleanOptions, but just in case
+				lastValue := values[len(values)-1]
+				cleanedOptions = append(cleanedOptions, lastValue)
+				logrus.WithFields(logrus.Fields{
+					"duplicates": values,
+					"resolvedTo": lastValue,
+				}).Warn("Multiple SIGNATURE_TYPE entries in options - using last specified value")
+
+			default:
+				// For other duplicates, use the last value and warn
+				lastValue := values[len(values)-1]
+				cleanedOptions = append(cleanedOptions, lastValue)
+				logrus.WithFields(logrus.Fields{
+					"duplicates": values,
+					"resolvedTo": lastValue,
+					"optionType": key,
+				}).Warn("Duplicate option entries detected - using last specified value")
+			}
+		} else {
+			// Single value, add as-is
+			cleanedOptions = append(cleanedOptions, values[0])
+		}
 	}
 
 	return cleanedOptions

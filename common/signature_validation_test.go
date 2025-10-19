@@ -262,7 +262,7 @@ func TestSignatureTypeConflictResolution(t *testing.T) {
 }
 
 // TestValidateSubSessionOptions tests that SESSION ADD properly removes
-// SIGNATURE_TYPE entries according to SAMv3.3 specification.
+// invalid options according to SAMv3.3 specification.
 func TestValidateSubSessionOptions(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -271,9 +271,9 @@ func TestValidateSubSessionOptions(t *testing.T) {
 		expectWarning   bool
 	}{
 		{
-			name:            "NoSignatureType",
-			options:         []string{"PORT=7000", "inbound.length=2"},
-			expectedOptions: []string{"PORT=7000", "inbound.length=2"},
+			name:            "ValidOptions",
+			options:         []string{"PORT=7000", "FROM_PORT=8080", "TO_PORT=9090"},
+			expectedOptions: []string{"PORT=7000", "FROM_PORT=8080", "TO_PORT=9090"},
 			expectWarning:   false,
 		},
 		{
@@ -283,14 +283,32 @@ func TestValidateSubSessionOptions(t *testing.T) {
 			expectWarning:   true,
 		},
 		{
-			name:            "MultipleSignatureTypes",
-			options:         []string{"SIGNATURE_TYPE=ECDSA_SHA256_P256", "PORT=7000", "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"},
+			name:            "WithDestination",
+			options:         []string{"DESTINATION=TRANSIENT", "PORT=7000"},
 			expectedOptions: []string{"PORT=7000"},
 			expectWarning:   true,
 		},
 		{
-			name:            "OnlySignatureTypes",
-			options:         []string{"SIGNATURE_TYPE=DSA_SHA1", "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"},
+			name:            "WithLeaseSetEncType",
+			options:         []string{"i2cp.leaseSetEncType=4,0", "PORT=7000"},
+			expectedOptions: []string{"PORT=7000"},
+			expectWarning:   true,
+		},
+		{
+			name:            "WithTunnelOptions",
+			options:         []string{"inbound.length=2", "outbound.quantity=3", "PORT=7000"},
+			expectedOptions: []string{"PORT=7000"},
+			expectWarning:   true,
+		},
+		{
+			name:            "MultipleInvalidTypes",
+			options:         []string{"SIGNATURE_TYPE=ECDSA_SHA256_P256", "PORT=7000", "inbound.length=1", "SIGNATURE_TYPE=EdDSA_SHA512_Ed25519"},
+			expectedOptions: []string{"PORT=7000"},
+			expectWarning:   true,
+		},
+		{
+			name:            "AllInvalidOptions",
+			options:         []string{"SIGNATURE_TYPE=DSA_SHA1", "DESTINATION=TRANSIENT", "inbound.length=2", "i2cp.leaseSetEncType=4"},
 			expectedOptions: []string{},
 			expectWarning:   true,
 		},
@@ -321,10 +339,81 @@ func TestValidateSubSessionOptions(t *testing.T) {
 				}
 			}
 
-			// Ensure no SIGNATURE_TYPE remains
+			// Ensure no invalid subsession options remain
+			invalidPrefixes := []string{"SIGNATURE_TYPE=", "DESTINATION=", "i2cp.leaseSetEncType=", "inbound.", "outbound."}
 			for _, opt := range result {
-				if strings.HasPrefix(opt, "SIGNATURE_TYPE=") {
-					t.Errorf("Found unexpected SIGNATURE_TYPE in result: %q", opt)
+				for _, prefix := range invalidPrefixes {
+					if strings.HasPrefix(opt, prefix) {
+						t.Errorf("Found unexpected invalid subsession option in result: %q", opt)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestValidatePrimarySessionOptions tests that SESSION CREATE properly handles
+// duplicate options and validates primary session configuration.
+func TestValidatePrimarySessionOptions(t *testing.T) {
+	tests := []struct {
+		name          string
+		options       []string
+		expectedCount int
+		expectWarning bool
+	}{
+		{
+			name:          "NoDuplicates",
+			options:       []string{"PORT=7000", "i2cp.leaseSetEncType=4", "inbound.length=2"},
+			expectedCount: 3,
+			expectWarning: false,
+		},
+		{
+			name:          "DuplicateLeaseSetEncType",
+			options:       []string{"i2cp.leaseSetEncType=4", "PORT=7000", "i2cp.leaseSetEncType=4,0"},
+			expectedCount: 2, // Should have PORT and one i2cp.leaseSetEncType
+			expectWarning: true,
+		},
+		{
+			name:          "DuplicateSignatureType",
+			options:       []string{"SIGNATURE_TYPE=EdDSA_SHA512_Ed25519", "PORT=7000", "SIGNATURE_TYPE=ECDSA_SHA256_P256"},
+			expectedCount: 2, // Should have PORT and one SIGNATURE_TYPE
+			expectWarning: true,
+		},
+		{
+			name:          "MultipleDuplicates",
+			options:       []string{"PORT=7000", "PORT=8000", "i2cp.leaseSetEncType=4", "i2cp.leaseSetEncType=0"},
+			expectedCount: 2, // Should have one PORT and one i2cp.leaseSetEncType
+			expectWarning: true,
+		},
+		{
+			name:          "OptionsWithoutEquals",
+			options:       []string{"SOME_FLAG", "PORT=7000", "ANOTHER_FLAG"},
+			expectedCount: 3, // All should be preserved
+			expectWarning: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validatePrimarySessionOptions(tt.options)
+
+			// Check result count
+			if len(result) != tt.expectedCount {
+				t.Errorf("Expected %d options, got %d", tt.expectedCount, len(result))
+				t.Errorf("Input: %v", tt.options)
+				t.Errorf("Result: %v", result)
+			}
+
+			// Check for duplicate keys (should not exist after validation)
+			seen := make(map[string]bool)
+			for _, opt := range result {
+				parts := strings.SplitN(opt, "=", 2)
+				if len(parts) == 2 {
+					key := parts[0]
+					if seen[key] {
+						t.Errorf("Found duplicate key %q in result: %v", key, result)
+					}
+					seen[key] = true
 				}
 			}
 		})
