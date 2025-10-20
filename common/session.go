@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/go-i2p/i2pkeys"
@@ -70,22 +71,44 @@ func (sam *SAM) configureSessionParameters(style, id, from, to string, keys i2pk
 
 // buildSessionCreateMessage constructs the SESSION CREATE message with optional extras.
 func (sam *SAM) buildSessionCreateMessage(extras []string) ([]byte, error) {
-	baseMsg := strings.TrimSuffix(sam.SAMEmit.Create(), " \n")
+	// Get options from config (via Print())
+	configOptions := sam.SAMEmit.I2PConfig.Print()
 
-	// First validate primary session options for duplicates and invalid combinations
-	primaryValidated := validatePrimarySessionOptions(extras)
+	// Combine config options with user-provided extras
+	allOptions := append(configOptions, extras...)
+
+	// First validate all options together for duplicates and invalid combinations
+	primaryValidated := validatePrimarySessionOptions(allOptions)
 
 	// Then validate signature type conflicts and clean them if needed
 	cleanedExtras := validateAndCleanOptions(sam.SAMEmit.I2PConfig.SigType, primaryValidated)
 
+	// Build the message with core parts and validated options
+	coreMessage := sam.buildCoreSessionMessage()
+
+	// Add validated options
 	extraStr := strings.Join(cleanedExtras, " ")
 	if extraStr != "" {
-		baseMsg += " " + extraStr
+		coreMessage += " " + extraStr
 	}
 
-	message := []byte(baseMsg + "\n")
+	message := []byte(coreMessage + "\n")
 	log.WithField("message", string(message)).Debug("Sending SESSION CREATE message " + string(message))
 	return message, nil
+}
+
+// buildCoreSessionMessage builds the core SESSION CREATE message without options.
+// This includes only the required SAM protocol parameters.
+func (sam *SAM) buildCoreSessionMessage() string {
+	return fmt.Sprintf(
+		"SESSION CREATE %s%s%s%s%s%s",
+		sam.SAMEmit.I2PConfig.SessionStyle(),   // STYLE=X
+		sam.SAMEmit.I2PConfig.FromPort(),       // FROM_PORT=Y
+		sam.SAMEmit.I2PConfig.ToPort(),         // TO_PORT=Z
+		sam.SAMEmit.I2PConfig.ID(),             // ID=W
+		sam.SAMEmit.I2PConfig.DestinationKey(), // DESTINATION=D
+		sam.SAMEmit.I2PConfig.SignatureType(),  // SIGNATURE_TYPE=S
+	)
 }
 
 // transmitSessionMessage sends the SESSION CREATE message to the SAM connection.
