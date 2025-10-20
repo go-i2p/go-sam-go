@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/go-i2p/i2pkeys"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
 )
 
 // Creates a new session with the style of either "STREAM", "DATAGRAM" or "RAW",
@@ -15,7 +15,7 @@ import (
 // setting extra to something else than []string{}.
 // This sam3 instance is now a session
 func (sam SAM) NewGenericSession(style, id string, keys i2pkeys.I2PKeys, extras []string) (Session, error) {
-	log.WithFields(logrus.Fields{"style": style, "id": id}).Debug("Creating new generic session")
+	log.WithFields(logger.Fields{"style": style, "id": id}).Debug("Creating new generic session")
 	return sam.NewGenericSessionWithSignature(style, id, keys, SIG_EdDSA_SHA512_Ed25519, extras)
 }
 
@@ -25,7 +25,7 @@ func (sam SAM) NewGenericSession(style, id string, keys i2pkeys.I2PKeys, extras 
 // setting extra to something else than []string{}.
 // This sam3 instance is now a session
 func (sam SAM) NewGenericSessionWithSignature(style, id string, keys i2pkeys.I2PKeys, sigType string, extras []string) (Session, error) {
-	log.WithFields(logrus.Fields{"style": style, "id": id, "sigType": sigType}).Debug("Creating new generic session with signature")
+	log.WithFields(logger.Fields{"style": style, "id": id, "sigType": sigType}).Debug("Creating new generic session with signature")
 	return sam.NewGenericSessionWithSignatureAndPorts(style, id, "0", "0", keys, sigType, extras)
 }
 
@@ -35,7 +35,7 @@ func (sam SAM) NewGenericSessionWithSignature(style, id string, keys i2pkeys.I2P
 // setting extra to something else than []string{}.
 // This sam3 instance is now a session
 func (sam SAM) NewGenericSessionWithSignatureAndPorts(style, id, from, to string, keys i2pkeys.I2PKeys, sigType string, extras []string) (Session, error) {
-	log.WithFields(logrus.Fields{"style": style, "id": id, "from": from, "to": to, "sigType": sigType}).Debug("Creating new generic session with signature and ports")
+	log.WithFields(logger.Fields{"style": style, "id": id, "from": from, "to": to, "sigType": sigType}).Debug("Creating new generic session with signature and ports")
 
 	if err := sam.configureSessionParameters(style, id, from, to, keys, sigType); err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (sam *SAM) transmitSessionMessage(message []byte) error {
 		return oops.Errorf("writing to connection failed: %w", err)
 	}
 	if n != len(message) {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logger.Fields{
 			"written": n,
 			"total":   len(message),
 		}).Error("Incomplete write to SAM connection")
@@ -278,7 +278,7 @@ func (sam *SAM) handleUnknownResponse(response string) error {
 //
 //	err := sam.AddSubSession("STREAM", "stream-sub-1", []string{"FROM_PORT=8080"})
 func (sam *SAM) AddSubSession(style, id string, options []string) error {
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"style":   style,
 		"id":      id,
 		"options": options,
@@ -359,7 +359,7 @@ func (sam *SAM) parseSessionAddResponse(response, id string) error {
 		return nil
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"id":       id,
 		"response": response,
 	}).Error("Failed to add subsession")
@@ -374,7 +374,7 @@ func (sam *SAM) parseSessionRemoveResponse(response, id string) error {
 		return nil
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"id":       id,
 		"response": response,
 	}).Error("Failed to remove subsession")
