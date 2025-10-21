@@ -32,16 +32,26 @@ func (l *StreamListener) AcceptStream() (*StreamConn, error) {
 	l.mu.RLock()
 	if l.closed {
 		l.mu.RUnlock()
+		log.WithField("session_id", l.session.ID()).Debug("AcceptStream called on closed listener")
 		return nil, oops.Errorf("listener is closed")
 	}
 	l.mu.RUnlock()
 
+	log.WithField("session_id", l.session.ID()).Debug("Waiting for incoming connection")
+
 	select {
 	case conn := <-l.acceptChan:
+		log.WithFields(logger.Fields{
+			"session_id": l.session.ID(),
+			"local":      conn.LocalAddr().String(),
+			"remote":     conn.RemoteAddr().String(),
+		}).Debug("Connection accepted from channel")
 		return conn, nil
 	case err := <-l.errorChan:
+		log.WithField("session_id", l.session.ID()).WithError(err).Error("Accept error received")
 		return nil, err
 	case <-l.closeChan:
+		log.WithField("session_id", l.session.ID()).Debug("Listener closed while waiting for connection")
 		return nil, oops.Errorf("listener is closed")
 	}
 }
@@ -262,10 +272,24 @@ func (l *StreamListener) createAcceptSocket() (*common.SAM, error) {
 		samAddress = "127.0.0.1:7656"
 	}
 
+	log.WithFields(logger.Fields{
+		"session_id":  l.session.ID(),
+		"sam_address": samAddress,
+	}).Debug("Creating SAM socket for ACCEPT")
+
 	sam, err := common.NewSAM(samAddress)
 	if err != nil {
+		log.WithFields(logger.Fields{
+			"session_id":  l.session.ID(),
+			"sam_address": samAddress,
+		}).WithError(err).Error("Failed to create SAM connection for ACCEPT")
 		return nil, oops.Errorf("failed to create SAM connection for ACCEPT: %w", err)
 	}
+
+	log.WithFields(logger.Fields{
+		"session_id":  l.session.ID(),
+		"sam_address": samAddress,
+	}).Debug("Successfully created SAM socket for ACCEPT")
 
 	return sam, nil
 }
@@ -320,30 +344,46 @@ func (l *StreamListener) parseStreamStatusResponse(sam *common.SAM, logger *logg
 // readDestinationLine waits for and reads the destination line when a connection arrives.
 // Format: "$destination FROM_PORT=nnn TO_PORT=nnn\n" (SAM 3.2+) or "$destination\n" (SAM 3.0/3.1)
 func (l *StreamListener) readDestinationLine(sam *common.SAM, logger *logger.Entry) (string, error) {
+	logger.Debug("Waiting for destination line from SAM bridge")
+
 	destBuf := make([]byte, 4096)
 	n, err := sam.Read(destBuf)
 	if err != nil {
+		logger.WithError(err).Error("Failed to read destination line")
 		return "", oops.Errorf("failed to read destination: %w", err)
 	}
 
 	destLine := string(destBuf[:n])
-	logger.WithField("destLine", destLine).Debug("Received destination")
+	logger.WithField("destLine", destLine).WithField("bytes_read", n).Debug("Received destination line")
 
 	// Parse destination line
 	// Format: "$destination FROM_PORT=nnn TO_PORT=nnn\n" (SAM 3.2+)
 	// Or just: "$destination\n" (SAM 3.0/3.1)
 	parts := strings.Fields(destLine)
 	if len(parts) == 0 {
+		logger.Error("Empty destination line received")
 		return "", oops.Errorf("empty destination line")
 	}
 
-	return parts[0], nil
+	dest := parts[0]
+	logger.WithField("destination", dest).Debug("Parsed destination address")
+
+	return dest, nil
 }
 
 // createStreamConnectionWithSocket creates a new StreamConn using the provided accept socket.
 func (l *StreamListener) createStreamConnectionWithSocket(dest string, sam *common.SAM) (*StreamConn, error) {
+	log.WithFields(logger.Fields{
+		"session_id":  l.session.ID(),
+		"destination": dest,
+	}).Debug("Creating StreamConn from accepted connection")
+
 	remoteAddr, err := i2pkeys.NewI2PAddrFromString(dest)
 	if err != nil {
+		log.WithFields(logger.Fields{
+			"session_id":  l.session.ID(),
+			"destination": dest,
+		}).WithError(err).Error("Failed to parse remote address")
 		return nil, oops.Errorf("failed to parse remote address: %w", err)
 	}
 
@@ -354,6 +394,12 @@ func (l *StreamListener) createStreamConnectionWithSocket(dest string, sam *comm
 		laddr:   l.session.Addr(),
 		raddr:   remoteAddr,
 	}
+
+	log.WithFields(logger.Fields{
+		"session_id": l.session.ID(),
+		"local":      streamConn.laddr.Base32(),
+		"remote":     streamConn.raddr.Base32(),
+	}).Debug("Successfully created StreamConn")
 
 	return streamConn, nil
 }

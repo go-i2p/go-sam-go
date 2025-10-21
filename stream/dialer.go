@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
-	"github.com/samber/oops"
 	"github.com/go-i2p/logger"
+	"github.com/samber/oops"
 )
 
 // Dial establishes a connection to the specified destination using the default context.
@@ -36,11 +36,26 @@ func (d *StreamDialer) DialI2P(addr i2pkeys.I2PAddr) (*StreamConn, error) {
 // default timeout and provides fine-grained control over connection establishment.
 // Example usage: conn, err := dialer.DialContext(ctx, "destination.b32.i2p")
 func (d *StreamDialer) DialContext(ctx context.Context, destination string) (*StreamConn, error) {
+	log.WithFields(logger.Fields{
+		"session_id":  d.session.ID(),
+		"destination": destination,
+	}).Debug("DialContext: starting connection with destination resolution")
+
 	// First resolve the destination
 	addr, err := d.session.sam.Lookup(destination)
 	if err != nil {
+		log.WithFields(logger.Fields{
+			"session_id":  d.session.ID(),
+			"destination": destination,
+		}).WithError(err).Error("DialContext: failed to resolve destination")
 		return nil, oops.Errorf("failed to resolve destination %s: %w", destination, err)
 	}
+
+	log.WithFields(logger.Fields{
+		"session_id":  d.session.ID(),
+		"destination": destination,
+		"resolved":    addr.Base32(),
+	}).Debug("DialContext: destination resolved successfully")
 
 	return d.DialI2PContext(ctx, addr)
 }
@@ -76,6 +91,7 @@ func (d *StreamDialer) validateSessionState() error {
 	defer d.session.mu.RUnlock()
 
 	if d.session.closed {
+		log.WithField("session_id", d.session.ID()).Error("Dial attempted on closed session")
 		return oops.Errorf("session is closed")
 	}
 	return nil
@@ -91,11 +107,25 @@ func (d *StreamDialer) logDialAttempt(addr i2pkeys.I2PAddr) {
 
 // createSAMConnection creates a new SAM connection for the dial operation.
 func (d *StreamDialer) createSAMConnection() (*common.SAM, error) {
+	log.WithFields(logger.Fields{
+		"session_id":  d.session.ID(),
+		"sam_address": d.session.sam.Sam(),
+	}).Debug("Creating SAM connection for dial")
+
 	sam, err := common.NewSAM(d.session.sam.Sam())
 	if err != nil {
-		log.WithError(err).Error("Failed to create SAM connection")
+		log.WithFields(logger.Fields{
+			"session_id":  d.session.ID(),
+			"sam_address": d.session.sam.Sam(),
+		}).WithError(err).Error("Failed to create SAM connection")
 		return nil, oops.Errorf("failed to create SAM connection: %w", err)
 	}
+
+	log.WithFields(logger.Fields{
+		"session_id":  d.session.ID(),
+		"sam_address": d.session.sam.Sam(),
+	}).Debug("SAM connection created successfully")
+
 	return sam, nil
 }
 

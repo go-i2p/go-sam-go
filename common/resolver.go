@@ -42,26 +42,39 @@ func NewFullSAMResolver(address string) (*SAMResolver, error) {
 // Performs a lookup, probably this order: 1) routers known addresses, cached
 // addresses, 3) by asking peers in the I2P network.
 func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error) {
-	log.WithField("name", name).Debug("Resolving name")
+	log.WithField("name", name).Debug("Starting name resolution")
 
 	// Trim away the port, if it appears
 	name = strings.Split(name, ":")[0]
 
+	log.WithField("name", name).Debug("Sending lookup request")
+
 	if err := sam.sendLookupRequest(name, false); err != nil {
+		log.WithField("name", name).WithError(err).Error("Failed to send lookup request")
 		return i2pkeys.I2PAddr(""), err
 	}
 
 	response, err := sam.readLookupResponse()
 	if err != nil {
+		log.WithField("name", name).WithError(err).Error("Failed to read lookup response")
 		return i2pkeys.I2PAddr(""), err
 	}
 
 	scanner, err := sam.prepareLookupScanner(response)
 	if err != nil {
+		log.WithField("name", name).WithError(err).Error("Failed to prepare lookup scanner")
 		return i2pkeys.I2PAddr(""), err
 	}
 
 	addr, _, err := sam.processLookupResponse(scanner, name)
+	if err != nil {
+		log.WithField("name", name).WithError(err).Error("Failed to process lookup response")
+	} else {
+		log.WithFields(logger.Fields{
+			"name":    name,
+			"address": addr.Base32(),
+		}).Debug("Successfully resolved name")
+	}
 	return addr, err
 }
 

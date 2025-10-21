@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/samber/oops"
 	"github.com/go-i2p/logger"
+	"github.com/samber/oops"
 )
 
 // Read reads data from the connection into the provided buffer.
@@ -17,6 +17,10 @@ func (c *StreamConn) Read(b []byte) (int, error) {
 	c.mu.RLock()
 	if c.closed {
 		c.mu.RUnlock()
+		log.WithFields(logger.Fields{
+			"local":  c.laddr.Base32(),
+			"remote": c.raddr.Base32(),
+		}).Debug("Read attempted on closed connection")
 		return 0, oops.Errorf("connection is closed")
 	}
 	conn := c.conn
@@ -25,9 +29,16 @@ func (c *StreamConn) Read(b []byte) (int, error) {
 	n, err := conn.Read(b)
 	if err != nil {
 		log.WithFields(logger.Fields{
-			"local":  c.laddr.Base32(),
-			"remote": c.raddr.Base32(),
+			"local":      c.laddr.Base32(),
+			"remote":     c.raddr.Base32(),
+			"bytes_read": n,
 		}).WithError(err).Debug("Read error")
+	} else {
+		log.WithFields(logger.Fields{
+			"local":      c.laddr.Base32(),
+			"remote":     c.raddr.Base32(),
+			"bytes_read": n,
+		}).Debug("Read successful")
 	}
 	return n, err
 }
@@ -41,6 +52,10 @@ func (c *StreamConn) Write(b []byte) (int, error) {
 	c.mu.RLock()
 	if c.closed {
 		c.mu.RUnlock()
+		log.WithFields(logger.Fields{
+			"local":  c.laddr.Base32(),
+			"remote": c.raddr.Base32(),
+		}).Debug("Write attempted on closed connection")
 		return 0, oops.Errorf("connection is closed")
 	}
 	conn := c.conn
@@ -49,9 +64,17 @@ func (c *StreamConn) Write(b []byte) (int, error) {
 	n, err := conn.Write(b)
 	if err != nil {
 		log.WithFields(logger.Fields{
-			"local":  c.laddr.Base32(),
-			"remote": c.raddr.Base32(),
+			"local":         c.laddr.Base32(),
+			"remote":        c.raddr.Base32(),
+			"bytes_written": n,
+			"buffer_size":   len(b),
 		}).WithError(err).Debug("Write error")
+	} else {
+		log.WithFields(logger.Fields{
+			"local":         c.laddr.Base32(),
+			"remote":        c.raddr.Base32(),
+			"bytes_written": n,
+		}).Debug("Write successful")
 	}
 	return n, err
 }
@@ -113,6 +136,12 @@ func (c *StreamConn) RemoteAddr() net.Addr {
 // connection timeouts for both read and write operations.
 // Example usage: conn.SetDeadline(time.Now().Add(30*time.Second))
 func (c *StreamConn) SetDeadline(t time.Time) error {
+	log.WithFields(logger.Fields{
+		"local":    c.laddr.Base32(),
+		"remote":   c.raddr.Base32(),
+		"deadline": t,
+	}).Debug("Setting connection deadline")
+
 	if err := c.SetReadDeadline(t); err != nil {
 		return err
 	}
@@ -130,8 +159,18 @@ func (c *StreamConn) SetReadDeadline(t time.Time) error {
 	c.mu.RUnlock()
 
 	if conn == nil {
+		log.WithFields(logger.Fields{
+			"local":  c.laddr.Base32(),
+			"remote": c.raddr.Base32(),
+		}).Error("SetReadDeadline called on nil connection")
 		return oops.Errorf("connection is nil")
 	}
+
+	log.WithFields(logger.Fields{
+		"local":         c.laddr.Base32(),
+		"remote":        c.raddr.Base32(),
+		"read_deadline": t,
+	}).Debug("Setting read deadline")
 
 	return conn.SetReadDeadline(t)
 }
@@ -147,8 +186,18 @@ func (c *StreamConn) SetWriteDeadline(t time.Time) error {
 	c.mu.RUnlock()
 
 	if conn == nil {
+		log.WithFields(logger.Fields{
+			"local":  c.laddr.Base32(),
+			"remote": c.raddr.Base32(),
+		}).Error("SetWriteDeadline called on nil connection")
 		return oops.Errorf("connection is nil")
 	}
+
+	log.WithFields(logger.Fields{
+		"local":          c.laddr.Base32(),
+		"remote":         c.raddr.Base32(),
+		"write_deadline": t,
+	}).Debug("Setting write deadline")
 
 	return conn.SetWriteDeadline(t)
 }
