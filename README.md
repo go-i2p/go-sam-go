@@ -199,12 +199,48 @@ sam3.Options_Large      // High throughput
 sam3.Options_Humongous  // Maximum performance
 ```
 
-Debug logging:
+### Logging Configuration
+
+This library uses `github.com/go-i2p/logger` for structured logging with environment-based configuration:
+
+#### Verbosity Control
+
+Control logging output via the `DEBUG_I2P` environment variable:
+
 ```bash
-export DEBUG_I2P=debug   # Debug level
-export DEBUG_I2P=warn    # Warning level
-export DEBUG_I2P=error   # Error level
+export DEBUG_I2P=debug   # Verbose debugging (tunnel state, operations, timing)
+export DEBUG_I2P=warn    # Warnings only (deprecations, recoverable issues)
+export DEBUG_I2P=error   # Errors only (failed operations, connectivity issues)
+# Unset = No logging (zero performance impact)
 ```
+
+#### Fast-Fail Mode (Testing & Development)
+
+Enable strict mode where warnings and errors become fatal:
+
+```bash
+export WARNFAIL_I2P=true  # Convert warnings/errors to fatal for testing
+go test ./...              # Tests fail fast on any warning/error
+```
+
+**Use Case:** Catch potential issues during development that might be warnings in production.
+
+#### Structured Logging
+
+The logger provides structured, searchable output with contextual fields:
+
+```
+time="2025-01-20T15:04:05Z" level=debug msg="SAM session created" session_id="mytunnel" signature_type="EdDSA_SHA512_Ed25519" tunnel_in_length=3 tunnel_out_length=3
+time="2025-01-20T15:04:10Z" level=info msg="Connection established" remote_dest="abc123...def.b32.i2p" connection_time="2.3s"
+time="2025-01-20T15:04:15Z" level=error msg="Failed to send datagram" error="connection timeout" session_id="udp-tunnel" retry_count=3
+```
+
+#### Logging Best Practices
+
+1. **Production:** Leave `DEBUG_I2P` unset for zero logging overhead
+2. **Troubleshooting:** Set `DEBUG_I2P=debug` to diagnose I2P timing and connectivity issues
+3. **Testing:** Use `WARNFAIL_I2P=true` to enforce clean test runs without warnings
+4. **CI/CD:** Combine both for maximum issue detection: `DEBUG_I2P=debug WARNFAIL_I2P=true go test ./...`
 
 ## 🔧 Requirements
 
