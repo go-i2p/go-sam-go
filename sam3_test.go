@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/go-i2p/go-sam-go/common"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
 )
 
 // Test data constants for consistent testing
@@ -307,20 +307,20 @@ func TestGenerateOptionString(t *testing.T) {
 
 // TestGetSAM3Logger tests logger initialization and configuration
 func TestGetSAM3Logger(t *testing.T) {
-	logger := GetSAM3Logger()
+	log := GetSAM3Logger()
 
 	// Verify logger is not nil
-	if logger == nil {
+	if log == nil {
 		t.Fatal("GetSAM3Logger() returned nil")
 	}
 
-	// Verify logger is a logrus instance (it should be since that's what we return)
-	if logger.Level > logrus.InfoLevel {
+	// Verify logger is a logger instance (it should be since that's what we return)
+	if log.Level > logger.InfoLevel {
 		t.Errorf("GetSAM3Logger() logger level is %v, expected at least Info level", logger.Level)
 	}
 
 	// Test logger functionality
-	logger.Info("Test log message")
+	log.Info("Test log message")
 }
 
 // TestIgnorePortError tests port error filtering functionality

@@ -8,7 +8,6 @@ import (
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
 )
 
 // Dial establishes a datagram connection to the specified I2P destination.
@@ -82,7 +81,7 @@ func (ds *DatagramSession) validateDialContext(ctx context.Context, destination 
 
 // createDialLogger sets up logging context for debugging connection establishment.
 func (ds *DatagramSession) createDialLogger(destination string) *logger.Entry {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"destination": destination,
 		"session_id":  ds.ID(),
 	})
@@ -185,7 +184,7 @@ func (ds *DatagramSession) validateDatagramI2PSessionState() error {
 // createDatagramI2PDialLogger sets up logging context for I2P dialing operation.
 func (ds *DatagramSession) createDatagramI2PDialLogger(addr i2pkeys.I2PAddr) *logger.Entry {
 	// Create logging context for debugging I2P connection establishment
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"destination": addr.Base32(),
 		"session_id":  ds.ID(),
 	})

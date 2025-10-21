@@ -4,7 +4,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // SAM wraps common.SAM to provide raw-specific functionality for creating and managing
@@ -28,7 +28,7 @@ func (s *SAM) NewRawSession(id string, keys i2pkeys.I2PKeys, options []string) (
 // enabling advanced security configurations beyond the default signature algorithm.
 // NewRawSessionWithSignature creates a new raw session with custom signature type
 func (s *SAM) NewRawSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*RawSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 		"sigType": sigType,
@@ -64,7 +64,7 @@ func (s *SAM) NewRawSessionWithSignature(id string, keys i2pkeys.I2PKeys, option
 // fine-grained control over network communication ports for advanced routing scenarios.
 // NewRawSessionWithPorts creates a new raw session with port specifications
 func (s *SAM) NewRawSessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":       id,
 		"fromPort": fromPort,
 		"toPort":   toPort,

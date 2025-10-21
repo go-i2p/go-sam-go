@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // Option is a SAMEmit Option
@@ -43,7 +43,7 @@ func SetSAMAddress(s string) func(*SAMEmit) error {
 			}
 		}
 		c.I2PConfig.SamHost = sp[0]
-		log.WithFields(logrus.Fields{
+		log.WithFields(logger.Fields{
 			"host": c.I2PConfig.SamHost,
 			"port": c.I2PConfig.SamPort,
 		}).Debug("Set SAM address")
@@ -368,7 +368,7 @@ func SetCloseIdleTime(u int) func(*SAMEmit) error {
 		if u >= 6 {
 			idleTime := (u * 60) * 1000
 			c.I2PConfig.CloseIdleTime = idleTime
-			log.WithFields(logrus.Fields{
+			log.WithFields(logger.Fields{
 				"minutes":      u,
 				"milliseconds": idleTime,
 			}).Debug("Set close idle time")

@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // Keys retrieves the I2P destination keys associated with this SAM instance.
@@ -58,7 +58,7 @@ func (sam *SAM) generateTransientKeys() (i2pkeys.I2PKeys, error) {
 	}
 
 	sam.SAMEmit.I2PConfig.DestinationKeys = &keys
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"keys": keys,
 	}).Debug("Generated new transient keys")
 

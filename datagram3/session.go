@@ -9,7 +9,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // NewDatagram3Session creates a new datagram3 session with hash-based source identification.
@@ -18,7 +18,7 @@ import (
 // forwarded datagrams per SAMv3 requirements and initializes a hash resolver for source lookups.
 // Example usage: session, err := NewDatagram3Session(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewDatagram3Session(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*Datagram3Session, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"style":   "DATAGRAM3",
 		"options": options,
@@ -144,7 +144,7 @@ func ensureUDPForwardingParameters(options []string, udpPort int) []string {
 //
 // Example usage: sub, err := NewDatagram3SessionFromSubsession(sam, "sub1", keys, options, udpConn)
 func NewDatagram3SessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*Datagram3Session, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":          id,
 		"style":       "DATAGRAM3",
 		"options":     options,

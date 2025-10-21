@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 const (
@@ -99,7 +99,7 @@ func (f *I2PConfig) LeaseSetSettings() (string, string, string) {
 	}
 
 	// Log the constructed settings
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"leaseSetKey":               leaseSetKey,
 		"leaseSetPrivateKey":        privateKey,
 		"leaseSetPrivateSigningKey": privateSigningKey,

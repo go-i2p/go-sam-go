@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // NewSAM creates a new SAM instance by connecting to the specified address,
@@ -27,7 +27,7 @@ func NewSAM(address string) (*SAM, error) {
 //
 // Returns a SAM instance ready for session creation or an error if connection fails.
 func NewSAMWithAuth(address, user, password string) (*SAM, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"address": address,
 		"user":    user,
 		"auth":    user != "" || password != "",

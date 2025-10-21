@@ -8,7 +8,6 @@ import (
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
 )
 
 // Dial establishes a raw connection to the specified I2P destination address.
@@ -76,7 +75,7 @@ func (rs *RawSession) validateRawDialContext(ctx context.Context, destination st
 
 // createRawDialLogger sets up logging context for debugging raw connection establishment.
 func (rs *RawSession) createRawDialLogger(destination string) *logger.Entry {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"destination": destination,
 	})
 	logger.Debug("Dialing raw destination")
@@ -172,7 +171,7 @@ func (rs *RawSession) validateI2PSessionState() error {
 
 // createI2PDialLogger sets up logging context for I2P dialing operation.
 func (rs *RawSession) createI2PDialLogger(addr i2pkeys.I2PAddr) *logger.Entry {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"destination": addr.Base32(),
 	})
 	logger.Debug("Dialing I2P raw destination")

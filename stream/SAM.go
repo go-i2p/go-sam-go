@@ -4,7 +4,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // SAM wraps common.SAM to provide stream-specific functionality and convenience methods.
@@ -31,7 +31,7 @@ func (s *SAM) NewStreamSession(id string, keys i2pkeys.I2PKeys, options []string
 // and DSA, allowing applications to choose the most appropriate signature type for their needs.
 // Example usage: session, err := sam.NewStreamSessionWithSignature("my-session", keys, options, "EdDSA_SHA512_Ed25519")
 func (s *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 		"sigType": sigType,
@@ -64,7 +64,7 @@ func (s *SAM) NewStreamSessionWithSignature(id string, keys i2pkeys.I2PKeys, opt
 
 // NewStreamSessionWithPorts creates a new streaming session with port specifications
 func (s *SAM) NewStreamSessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":       id,
 		"fromPort": fromPort,
 		"toPort":   toPort,

@@ -8,7 +8,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // cleanupStreamListener is called by AddCleanup to ensure the listener is closed and the goroutine is cleaned up
@@ -24,7 +24,7 @@ func cleanupStreamListener(l *StreamListener) {
 // establishing reliable streaming connections over the I2P network.
 // Example usage: session, err := NewStreamSession(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 	})
@@ -69,7 +69,7 @@ func NewStreamSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options 
 //
 // Returns a StreamSession ready for use without attempting to create a new SAM session.
 func NewStreamSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*StreamSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 	})
@@ -100,7 +100,7 @@ func NewStreamSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2P
 // establishing reliable streaming connections over the I2P network with custom cryptographic settings.
 // Example usage: session, err := NewStreamSessionWithSignature(sam, "my-session", keys, []string{"inbound.length=1"}, "EdDSA_SHA512_Ed25519")
 func NewStreamSessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 		"sigType": sigType,
@@ -145,7 +145,7 @@ func NewStreamSessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PK
 //	session, err := NewStreamSessionWithSignatureAndPorts(sam, "http-proxy", "8080", "80", keys,
 //	                   []string{"inbound.length=2"}, "EdDSA_SHA512_Ed25519")
 func NewStreamSessionWithSignatureAndPorts(sam *common.SAM, id, from, to string, keys i2pkeys.I2PKeys, options []string, sigType string) (*StreamSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"from":    from,
 		"to":      to,

@@ -10,7 +10,7 @@ import (
 	"github.com/go-i2p/i2pkeys"
 
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // SetTimeout sets the timeout for raw datagram operations.
@@ -34,7 +34,7 @@ func (w *RawWriter) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error {
 	}
 	w.session.mu.RUnlock()
 
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"session_id":  w.session.ID(),
 		"destination": dest.Base32(),
 		"size":        len(data),

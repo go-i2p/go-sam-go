@@ -9,7 +9,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // NewDatagram2Session creates a new datagram2 session with replay protection for UDP-like I2P messaging.
@@ -18,7 +18,7 @@ import (
 // forwarded datagrams per SAMv3 requirements.
 // Example usage: session, err := NewDatagram2Session(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewDatagram2Session(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*Datagram2Session, error) {
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"id":      id,
 		"style":   "DATAGRAM2",
 		"options": options,
@@ -143,7 +143,7 @@ func ensureUDPForwardingParameters(options []string, udpPort int) []string {
 //
 // Example usage: session, err := NewDatagram2SessionFromSubsession(sam, "sub1", keys, options, udpConn)
 func NewDatagram2SessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*Datagram2Session, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":          id,
 		"style":       "DATAGRAM2",
 		"options":     options,
@@ -277,7 +277,7 @@ func (s *Datagram2Session) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram2
 		return nil, oops.Errorf("failed to read from UDP connection: %w", err)
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"bytes_read": n,
 		"style":      "DATAGRAM2",
 	}).Debug("Received UDP datagram2 message")
@@ -349,7 +349,7 @@ func (s *Datagram2Session) Close() error {
 	}
 
 	// Log session closure for debugging and monitoring
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":    s.ID(),
 		"style": "DATAGRAM2",
 	})

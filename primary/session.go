@@ -14,7 +14,7 @@ import (
 	"github.com/go-i2p/go-sam-go/stream"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // PrimarySession manages multiple sub-sessions sharing the same I2P identity and tunnels.
@@ -33,7 +33,7 @@ type PrimarySession struct {
 // different types (stream, datagram, raw) while sharing the same I2P identity and tunnels.
 // Example usage: session, err := NewPrimarySession(sam, "my-primary", keys, []string{"inbound.length=2"})
 func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 	})
@@ -70,7 +70,7 @@ func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options
 // compatibility with specific I2P network configurations.
 // Example usage: session, err := NewPrimarySessionWithSignature(sam, "secure-primary", keys, options, "EdDSA_SHA512_Ed25519")
 func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 		"sigType": sigType,
@@ -118,7 +118,7 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 		return nil, oops.Errorf("primary session is closed")
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"primary_id": p.ID(),
 		"sub_id":     id,
 		"options":    options,
@@ -227,7 +227,7 @@ func setupUDPListenerForDatagram() (*net.UDPConn, int, error) {
 // registerDatagramSubsession registers a DATAGRAM subsession with the SAM bridge and creates
 // a new sub-SAM connection for data operations. Returns the sub-SAM connection or error.
 // Closes the UDP connection and performs cleanup on failure.
-func (p *PrimarySession) registerDatagramSubsession(id string, options []string, udpConn *net.UDPConn, logger *logrus.Entry) (*common.SAM, error) {
+func (p *PrimarySession) registerDatagramSubsession(id string, options []string, udpConn *net.UDPConn, logger *logger.Entry) (*common.SAM, error) {
 	if err := p.sam.AddSubSession("DATAGRAM", id, options); err != nil {
 		logger.WithError(err).Error("Failed to add datagram subsession")
 		udpConn.Close()
@@ -248,7 +248,7 @@ func (p *PrimarySession) registerDatagramSubsession(id string, options []string,
 // createAndRegisterDatagramWrapper creates a datagram session wrapper from the subsession components
 // and registers it with the primary session registry. Returns the configured sub-session or error.
 // Performs complete cleanup of all resources on failure.
-func (p *PrimarySession) createAndRegisterDatagramWrapper(id string, options []string, subSAM *common.SAM, udpConn *net.UDPConn, logger *logrus.Entry) (*DatagramSubSession, error) {
+func (p *PrimarySession) createAndRegisterDatagramWrapper(id string, options []string, subSAM *common.SAM, udpConn *net.UDPConn, logger *logger.Entry) (*DatagramSubSession, error) {
 	datagramSession, err := datagram.NewDatagramSessionFromSubsession(subSAM, id, p.Keys(), options, udpConn)
 	if err != nil {
 		logger.WithError(err).Error("Failed to create datagram session wrapper")
@@ -295,7 +295,7 @@ func (p *PrimarySession) NewDatagramSubSession(id string, options []string) (*Da
 		return nil, oops.Errorf("primary session is closed")
 	}
 
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"primary_id": p.ID(),
 		"sub_id":     id,
 		"options":    options,
@@ -350,7 +350,7 @@ func (p *PrimarySession) NewRawSubSession(id string, options []string) (*RawSubS
 		return nil, oops.Errorf("primary session is closed")
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"primary_id": p.ID(),
 		"sub_id":     id,
 		"options":    options,
@@ -476,7 +476,7 @@ func setupUDPListenerForDatagram3() (*net.UDPConn, int, error) {
 // registerDatagram3Subsession registers a DATAGRAM3 subsession with the SAM bridge and creates
 // a new sub-SAM connection for data operations. Returns the sub-SAM connection or error.
 // Closes the UDP connection and performs cleanup on failure.
-func (p *PrimarySession) registerDatagram3Subsession(id string, options []string, udpConn *net.UDPConn, logger *logrus.Entry) (*common.SAM, error) {
+func (p *PrimarySession) registerDatagram3Subsession(id string, options []string, udpConn *net.UDPConn, logger *logger.Entry) (*common.SAM, error) {
 	if err := p.sam.AddSubSession("DATAGRAM3", id, options); err != nil {
 		logger.WithError(err).Error("Failed to add datagram3 subsession")
 		udpConn.Close()
@@ -497,7 +497,7 @@ func (p *PrimarySession) registerDatagram3Subsession(id string, options []string
 // createAndRegisterDatagram3Wrapper creates a datagram3 session wrapper from the subsession components
 // and registers it with the primary session registry. Returns the configured sub-session or error.
 // Performs complete cleanup of all resources on failure.
-func (p *PrimarySession) createAndRegisterDatagram3Wrapper(id string, options []string, subSAM *common.SAM, udpConn *net.UDPConn, logger *logrus.Entry) (*Datagram3SubSession, error) {
+func (p *PrimarySession) createAndRegisterDatagram3Wrapper(id string, options []string, subSAM *common.SAM, udpConn *net.UDPConn, logger *logger.Entry) (*Datagram3SubSession, error) {
 	datagram3Session, err := datagram3.NewDatagram3SessionFromSubsession(subSAM, id, p.Keys(), options, udpConn)
 	if err != nil {
 		logger.WithError(err).Error("Failed to create datagram3 session wrapper")
@@ -550,7 +550,7 @@ func (p *PrimarySession) NewDatagram3SubSession(id string, options []string) (*D
 		return nil, oops.Errorf("primary session is closed")
 	}
 
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"primary_id": p.ID(),
 		"sub_id":     id,
 		"options":    options,
@@ -648,7 +648,7 @@ func (p *PrimarySession) CloseSubSession(id string) error {
 	}
 	p.mu.RUnlock()
 
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"primary_id": p.ID(),
 		"sub_id":     id,
 	})

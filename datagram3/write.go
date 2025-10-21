@@ -8,7 +8,6 @@ import (
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
 )
 
 // SetTimeout sets the timeout for datagram3 write operations.
@@ -55,11 +54,11 @@ func (w *Datagram3Writer) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error 
 	}
 
 	// Create logging context for debugging
-	logger := w.createSendLogger(dest, len(data))
-	logger.Debug("Sending datagram3 message via UDP socket")
+	log := w.createSendLogger(dest, len(data))
+	log.Debug("Sending datagram3 message via UDP socket")
 
 	// Establish UDP connection to SAM bridge
-	udpConn, err := w.connectToSAMUDP(logger)
+	udpConn, err := w.connectToSAMUDP(log)
 	if err != nil {
 		return err
 	}
@@ -68,16 +67,16 @@ func (w *Datagram3Writer) SendDatagram(data []byte, dest i2pkeys.I2PAddr) error 
 	// Build and send the datagram3 message
 	udpMessage := w.buildDatagram3Message(dest, data)
 
-	logger.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"total_size": len(udpMessage),
 	}).Debug("Sending UDP datagram3 to SAM")
 
 	// Transmit the datagram3 message via UDP to SAM bridge
-	if err := w.writeDatagram(udpConn, udpMessage, logger); err != nil {
+	if err := w.writeDatagram(udpConn, udpMessage, log); err != nil {
 		return err
 	}
 
-	logger.Debug("Successfully sent datagram3 message via UDP")
+	log.Debug("Successfully sent datagram3 message via UDP")
 	return nil
 }
 
@@ -98,7 +97,7 @@ func (w *Datagram3Writer) validateSessionState() error {
 // This method configures logging fields including session ID, destination, message size,
 // and protocol style for comprehensive debugging of send operations.
 func (w *Datagram3Writer) createSendLogger(dest i2pkeys.I2PAddr, dataSize int) *logger.Entry {
-	return log.WithFields(logrus.Fields{
+	return log.WithFields(logger.Fields{
 		"session_id":  w.session.ID(),
 		"destination": dest.Base32(),
 		"size":        dataSize,

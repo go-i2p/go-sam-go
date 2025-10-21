@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // validateAndCleanOptions validates signature type options and resolves conflicts.
@@ -26,7 +26,7 @@ func validateAndCleanOptions(sigType string, options []string) []string {
 		if strings.HasPrefix(opt, "SIGNATURE_TYPE=") {
 			conflictDetected = true
 			conflictingEntries = append(conflictingEntries, opt)
-			logrus.WithFields(logrus.Fields{
+			logger.WithFields(logger.Fields{
 				"sigType":           sigType,
 				"conflictingOption": opt,
 			}).Warn("Signature type conflict detected: sigType parameter takes precedence")
@@ -37,7 +37,7 @@ func validateAndCleanOptions(sigType string, options []string) []string {
 	}
 
 	if conflictDetected {
-		logrus.WithFields(logrus.Fields{
+		logger.WithFields(logger.Fields{
 			"resolvedSigType":  sigType,
 			"removedOptions":   conflictingEntries,
 			"remainingOptions": cleanedOptions,
@@ -59,7 +59,7 @@ func ValidateSignatureTypeOptions(options []string) error {
 	}
 
 	if len(signatureTypes) > 1 {
-		logrus.WithField("duplicateSignatureTypes", signatureTypes).Error("Multiple SIGNATURE_TYPE entries found in options")
+		logger.WithField("duplicateSignatureTypes", signatureTypes).Error("Multiple SIGNATURE_TYPE entries found in options")
 		return oops.Errorf("multiple SIGNATURE_TYPE entries in options: %v", signatureTypes)
 	}
 
@@ -149,7 +149,7 @@ func validateSubSessionOptions(options []string) []string {
 			// Check if we already have this option type in cleaned options
 			for _, existing := range cleanedOptions {
 				if strings.HasPrefix(existing, "i2cp.leaseSetEncType=") {
-					logrus.WithFields(logrus.Fields{
+					logger.WithFields(logger.Fields{
 						"existing":  existing,
 						"duplicate": opt,
 					}).Warn("Duplicate i2cp.leaseSetEncType detected in subsession options")
@@ -162,7 +162,7 @@ func validateSubSessionOptions(options []string) []string {
 
 		if shouldRemove {
 			removedEntries = append(removedEntries, opt)
-			logrus.WithFields(logrus.Fields{
+			logger.WithFields(logger.Fields{
 				"removedOption": opt,
 				"reason":        reason,
 			}).Warn("Removing invalid option from SESSION ADD per SAMv3.3 spec")
@@ -172,7 +172,7 @@ func validateSubSessionOptions(options []string) []string {
 	}
 
 	if len(removedEntries) > 0 {
-		logrus.WithFields(logrus.Fields{
+		logger.WithFields(logger.Fields{
 			"removedOptions":   removedEntries,
 			"remainingOptions": cleanedOptions,
 		}).Warn("SESSION ADD invalid options removed - subsessions inherit configuration from primary session per SAMv3.3 spec")
@@ -210,7 +210,7 @@ func validatePrimarySessionOptions(options []string) []string {
 				// For encryption types, use the last specified value
 				lastValue := values[len(values)-1]
 				cleanedOptions = append(cleanedOptions, lastValue)
-				logrus.WithFields(logrus.Fields{
+				logger.WithFields(logger.Fields{
 					"duplicates": values,
 					"resolvedTo": lastValue,
 					"optionType": key,
@@ -220,7 +220,7 @@ func validatePrimarySessionOptions(options []string) []string {
 				// This should be handled by validateAndCleanOptions, but just in case
 				lastValue := values[len(values)-1]
 				cleanedOptions = append(cleanedOptions, lastValue)
-				logrus.WithFields(logrus.Fields{
+				logger.WithFields(logger.Fields{
 					"duplicates": values,
 					"resolvedTo": lastValue,
 				}).Warn("Multiple SIGNATURE_TYPE entries in options - using last specified value")
@@ -229,7 +229,7 @@ func validatePrimarySessionOptions(options []string) []string {
 				// For other duplicates, use the last value and warn
 				lastValue := values[len(values)-1]
 				cleanedOptions = append(cleanedOptions, lastValue)
-				logrus.WithFields(logrus.Fields{
+				logger.WithFields(logger.Fields{
 					"duplicates": values,
 					"resolvedTo": lastValue,
 					"optionType": key,

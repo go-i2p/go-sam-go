@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-i2p/i2pkeys"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // NewSAMResolver creates a new SAMResolver using an existing SAM instance.
@@ -106,7 +106,7 @@ func (sam *SAMResolver) Resolve(name string) (i2pkeys.I2PAddr, error) {
 // Common metadata keys include: port, protocol, path, description, version, contact.
 // Metadata availability depends on service operator configuration and SAM bridge version.
 func (sam *SAMResolver) ResolveWithOptions(name string, options bool) (i2pkeys.I2PAddr, map[string]string, error) {
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"name":    name,
 		"options": options,
 	}).Debug("Resolving name with options")
@@ -140,7 +140,7 @@ func (sam *SAMResolver) sendLookupRequest(name string, options bool) error {
 	}
 	cmd += "\n"
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"name":    name,
 		"options": options,
 		"command": strings.TrimSpace(cmd),
@@ -320,7 +320,7 @@ func (sam *SAMResolver) handleOptionsResponse(text string, options map[string]st
 			value := strings.TrimSpace(parts[1])
 			if key != "" && value != "" {
 				options[key] = value
-				log.WithFields(logrus.Fields{
+				log.WithFields(logger.Fields{
 					"key":   key,
 					"value": value,
 				}).Debug("Added service option")

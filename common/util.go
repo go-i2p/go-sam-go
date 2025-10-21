@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 
 	rand "github.com/go-i2p/crypto/rand"
 )
@@ -40,7 +40,7 @@ func SplitHostPort(hostport string) (string, string, error) {
 			port = "0"
 		}
 	}
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"host": host,
 		"port": port,
 	}).Debug("Split host and port")
@@ -51,19 +51,19 @@ func SplitHostPort(hostport string) (string, string, error) {
 // Searches for the specified key prefix and returns the associated value.
 // Returns empty string if the key is not found or has no value.
 func ExtractPairString(input, value string) string {
-	log.WithFields(logrus.Fields{"input": input, "value": value}).Debug("ExtractPairString called")
+	log.WithFields(logger.Fields{"input": input, "value": value}).Debug("ExtractPairString called")
 	parts := strings.Split(input, " ")
 	for _, part := range parts {
 		log.WithField("part", part).Debug("Checking part")
 		if strings.HasPrefix(part, value) {
 			kv := strings.SplitN(part, "=", 2)
 			if len(kv) == 2 {
-				log.WithFields(logrus.Fields{"key": kv[0], "value": kv[1]}).Debug("Pair extracted")
+				log.WithFields(logger.Fields{"key": kv[0], "value": kv[1]}).Debug("Pair extracted")
 				return kv[1]
 			}
 		}
 	}
-	log.WithFields(logrus.Fields{"input": input, "value": value}).Debug("No pair found")
+	log.WithFields(logger.Fields{"input": input, "value": value}).Debug("No pair found")
 	return ""
 }
 
@@ -73,7 +73,7 @@ func ExtractPairString(input, value string) string {
 func ExtractPairInt(input, value string) int {
 	rv, err := strconv.Atoi(ExtractPairString(input, value))
 	if err != nil {
-		log.WithFields(logrus.Fields{"input": input, "value": value}).Debug("No pair found")
+		log.WithFields(logger.Fields{"input": input, "value": value}).Debug("No pair found")
 		return 0
 	}
 	log.WithField("result", rv).Debug("Pair extracted and converted to int")

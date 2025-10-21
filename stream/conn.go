@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // Read reads data from the connection into the provided buffer.
@@ -24,7 +24,7 @@ func (c *StreamConn) Read(b []byte) (int, error) {
 
 	n, err := conn.Read(b)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logger.Fields{
 			"local":  c.laddr.Base32(),
 			"remote": c.raddr.Base32(),
 		}).WithError(err).Debug("Read error")
@@ -48,7 +48,7 @@ func (c *StreamConn) Write(b []byte) (int, error) {
 
 	n, err := conn.Write(b)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logger.Fields{
 			"local":  c.laddr.Base32(),
 			"remote": c.raddr.Base32(),
 		}).WithError(err).Debug("Write error")
@@ -69,7 +69,7 @@ func (c *StreamConn) Close() error {
 		return nil
 	}
 
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"local":  c.laddr.Base32(),
 		"remote": c.raddr.Base32(),
 	})

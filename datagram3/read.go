@@ -7,7 +7,7 @@ import (
 	"github.com/go-i2p/common/base64"
 
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // readDatagramFromUDP reads a forwarded datagram3 message from the UDP connection.
@@ -33,7 +33,7 @@ func (s *Datagram3Session) readDatagramFromUDP(udpConn *net.UDPConn) (*Datagram3
 		return nil, err
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"bytes_read": n,
 		"style":      "DATAGRAM3",
 	}).Debug("Received UDP datagram3 message with hash source")
@@ -93,7 +93,7 @@ func (s *Datagram3Session) extractAndValidateHash(headerLine string) ([]byte, er
 		return nil, err
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"hash_base64": hashBase64,
 		"hash_len":    len(hashBytes),
 	}).Debug("Parsed source hash")
@@ -147,7 +147,7 @@ func (s *Datagram3Session) createDatagram(hashBytes []byte, data string) (*Datag
 		Local:      s.Addr(),
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"data_len":   len(datagram.Data),
 		"hash_len":   len(datagram.SourceHash),
 		"source_set": datagram.Source != "",

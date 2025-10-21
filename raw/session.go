@@ -9,7 +9,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // ensureRawUDPForwardingParameters injects UDP forwarding parameters into session options if not already present.
@@ -51,7 +51,7 @@ func ensureRawUDPForwardingParameters(options []string, udpPort int) []string {
 // Returns a RawSession instance that uses UDP forwarding for all raw datagram reception.
 // Example usage: session, err := NewRawSession(sam, "my-session", keys, []string{"inbound.length=1"})
 func NewRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string) (*RawSession, error) {
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 	}).Debug("Creating new RawSession with SAMv3 UDP forwarding")
@@ -150,7 +150,7 @@ func createGenericRawSession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, o
 //
 // Returns a RawSession ready for use without attempting to create a new SAM session.
 func NewRawSessionFromSubsession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options []string, udpConn *net.UDPConn) (*RawSession, error) {
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":          id,
 		"options":     options,
 		"udp_enabled": udpConn != nil,
@@ -271,7 +271,7 @@ func (s *RawSession) readRawFromUDP(udpConn *net.UDPConn) (*RawDatagram, error) 
 		return nil, oops.Errorf("failed to read from UDP connection: %w", err)
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"bytes_read":  n,
 		"remote_addr": remoteAddr,
 	}).Debug("Received UDP raw datagram")

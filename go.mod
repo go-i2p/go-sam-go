@@ -8,7 +8,7 @@ require (
 	github.com/go-i2p/common v0.0.0-20250819203334-e5459df35789
 	github.com/go-i2p/crypto v0.0.0-20250822224541-85015740db11
 	github.com/go-i2p/i2pkeys v0.33.92
-	github.com/go-i2p/logger v0.0.0-20251020233421-ba814f9db043
+	github.com/go-i2p/logger v0.0.0-20251021001827-b7cf9a3377d9
 	github.com/samber/oops v1.19.0
 	github.com/sirupsen/logrus v1.9.3
 )

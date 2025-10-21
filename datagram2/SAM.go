@@ -6,7 +6,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // SAM wraps common.SAM to provide datagram2-specific functionality for I2P messaging.
@@ -57,7 +57,7 @@ func (s *SAM) NewDatagram2Session(id string, keys i2pkeys.I2PKeys, options []str
 //	session, err := sam.NewDatagram2SessionWithSignature(id, keys, options, "EdDSA_SHA512_Ed25519")
 func (s *SAM) NewDatagram2SessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*Datagram2Session, error) {
 	// Log session creation with signature type for debugging
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 		"sigType": sigType,
@@ -104,7 +104,7 @@ func (s *SAM) NewDatagram2SessionWithSignature(id string, keys i2pkeys.I2PKeys, 
 //
 //	session, err := sam.NewDatagram2SessionWithPorts(id, "8080", "8081", keys, options)
 func (s *SAM) NewDatagram2SessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*Datagram2Session, error) {
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"id":       id,
 		"fromPort": fromPort,
 		"toPort":   toPort,

@@ -1,7 +1,7 @@
 package primary
 
 import (
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
-var log = logrus.WithField("package", "primary")
+var log = logger.WithField("package", "primary")

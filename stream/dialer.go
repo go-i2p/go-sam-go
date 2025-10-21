@@ -9,7 +9,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // Dial establishes a connection to the specified destination using the default context.
@@ -83,7 +83,7 @@ func (d *StreamDialer) validateSessionState() error {
 
 // logDialAttempt logs the dial attempt with appropriate context fields.
 func (d *StreamDialer) logDialAttempt(addr i2pkeys.I2PAddr) {
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"session_id":  d.session.ID(),
 		"destination": addr.Base32(),
 	}).Debug("Dialing I2P destination")
@@ -222,7 +222,7 @@ func (d *StreamDialer) sendStreamConnectCommand(sam *common.SAM, addr i2pkeys.I2
 	connectCmd := fmt.Sprintf("STREAM CONNECT ID=%s DESTINATION=%s SILENT=false\n",
 		d.session.ID(), addr.Base64())
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"session_id":  d.session.ID(),
 		"destination": addr.Base32(),
 		"command":     strings.TrimSpace(connectCmd),
@@ -244,7 +244,7 @@ func (d *StreamDialer) readStreamConnectResponse(sam *common.SAM) (string, error
 	}
 
 	response := string(buf[:n])
-	log.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"session_id": d.session.ID(),
 		"response":   response,
 	}).Debug("Received STREAM CONNECT response")

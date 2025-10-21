@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/go-i2p/go-sam-go/common"
+	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
 
 	rand "github.com/go-i2p/crypto/rand"
 )
@@ -92,19 +92,19 @@ func GenerateOptionString(opts []string) string {
 //
 // The logger is configured with appropriate fields for I2P and SAM operations,
 // supporting debug, info, warn, and error levels with structured output.
-func GetSAM3Logger() *logrus.Logger {
-	// Create a new logrus logger that's compatible with the SAM library expectations
-	// The go-i2p/logger package uses its own logger type, so we create a logrus instance
-	logger := logrus.New()
-	logger.SetLevel(logrus.InfoLevel)
+func GetSAM3Logger() *logger.Logger {
+	// Create a new log log that's compatible with the SAM library expectations
+	// The go-i2p/log package uses its own log type, so we create a log instance
+	log := logger.New()
+	log.SetLevel(logger.InfoLevel)
 
 	// Configure formatter for I2P operations
-	logger.SetFormatter(&logrus.TextFormatter{
+	log.SetFormatter(&logger.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
 
-	return logger
+	return log
 }
 
 // IgnorePortError filters out "missing port in address" errors for convenience when parsing addresses.

@@ -8,7 +8,6 @@ import (
 	"github.com/go-i2p/i2pkeys"
 	"github.com/go-i2p/logger"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
 )
 
 // SetTimeout sets the timeout for datagram2 write operations.
@@ -59,7 +58,7 @@ func (w *Datagram2Writer) validateSessionState() error {
 // createSendLogger creates a logger with contextual fields for send operations.
 // Returns a configured logger instance with session ID, destination, size, and style fields.
 func (w *Datagram2Writer) createSendLogger(dest i2pkeys.I2PAddr, dataSize int) *logger.Entry {
-	return log.WithFields(logrus.Fields{
+	return log.WithFields(logger.Fields{
 		"session_id":  w.session.ID(),
 		"destination": dest.Base32(),
 		"size":        dataSize,
@@ -93,7 +92,7 @@ func (w *Datagram2Writer) establishUDPConnection(logger *logger.Entry) (*net.UDP
 
 // buildUDPMessage constructs the SAMv3 UDP datagram2 message format.
 // Returns the complete UDP message with header and payload combined.
-func (w *Datagram2Writer) buildUDPMessage(data []byte, dest i2pkeys.I2PAddr, logger *logger.Entry) []byte {
+func (w *Datagram2Writer) buildUDPMessage(data []byte, dest i2pkeys.I2PAddr, log *logger.Entry) []byte {
 	sessionID := w.session.ID()
 	destination := dest.Base64()
 
@@ -104,7 +103,7 @@ func (w *Datagram2Writer) buildUDPMessage(data []byte, dest i2pkeys.I2PAddr, log
 	// Combine header and data into final UDP packet
 	udpMessage := append([]byte(headerLine), data...)
 
-	logger.WithFields(logrus.Fields{
+	log.WithFields(logger.Fields{
 		"header":     headerLine,
 		"total_size": len(udpMessage),
 	}).Debug("Sending UDP datagram2 to SAM")

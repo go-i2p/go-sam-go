@@ -4,7 +4,7 @@ import (
 	"github.com/go-i2p/go-sam-go/common"
 	"github.com/go-i2p/i2pkeys"
 	"github.com/samber/oops"
-	"github.com/sirupsen/logrus"
+	"github.com/go-i2p/logger"
 )
 
 // SAM wraps common.SAM to provide primary session functionality for creating and managing
@@ -51,7 +51,7 @@ func (s *SAM) NewPrimarySession(id string, keys i2pkeys.I2PKeys, options []strin
 //	datagramSub, err := session.NewDatagramSubSession("datagram-1", datagramOptions)
 func (s *SAM) NewPrimarySessionWithSignature(id string, keys i2pkeys.I2PKeys, options []string, sigType string) (*PrimarySession, error) {
 	// Log session creation with signature type for debugging and monitoring
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":      id,
 		"options": options,
 		"sigType": sigType,
@@ -102,7 +102,7 @@ func (s *SAM) NewPrimarySessionWithSignature(id string, keys i2pkeys.I2PKeys, op
 //	rawSub, err := session.NewRawSubSession("raw-1", rawOptions)
 func (s *SAM) NewPrimarySessionWithPorts(id, fromPort, toPort string, keys i2pkeys.I2PKeys, options []string) (*PrimarySession, error) {
 	// Log session creation with port configuration for debugging and network analysis
-	logger := log.WithFields(logrus.Fields{
+	logger := log.WithFields(logger.Fields{
 		"id":       id,
 		"fromPort": fromPort,
 		"toPort":   toPort,
