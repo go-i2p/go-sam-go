@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 223 commits
+        📝 225 commits
         
       </div>
     </div>
@@ -60,7 +60,7 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>223 commits</span>
+          <span>📝</span> <span>225 commits</span>
         </div>
         
         
@@ -292,12 +292,47 @@ sam3.Options_Large      // High throughput
 sam3.Options_Humongous  // Maximum performance
 </code></pre>
 
-<p>Debug logging:</p>
+<h3 id="logging-configuration">Logging Configuration</h3>
 
-<pre><code class="language-bash">export DEBUG_I2P=debug   # Debug level
-export DEBUG_I2P=warn    # Warning level
-export DEBUG_I2P=error   # Error level
+<p>This library uses <code>github.com/go-i2p/logger</code> for structured logging with environment-based configuration:</p>
+
+<h4 id="verbosity-control">Verbosity Control</h4>
+
+<p>Control logging output via the <code>DEBUG_I2P</code> environment variable:</p>
+
+<pre><code class="language-bash">export DEBUG_I2P=debug   # Verbose debugging (tunnel state, operations, timing)
+export DEBUG_I2P=warn    # Warnings only (deprecations, recoverable issues)
+export DEBUG_I2P=error   # Errors only (failed operations, connectivity issues)
+# Unset = No logging (zero performance impact)
 </code></pre>
+
+<h4 id="fast-fail-mode-testing-development">Fast-Fail Mode (Testing &amp; Development)</h4>
+
+<p>Enable strict mode where warnings and errors become fatal:</p>
+
+<pre><code class="language-bash">export WARNFAIL_I2P=true  # Convert warnings/errors to fatal for testing
+go test ./...              # Tests fail fast on any warning/error
+</code></pre>
+
+<p><strong>Use Case:</strong> Catch potential issues during development that might be warnings in production.</p>
+
+<h4 id="structured-logging">Structured Logging</h4>
+
+<p>The logger provides structured, searchable output with contextual fields:</p>
+
+<pre><code>time=&quot;2025-01-20T15:04:05Z&quot; level=debug msg=&quot;SAM session created&quot; session_id=&quot;mytunnel&quot; signature_type=&quot;EdDSA_SHA512_Ed25519&quot; tunnel_in_length=3 tunnel_out_length=3
+time=&quot;2025-01-20T15:04:10Z&quot; level=info msg=&quot;Connection established&quot; remote_dest=&quot;abc123...def.b32.i2p&quot; connection_time=&quot;2.3s&quot;
+time=&quot;2025-01-20T15:04:15Z&quot; level=error msg=&quot;Failed to send datagram&quot; error=&quot;connection timeout&quot; session_id=&quot;udp-tunnel&quot; retry_count=3
+</code></pre>
+
+<h4 id="logging-best-practices">Logging Best Practices</h4>
+
+<ol>
+<li><strong>Production:</strong> Leave <code>DEBUG_I2P</code> unset for zero logging overhead</li>
+<li><strong>Troubleshooting:</strong> Set <code>DEBUG_I2P=debug</code> to diagnose I2P timing and connectivity issues</li>
+<li><strong>Testing:</strong> Use <code>WARNFAIL_I2P=true</code> to enforce clean test runs without warnings</li>
+<li><strong>CI/CD:</strong> Combine both for maximum issue detection: <code>DEBUG_I2P=debug WARNFAIL_I2P=true go test ./...</code></li>
+</ol>
 
 <h2 id="requirements">🔧 Requirements</h2>
 
@@ -375,7 +410,7 @@ go test -race -short ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                221 commits
+                223 commits
               </div>
             </div>
           </div>
@@ -402,7 +437,7 @@ go test -race -short ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2025-10-21 00:27:13 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2025-10-21 00:58:27 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
