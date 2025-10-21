@@ -315,8 +315,8 @@ func TestGetSAM3Logger(t *testing.T) {
 	}
 
 	// Verify logger is a logger instance (it should be since that's what we return)
-	if log.Level > logger.InfoLevel {
-		t.Errorf("GetSAM3Logger() logger level is %v, expected at least Info level", logger.Level)
+	if log.GetLevel() > logger.InfoLevel {
+		t.Errorf("GetSAM3Logger() logger level is %v, expected at least Info level", log.GetLevel())
 	}
 
 	// Test logger functionality
