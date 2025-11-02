@@ -13,8 +13,8 @@ import (
 	"github.com/go-i2p/go-sam-go/raw"
 	"github.com/go-i2p/go-sam-go/stream"
 	"github.com/go-i2p/i2pkeys"
-	"github.com/samber/oops"
 	"github.com/go-i2p/logger"
+	"github.com/samber/oops"
 )
 
 // PrimarySession manages multiple sub-sessions sharing the same I2P identity and tunnels.
@@ -25,6 +25,12 @@ type PrimarySession struct {
 	registry *SubSessionRegistry
 	mu       sync.RWMutex
 	closed   bool
+	// usedPorts tracks allocated ports for stream subsessions to prevent duplicates
+	usedPorts map[int]bool
+	// nextAutoPort tracks the next available port for auto-assignment
+	nextAutoPort int
+	// subSessionPorts tracks which auto-assigned port belongs to which subsession
+	subSessionPorts map[string]int
 }
 
 // NewPrimarySession creates a new primary session for managing multiple sub-sessions.
@@ -55,10 +61,13 @@ func NewPrimarySession(sam *common.SAM, id string, keys i2pkeys.I2PKeys, options
 	}
 
 	ps := &PrimarySession{
-		BaseSession: baseSession,
-		sam:         sam,
-		options:     options,
-		registry:    NewSubSessionRegistry(),
+		BaseSession:     baseSession,
+		sam:             sam,
+		options:         options,
+		registry:        NewSubSessionRegistry(),
+		usedPorts:       make(map[int]bool),
+		nextAutoPort:    49152, // Start from dynamic port range
+		subSessionPorts: make(map[string]int),
 	}
 
 	logger.Debug("Successfully created PrimarySession")
@@ -95,10 +104,13 @@ func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2P
 
 	// Initialize the primary session with the base session and configuration
 	ps := &PrimarySession{
-		BaseSession: baseSession,
-		sam:         sam,
-		options:     options,
-		registry:    NewSubSessionRegistry(),
+		BaseSession:     baseSession,
+		sam:             sam,
+		options:         options,
+		registry:        NewSubSessionRegistry(),
+		usedPorts:       make(map[int]bool),
+		nextAutoPort:    49152, // Start from dynamic port range
+		subSessionPorts: make(map[string]int),
 	}
 
 	logger.Debug("Successfully created PrimarySession with signature")
@@ -109,6 +121,11 @@ func NewPrimarySessionWithSignature(sam *common.SAM, id string, keys i2pkeys.I2P
 // The sub-session shares the primary session's I2P identity and tunnel infrastructure
 // while providing full StreamSession functionality for TCP-like reliable connections.
 // Each sub-session must have a unique identifier within the primary session scope.
+//
+// If no port options (LISTEN_PORT, FROM_PORT) are provided, the method will automatically
+// assign a unique port to prevent "Duplicate protocol" errors from the SAM bridge.
+// This ensures multiple stream sub-sessions can coexist within the same primary session.
+//
 // Example usage: streamSub, err := primary.NewStreamSubSession("tcp-handler", []string{"FROM_PORT=8080"})
 func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*StreamSubSession, error) {
 	p.mu.Lock()
@@ -124,17 +141,31 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 		"options":    options,
 	}).Debug("Creating stream sub-session")
 
-	// Add and setup the stream subsession
-	subSAM, err := p.addAndSetupStreamSubsession(id, options)
+	// Ensure unique port assignment to prevent duplicate protocol errors
+	finalOptions, assignedPort, err := p.ensureUniqueStreamPort(options)
 	if err != nil {
 		return nil, err
 	}
 
+	// Add and setup the stream subsession
+	subSAM, err := p.addAndSetupStreamSubsession(id, finalOptions)
+	if err != nil {
+		// If we auto-assigned a port, release it on failure
+		if assignedPort > 0 {
+			p.releasePort(assignedPort)
+		}
+		return nil, err
+	}
+
 	// Create the stream session from the subsession
-	streamSession, err := p.createStreamSessionFromSubsession(subSAM, id, options)
+	streamSession, err := p.createStreamSessionFromSubsession(subSAM, id, finalOptions)
 	if err != nil {
 		subSAM.Close()
 		p.sam.RemoveSubSession(id)
+		// If we auto-assigned a port, release it on failure
+		if assignedPort > 0 {
+			p.releasePort(assignedPort)
+		}
 		return nil, err
 	}
 
@@ -143,10 +174,114 @@ func (p *PrimarySession) NewStreamSubSession(id string, options []string) (*Stre
 	if err != nil {
 		streamSession.Close()
 		p.sam.RemoveSubSession(id)
+		// If we auto-assigned a port, release it on failure
+		if assignedPort > 0 {
+			p.releasePort(assignedPort)
+		}
 		return nil, err
 	}
 
-	log.Debug("Successfully created stream sub-session")
+	// Track the port assignment for cleanup when subsession is closed
+	if assignedPort > 0 {
+		p.subSessionPorts[id] = assignedPort
+	}
+
+	log.WithField("assigned_port", assignedPort).Debug("Successfully created stream sub-session")
+	return subSession, nil
+}
+
+// NewStreamSubSessionWithPort creates a new stream sub-session with explicit port configuration.
+// This method allows precise control over port assignments for advanced use cases where
+// specific port numbers are required for the stream subsession.
+//
+// Parameters:
+//   - id: Unique subsession identifier within the primary session scope
+//   - options: Additional SAM protocol options (port options will be added/overridden)
+//   - fromPort: The FROM_PORT parameter for outbound connections (0 = any port)
+//   - toPort: The TO_PORT parameter for inbound connections (0 = any port)
+//
+// The method validates that the specified ports are available and reserves them
+// to prevent conflicts with other subsessions. Port 0 means "any available port".
+//
+// Example usage:
+//
+//	streamSub, err := primary.NewStreamSubSessionWithPort("tcp-server", []string{}, 8080, 8080)
+//	streamSub2, err := primary.NewStreamSubSessionWithPort("tcp-client", []string{}, 0, 8081)
+func (p *PrimarySession) NewStreamSubSessionWithPort(id string, options []string, fromPort, toPort int) (*StreamSubSession, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.closed {
+		return nil, oops.Errorf("primary session is closed")
+	}
+
+	log.WithFields(logger.Fields{
+		"primary_id": p.ID(),
+		"sub_id":     id,
+		"options":    options,
+		"from_port":  fromPort,
+		"to_port":    toPort,
+	}).Debug("Creating stream sub-session with explicit ports")
+
+	// Build options with explicit port configuration
+	finalOptions, reservedPorts, err := p.buildOptionsWithPorts(options, fromPort, toPort)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add and setup the stream subsession
+	subSAM, err := p.addAndSetupStreamSubsession(id, finalOptions)
+	if err != nil {
+		// Release any reserved ports on failure
+		for _, port := range reservedPorts {
+			if port > 0 {
+				p.releasePort(port)
+			}
+		}
+		return nil, err
+	}
+
+	// Create the stream session from the subsession
+	streamSession, err := p.createStreamSessionFromSubsession(subSAM, id, finalOptions)
+	if err != nil {
+		subSAM.Close()
+		p.sam.RemoveSubSession(id)
+		// Release any reserved ports on failure
+		for _, port := range reservedPorts {
+			if port > 0 {
+				p.releasePort(port)
+			}
+		}
+		return nil, err
+	}
+
+	// Register and return the stream sub-session
+	subSession, err := p.registerStreamSubSession(id, streamSession)
+	if err != nil {
+		streamSession.Close()
+		p.sam.RemoveSubSession(id)
+		// Release any reserved ports on failure
+		for _, port := range reservedPorts {
+			if port > 0 {
+				p.releasePort(port)
+			}
+		}
+		return nil, err
+	}
+
+	// Track the primary port assignment for cleanup (use fromPort as primary)
+	primaryPort := fromPort
+	if primaryPort == 0 && toPort > 0 {
+		primaryPort = toPort
+	}
+	if primaryPort > 0 {
+		p.subSessionPorts[id] = primaryPort
+	}
+
+	log.WithFields(logger.Fields{
+		"from_port": fromPort,
+		"to_port":   toPort,
+	}).Debug("Successfully created stream sub-session with explicit ports")
 	return subSession, nil
 }
 
@@ -672,6 +807,15 @@ func (p *PrimarySession) CloseSubSession(id string) error {
 		return oops.Errorf("failed to unregister sub-session: %w", err)
 	}
 
+	// Release auto-assigned port if this was a stream subsession with auto-port
+	p.mu.Lock()
+	if port, hasAutoPort := p.subSessionPorts[id]; hasAutoPort {
+		p.releasePort(port)
+		delete(p.subSessionPorts, id)
+		logger.WithField("released_port", port).Debug("Released auto-assigned port for closed sub-session")
+	}
+	p.mu.Unlock()
+
 	logger.Debug("Successfully closed sub-session")
 	return nil
 }
@@ -706,6 +850,14 @@ func (p *PrimarySession) Close() error {
 		logger.WithError(err).Error("Failed to close sub-session registry")
 		// Continue with base session closure even if registry close fails
 	}
+
+	// Clean up all auto-assigned ports
+	for id, port := range p.subSessionPorts {
+		p.releasePort(port)
+		log.WithField("sub_id", id).WithField("port", port).Debug("Released auto-assigned port during primary session close")
+	}
+	p.subSessionPorts = make(map[string]int) // Clear the mapping
+	p.usedPorts = make(map[int]bool)         // Clear all port allocations
 
 	// Close the underlying base session
 	if err := p.BaseSession.Close(); err != nil {
