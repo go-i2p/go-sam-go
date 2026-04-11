@@ -60,6 +60,7 @@ type RawConn struct {
 	mu         sync.RWMutex
 	closed     bool
 	cleanup    runtime.Cleanup
+	sentinel   *struct{} // separate allocation so AddCleanup ptr is not within arg
 }
 
 // RawListener implements net.Listener for I2P raw connections

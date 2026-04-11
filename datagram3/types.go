@@ -267,4 +267,5 @@ type Datagram3Conn struct {
 	mu         sync.RWMutex
 	closed     bool
 	cleanup    runtime.Cleanup
+	sentinel   *struct{} // separate allocation so AddCleanup ptr is not within arg
 }

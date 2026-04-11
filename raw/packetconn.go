@@ -210,7 +210,10 @@ func cleanupRawConn(c *RawConn) {
 
 // addCleanup sets up automatic cleanup for the connection to prevent resource leaks
 func (c *RawConn) addCleanup() {
-	c.cleanup = runtime.AddCleanup(&c.cleanup, cleanupRawConn, c)
+	if c.sentinel == nil {
+		c.sentinel = new(struct{})
+	}
+	c.cleanup = runtime.AddCleanup(c.sentinel, cleanupRawConn, c)
 }
 
 // clearCleanup removes the cleanup when Close() is called explicitly

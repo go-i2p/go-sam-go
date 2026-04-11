@@ -17,7 +17,7 @@ A pure-Go implementation of SAMv3.3 (Simple Anonymous Messaging) for I2P, focuse
 - ⚠️ **Datagram2** - Authenticated repliable datagrams with replay protection (spec finalized early 2025, no router implementations yet, available in dev builds)
 - ⚠️ **Datagram3** - Unauthenticated repliable datagrams with hash-based sources (spec finalized early 2025, no router implementations yet, available in dev builds, requires direct package import)
 
-**Note:** DATAGRAM2 and DATAGRAM3 are fully implemented in this library but require I2P router support (Java I2P or i2pd) to function. Check your router's release notes for SAMv3 DATAGRAM2/3 support.
+**Note:** DATAGRAM2 and DATAGRAM3 are fully implemented in this library but require I2P router support (Java I2P, go-i2p, emissary, or i2pd) to function. Check your router's release notes for SAMv3 DATAGRAM2/3 support.
 
 ## 📦 Installation
 

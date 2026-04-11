@@ -42,6 +42,7 @@ type StreamListener struct {
 	closed     bool
 	mu         sync.RWMutex
 	cleanup    runtime.Cleanup
+	sentinel   *struct{} // separate allocation so AddCleanup ptr is not within arg
 }
 
 // StreamConn implements net.Conn for I2P streaming connections.
