@@ -1,0 +1,13 @@
+FROM golang:1.26
+
+WORKDIR /workspace
+
+COPY . .
+
+ENV CGO_ENABLED=0
+ENV GOFLAGS=-count=1
+
+RUN go mod download
+RUN cd integration/bridge-runner && go mod download
+
+CMD ["./integration/run-integration.sh"]

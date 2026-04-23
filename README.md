@@ -261,8 +261,35 @@ go test -short ./...
 # Note: I2P tests can take 30-150 seconds due to tunnel establishment
 go test ./...
 
+# Run SAMv3.3 end-to-end integration suite with embedded go-sam-bridge router
+go test -v -tags integration -run '^TestSAMv33_' ./.
+
+# Build and run Dockerized SAMv3.3 end-to-end integration suite
+make docker-integration-test
+
 # Run with race detection
 go test -race -short ./...
+```
+
+### Dockerized SAMv3.3 End-to-End Tests
+
+The repository includes a containerized integration runner that starts an embedded
+I2P router and SAM bridge (via `github.com/go-i2p/go-sam-bridge/lib/embedding`) and
+executes a focused end-to-end suite covering:
+
+- SAM control plane (`HELLO`, `PING`, `DEST GENERATE`, `HELP`, `QUIT`)
+- `STREAM` session/listen/dial/accept data path
+- `DATAGRAM`, `RAW`, `DATAGRAM2`, and `DATAGRAM3` message flows
+- `PRIMARY` session with subsession creation and `SESSION ADD`/`SESSION REMOVE`
+
+Commands:
+
+```bash
+# Local host execution (no Docker)
+make integration-test
+
+# Containerized execution
+make docker-integration-test
 ```
 
 ## 📖 Package Documentation

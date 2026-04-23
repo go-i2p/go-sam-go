@@ -25,6 +25,15 @@ test:
 	make raw-test
 	#make primary-test
 
+integration-test:
+	./integration/run-integration.sh
+
+docker-integration-build:
+	docker build -f Dockerfile.integration -t go-sam-go-integration .
+
+docker-integration-test: docker-integration-build
+	docker run --rm go-sam-go-integration
+
 test-logs:
 	make common-test 2> common-err.log 1> common-out.log;	cat common-err.log common-out.log
 	make stream-test 2> stream-err.log 1> stream-out.log;	cat stream-err.log stream-out.log
