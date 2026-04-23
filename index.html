@@ -13,7 +13,7 @@
         <a href="index.html">go-i2p/go-sam-go</a>
       </h2>
       <div class="repo-meta">
-        📝 231 commits
+        📝 233 commits
         
       </div>
     </div>
@@ -60,12 +60,12 @@
       <div class="repo-stats">
         
         <div class="repo-stat">
-          <span>📝</span> <span>231 commits</span>
+          <span>📝</span> <span>233 commits</span>
         </div>
         
         
         <div class="repo-stat">
-          <span>📅</span> <span>Last updated: April 16, 2026</span>
+          <span>📅</span> <span>Last updated: April 23, 2026</span>
         </div>
         
         
@@ -354,8 +354,36 @@ go test -short ./...
 # Note: I2P tests can take 30-150 seconds due to tunnel establishment
 go test ./...
 
+# Run SAMv3.3 end-to-end integration suite with embedded go-sam-bridge router
+go test -v -tags integration -run '^TestSAMv33_' ./.
+
+# Build and run Dockerized SAMv3.3 end-to-end integration suite
+make docker-integration-test
+
 # Run with race detection
 go test -race -short ./...
+</code></pre>
+
+<h3 id="dockerized-samv3-3-end-to-end-tests">Dockerized SAMv3.3 End-to-End Tests</h3>
+
+<p>The repository includes a containerized integration runner that starts an embedded
+I2P router and SAM bridge (via <code>github.com/go-i2p/go-sam-bridge/lib/embedding</code>) and
+executes a focused end-to-end suite covering:</p>
+
+<ul>
+<li>SAM control plane (<code>HELLO</code>, <code>PING</code>, <code>DEST GENERATE</code>, <code>HELP</code>, <code>QUIT</code>)</li>
+<li><code>STREAM</code> session/listen/dial/accept data path</li>
+<li><code>DATAGRAM</code>, <code>RAW</code>, <code>DATAGRAM2</code>, and <code>DATAGRAM3</code> message flows</li>
+<li><code>PRIMARY</code> session with subsession creation and <code>SESSION ADD</code>/<code>SESSION REMOVE</code></li>
+</ul>
+
+<p>Commands:</p>
+
+<pre><code class="language-bash"># Local host execution (no Docker)
+make integration-test
+
+# Containerized execution
+make docker-integration-test
 </code></pre>
 
 <h2 id="package-documentation">📖 Package Documentation</h2>
@@ -410,7 +438,7 @@ go test -race -short ./...
                 eyedeekay
               </div>
               <div class="contributor-commits">
-                229 commits
+                231 commits
               </div>
             </div>
           </div>
@@ -437,7 +465,7 @@ go test -race -short ./...
     </main>
     
     <footer class="page-footer">
-      <p>Generated on 2026-04-23 21:38:46 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
+      <p>Generated on 2026-04-23 21:42:25 • <a href="https://github.com/go-i2p/go-sam-go" target="_blank">View on GitHub</a></p>
     </footer>
   </div>
 </body>
